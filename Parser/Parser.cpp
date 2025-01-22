@@ -3,11 +3,9 @@
 #include <cmath>
 #include <cstddef>
 #include <fstream>
-#include <numeric>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <tuple>
 #include <vector>
 #include <iostream>
 
@@ -66,9 +64,6 @@ void Parser::checkSyntaxError(void)
     }
     if (braceCount)
         throw std::logic_error("Unclosed braces");
-    for (tokenVec::iterator it = this->tokens.begin(); it != this->tokens.end(); it++)
-        if (it->word == "")
-            throw std::logic_error("EMPTY STRING");
 }
 
 bool Parser::isSkipChar(char c)
@@ -85,93 +80,45 @@ bool Parser::isOwnChar(char c)
 Block Parser::parseConfigFile(void)
 {
     tokenVec::iterator it = this->tokens.begin();
-    return (parseBlock(it));
+    Block globalBlock;
+    globalBlock.blockName.push_back("Global Block");
+    globalBlock.subBlocks.push_back(parseBlock(it, true));
+    while (it != this->tokens.end())
+    {
+        while(it->type != CLOSE_BRACE)
+            it--;
+        it++;
+        globalBlock.subBlocks.push_back(parseBlock(it, true));
+    }
+    return globalBlock;
 }
 
-stringVec Parser::parseDirective(tokenVec::iterator &it)
-{
-    stringVec vec;
-    for (tokenVec::iterator check = it; check != this->tokens.end(); check++)
-    {
-        if (check->type == SEMICOLON)
-            break;
-        else if (check->type == OPEN_BRACE || check->type == CLOSE_BRACE)
-            return vec;
-    }
-    while(it != this->tokens.end() && it->type != SEMICOLON)
-    {
-        vec.push_back(it->word);
-        it++;
-    }
-    return vec;
-}
-Block Parser::parseBlock(tokenVec::iterator &it)
+Block Parser::parseBlock(tokenVec::iterator &it, bool getName)
 {
     Block result;
 
-    if (it->type == CLOSE_BRACE)
-        return result;
-    while (it != this->tokens.end() && it->type != OPEN_BRACE)
+    if (getName)
     {
-        result.blockName.push_back(it->word);
-        it++;
+        for(; it->type != OPEN_BRACE; it++)
+            result.blockName.push_back(it->word);
+        it++; // Skip open brace
     }
 
-
-    if (it == this->tokens.end() || (it + 1) == this->tokens.end())
-        return result;
-
-    if (it->type == OPEN_BRACE)
-        it++;
-    while(it != this->tokens.end() && it->type == CLOSE_BRACE)
-        it++;
-
-    stringVec res;
-    while (!(res = parseDirective(it)).empty()) {
-        if (it == this->tokens.end())
-            return result;
-        result.directives.push_back(res);
-        it++;
-    }
-     for (tokenVec::iterator check = it; check != this->tokens.end(); check++)
+    for (; it != this->tokens.end() && it->type != CLOSE_BRACE; )
     {
-        if (check->type == OPEN_BRACE)
-            break;
-        else if (check->type == CLOSE_BRACE)
-            return result;
-    }
-    Block sub;
-    while (!(sub = parseBlock(it)).blockName.empty()) {
-        result.subBlocks.push_back(sub);
-        if (it != this->tokens.end() && it->type == CLOSE_BRACE)
-        {
-            it++;
-            if (it == this->tokens.end())
-                return result;
+        stringVec vec;
+        for(; it->type == WORD; it++) vec.push_back(it->word);
+        if (it->type == SEMICOLON) {it++; result.directives.push_back(vec) ; continue;} // skip semicolon for next directive
+        if (it->type == OPEN_BRACE) {
+            it++; // skip open brace
+            Block subBlock = parseBlock(it, false);
+            subBlock.blockName = vec;
+            result.subBlocks.push_back(subBlock);
         }
     }
-
-    if (it != this->tokens.end() && it->type == CLOSE_BRACE)
-    {
-        it++;
-        if (it == this->tokens.end())
-            return result;
-        return (result);
-    }
-
-    // while (!(res = parseDirective(it)).empty()) {
-    //     result.directives.push_back(res);
-    // }
-
-
-    // if (it != this->tokens.end() && it->type == CLOSE_BRACE)
-    // {
-    //     it++;
-    // }
-
+    it++; // skip this block's close brace
     return result;
 }
-
 // DEBUG
 void Parser::printTokens(void)
 {

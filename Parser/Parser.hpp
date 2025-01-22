@@ -41,7 +41,7 @@ class Parser {
     
         static bool isSkipChar(char c);
         static bool isOwnChar(char c);
-        Block parseBlock(tokenVec::iterator &it);
+        Block parseBlock(tokenVec::iterator &it, bool getName);
     public:
         Parser(std::ifstream &configFile);
         Block parseConfigFile(void);
