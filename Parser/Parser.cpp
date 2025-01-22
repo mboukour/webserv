@@ -25,7 +25,6 @@ Parser::Parser(std::ifstream &configFile)
             std::string push(1, configString[i]); 
             Token newToken(push, configString[i]);
             this->tokens.push_back(newToken);
-            i++;
         }
         else if (!isSkipChar(configString[i]))
         {
