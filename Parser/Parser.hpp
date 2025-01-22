@@ -35,7 +35,7 @@ class Parser {
         tokenVec tokens;
         std::vector<Block> blocks;
 
-        
+        void checkDirectives(void);
         void checkSyntaxError(void);
         stringVec parseDirective(tokenVec::iterator &it);
     

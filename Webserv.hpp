@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <iostream>
-
+#include <vector>
+typedef std::vector<std::string> stringVec;
 
 #endif
