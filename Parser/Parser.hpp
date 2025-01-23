@@ -34,10 +34,7 @@ class Parser {
     private:
         tokenVec tokens;
         std::vector<Block> blocks;
-
-        void checkDirectives(void);
         void checkSyntaxError(void);
-        stringVec parseDirective(tokenVec::iterator &it);
     
         static bool isSkipChar(char c);
         static bool isOwnChar(char c);

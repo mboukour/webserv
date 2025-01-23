@@ -26,6 +26,8 @@ Parser::Parser(std::ifstream &configFile)
             Token newToken(push, configString[i]);
             this->tokens.push_back(newToken);
         }
+        else if (configString[i] == '#')
+            for (; configString[i] && configString[i] != '\n'; i++);
         else if (!isSkipChar(configString[i]))
         {
             std::stringstream wordStream;
