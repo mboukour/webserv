@@ -8,6 +8,7 @@
 #include <cstring>
 #include <sys/epoll.h>
 #include <csignal>
+#include <fcntl.h>
 #include "../Debug/Debug.hpp"
 
 void Server::setPort(int port) {this->port = port;}
@@ -19,41 +20,52 @@ int Server::getPort(void) const {return this->port;}
 std::string Server::getServerName(void) const {return this->serverName;}
 
 
-void Server::startServer(void)  {
-
+void    Server::setupServerSocket(void) {
+    struct sockaddr_in server_addr;
     std::string errorStr;
-
     this->fdSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (this->fdSocket == -1)
-        throw std::runtime_error("Socket creation failed");
-    int opt = 1;
-    if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
     {
-        close(this->fdSocket);
-        errorStr = "setsockopt() failed. Errno: ";
+        errorStr = "Error: socket failed. Errno: ";
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
-    struct sockaddr_in server_addr;
-    std::memset(&server_addr, 0, sizeof(server_addr));
+    fcntl(this->fdSocket, F_SETFL, O_NONBLOCK);
+    int opt = 1;
+    if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
+    {
+        errorStr = "Error: setsockopt failed. Errno: ";
+        errorStr += strerror(errno);
+        close(this->fdSocket);
+        throw std::runtime_error(errorStr);
+    }
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(this->port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(this->port);
     if (bind(this->fdSocket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
     {
+        errorStr = "Error: bind failed. Errno: ";
+        errorStr += strerror(errno);
         close(this->fdSocket);
-        throw std::runtime_error("bind(): socket binding failed");
+        throw std::runtime_error(errorStr);
     }
-    if (listen(this->fdSocket, 128) == -1)
+    if (listen(this->fdSocket, 10) == -1)
     {
+        errorStr = "Error: listen failed. Errno: ";
+        errorStr += strerror(errno);
         close(this->fdSocket);
-        throw std::runtime_error("listen(): failed");
+        throw std::runtime_error(errorStr);
     }
-    DEBUG && std::cout << "Socket bound successfully to port " << this->port << std::endl;
+    DEBUG && std::cout << "Server listening on port " << this->port << std::endl;
+}
+
+void Server::startServer(void)  {
+
+    setupServerSocket();
     this->epollFd = epoll_create(1);
     if (this->epollFd == -1)
     {
-        errorStr = "epoll_create() failed";
+        std::string errorStr = "epoll_create() failed";
         errorStr += strerror(errno);
         close(this->fdSocket);
         throw std::runtime_error(errorStr);
@@ -75,8 +87,6 @@ void Server::handleConnections(void) const {
 
     while (true)
     {
-        //the MAX_EVENTS parameter is the maximum number of events that can be returned by epoll_wait
-        // in one iteration of the loop
         int event_count = epoll_wait(this->epollFd, events, MAX_EVENTS, -1);
         if (event_count == -1)
         {
@@ -129,7 +139,8 @@ void Server::acceptConnections(void) const {
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
-
+    fcntl(client_socket, F_SETFL, O_NONBLOCK);
+    
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
