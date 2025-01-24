@@ -16,12 +16,13 @@ enum HttpMethod {
 class ABlock {
     protected:
         ABlock();
+        ABlock(const ABlock& other);
         bool isGetAccepted;
         bool isPostAccepted;
         bool isDeleteAccepted;
         bool isAutoIndexOn;
-        std::string root;
         size_t maxBodySize;
+        std::string root;
         std::string uploadStore;
 
 

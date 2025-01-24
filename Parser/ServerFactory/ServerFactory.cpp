@@ -182,6 +182,9 @@ Server ServerFactory::createServer(const Block &serverBlock) {
 std::vector<Server> ServerFactory::createServers(const std::vector<Block> &serverBlocks) {
     std::vector<Server> result;
     for (std::vector<Block>::const_iterator it = serverBlocks.begin(); it != serverBlocks.end(); it++)
-        result.push_back(createServer(*it));
+    {
+        Server newServer = createServer(*it);
+        result.push_back(newServer);
+    }
     return (result);
 }

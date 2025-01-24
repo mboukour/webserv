@@ -9,6 +9,8 @@ class Location: public ABlock
     private:
         std::string locationName;
     public:
+        Location();
+        Location(const Location &other);
         void startServer(void);
         void setLocationName(const std::string &locationName);
         std::string getLocationName(void) const;
