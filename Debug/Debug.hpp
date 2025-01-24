@@ -7,6 +7,7 @@
 std::ostream& operator<<(std::ostream& outputStream, const Server& other);
 
 
+
 // Vector class printers
 void printServers(std::vector<Server> servers); // Server.hpp
 

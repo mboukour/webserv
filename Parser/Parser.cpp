@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <iostream>
 
 Token::Token(std::string &word, int type): word(word), type(type) {}
 
@@ -18,7 +19,8 @@ Parser::Parser(std::ifstream &configFile)
 
     ss << configFile.rdbuf();
     configString = ss.str();
-
+    if (configString.empty())
+        throw std::logic_error("Empty file as a config file");
     for (size_t i = 0; i < configString.length(); i++) {
         if (isOwnChar(configString[i]))
         {
