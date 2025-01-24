@@ -1,1 +1,3 @@
-Make the logicalvalidator the server maker!
+- Add methods / autoindex to the ServerFactory
+- Create the errorPages unordered_map
+- Parse Location subBlocks

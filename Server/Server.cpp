@@ -1,6 +1,12 @@
 #include "Server.hpp"
+#include <iostream> // to remove later
 
-AcceptedMethods::AcceptedMethods(): isGetAccepted(false), isPostAccepted(false), isDeleteAccepted(false) {};
+void Server::setPort(int port) {this->port = port;}
 
-void AcceptedMethods::setAllMethodsAccepted() {isGetAccepted = true; isPostAccepted = true; isDeleteAccepted = true;}
+void Server::setServerName(const std::string &serverName) {this->serverName = serverName;}
 
+int Server::getPort(void) const {return this->port;}
+
+std::string Server::getServerName(void) const {return this->serverName;}
+
+void Server::startServer(void) {std::cout << "This function currently does nothing...\n";}

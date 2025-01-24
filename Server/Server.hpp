@@ -4,26 +4,20 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "ABlock/ABlock.hpp"
+#include "Location/Location.hpp"
 
-class AcceptedMethods {
-    public:
-        bool isGetAccepted;
-        bool isPostAccepted;
-        bool isDeleteAccepted;
-
-        AcceptedMethods();
-        void setAllMethodsAccepted();
-};
-
-class Server {
+class Server: public ABlock {
     private:
         int port;
         std::string serverName;
-        std::string root;
-        std::unordered_map<std::vector<int>, std::string> errorPages;
-        size_t maxBodySize;
-        AcceptedMethods methods;
-
+        // std::vector<Location> locations;
+    public:
+        int getPort(void) const;
+        std::string getServerName(void) const;
+        void setPort(int port);
+        void setServerName(const std::string &serverName);
+        void startServer(void);
 };
 
 

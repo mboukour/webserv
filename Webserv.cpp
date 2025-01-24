@@ -1,6 +1,8 @@
 #include "Webserv.hpp"
 #include "Parser/Parser.hpp"
-#include "Parser/LogicalValidator/LogicalValidator.hpp"
+#include "Parser/ServerFactory/ServerFactory.hpp"
+#include "Debug/Debug.hpp"
+
 #include <cstdlib>
 #include <exception>
 #include <iostream>
@@ -87,10 +89,11 @@ int main(int ac, char **av)
             throw std::logic_error("Unable to open file");
         Parser parser(file);
         Block res = parser.parseConfigFile();
-        LogicalValidator::checkLogicError(res.subBlocks);
-        printBlock(res);
-        std::cout << "-------------\n";
-        printBlockTree(res);
+        std::vector<Server> servers = ServerFactory::createServers(res.subBlocks);
+        printServers(servers);
+        // printBlock(res);
+        // std::cout << "-------------\n";
+        // printBlockTree(res);
     } catch (std::exception &exc) {
         std::cerr << "Parsing error: " << exc.what() << '\n';
         std::exit(EXIT_FAILURE);

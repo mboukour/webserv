@@ -1,18 +1,22 @@
-#ifndef LOGICALVALIDATOR_HPP
-#define LOGICALVALIDATOR_HPP
+#ifndef SERVERFACTORY_HPP
+#define SERVERFACTORY_HPP
 
 #include <vector>
 #include <string>
 #include "../Parser.hpp"
+#include "../../Server/Server.hpp"
 
-class LogicalValidator{
+
+
+class ServerFactory {
     private:        
         static bool isValidErrorCode(const std::string &code);
         static bool isValidDirective(const std::string &directive);
         static bool isAcceptedSubBlock(const std::string &directive);
-        LogicalValidator();
+        static Server createServer(const Block& serverBlock);
+        ServerFactory();
     public:
-        static void checkLogicError(const std::vector<Block> &serverBlocks);
+        static std::vector<Server> createServers(const std::vector<Block> &serverBlocks);
 };
 
 

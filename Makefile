@@ -1,9 +1,9 @@
 CC = c++
 NAME = Webserv
-SRC = Webserv.cpp Parser/Parser.cpp Parser/LogicalValidator/LogicalValidator.cpp
+SRC = Webserv.cpp Parser/Parser.cpp Parser/ServerFactory/ServerFactory.cpp Debug/Debug.cpp Server/Server.cpp Server/ABlock/ABlock.cpp
 OBJ = $(SRC:.cpp=.o)
 FLAGS = -Wall -Wextra -Werror
-HEADERS = Webserv.hpp Parser/Parser.hpp Parser/LogicalValidator/LogicalValidator.hpp
+HEADERS = Webserv.hpp Parser/Parser.hpp Parser/ServerFactory/ServerFactory.hpp Debug/Debug.hpp
 all: $(NAME)
 
 $(NAME): $(OBJ)

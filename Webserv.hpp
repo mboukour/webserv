@@ -6,6 +6,7 @@
 #include <vector>
 typedef std::vector<std::string> stringVec;
 
+#include "Debug/Debug.hpp"
 
 
 #endif
