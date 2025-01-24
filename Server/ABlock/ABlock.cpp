@@ -1,7 +1,16 @@
 #include "ABlock.hpp"
 #include <exception>
 
-ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), maxBodySize(0) {}
+ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), maxBodySize(0), root(""), uploadStore("") {}
+
+ABlock::ABlock(const ABlock &other)
+    : isGetAccepted(other.isGetAccepted),
+      isPostAccepted(other.isPostAccepted),
+      isDeleteAccepted(other.isDeleteAccepted),
+      isAutoIndexOn(other.isAutoIndexOn),
+      maxBodySize(other.maxBodySize),
+      root(other.root),
+      uploadStore(other.uploadStore) {}
 
 std::string ABlock::getRoot(void) const {
     return root;

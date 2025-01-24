@@ -26,11 +26,14 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
     outputStream << "DELETE Accepted: " << (other.getMethod(DELETE) ? "Yes" : "No") << "\n";
     outputStream << "Auto Index On: " << (other.getIsAutoIndexOn() ? "Yes" : "No") << "\n";
     outputStream << "Locations:\n";
-    
-    // Using iterator to loop through locations vector
-    std::vector<Location>::const_iterator it;
-    for (it = other.locations.begin(); it != other.locations.end(); ++it) {
-        outputStream << *it;  // Calls the overloaded << for Location
+    if (other.locations.empty())
+        outputStream << "No locations found.\n";
+    else
+    {
+        std::vector<Location>::const_iterator it;
+        for (it = other.locations.begin(); it != other.locations.end(); ++it) {
+            outputStream << *it;  // Calls the overloaded << for Location
+        }
     }
     return outputStream;
 }

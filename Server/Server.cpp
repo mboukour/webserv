@@ -1,15 +1,12 @@
 #include "Server.hpp"
 #include <iostream> // to remove later
 #include <cstdlib>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cerrno>
-#include <cstring>
-#include <sys/epoll.h>
-#include <csignal>
-#include <fcntl.h>
+
 #include "../Debug/Debug.hpp"
+
+Server::Server(): ABlock(), port(-1), fdSocket(-1), serverName("") {}
+
+Server::Server(const Server &other): ABlock(other), port(other.port), fdSocket(other.fdSocket), serverName(other.serverName) {}
 
 void Server::setPort(int port) {this->port = port;}
 
@@ -17,13 +14,14 @@ void Server::setServerName(const std::string &serverName) {this->serverName = se
 
 int Server::getPort(void) const {return this->port;}
 
+int Server::getFdSocket(void) const {return this->fdSocket;}
+
 std::string Server::getServerName(void) const {return this->serverName;}
 
-
-void    Server::setupServerSocket(void) {
+void Server::startServer(void) {
     struct sockaddr_in server_addr;
     std::string errorStr;
-    this->fdSocket = socket(AF_INET, SOCK_STREAM, 0);
+    this->fdSocket = socket(AF_INET, SOCK_STREAM, 0); // listen to incoming clients
     if (this->fdSocket == -1)
     {
         errorStr = "Error: socket failed. Errno: ";
@@ -59,95 +57,4 @@ void    Server::setupServerSocket(void) {
     DEBUG && std::cout << "Server listening on port " << this->port << std::endl;
 }
 
-void Server::startServer(void)  {
-
-    setupServerSocket();
-    this->epollFd = epoll_create(1);
-    if (this->epollFd == -1)
-    {
-        std::string errorStr = "epoll_create() failed";
-        errorStr += strerror(errno);
-        close(this->fdSocket);
-        throw std::runtime_error(errorStr);
-    }
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = this->fdSocket;
-    if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, this->fdSocket, &ev) == -1)
-    {
-        std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
-        close(this->fdSocket);
-    }
-    handleConnections();
-}
-
-void Server::handleConnections(void) const {
-    struct epoll_event events[MAX_EVENTS];
-    std::string errorStr;
-
-    while (true)
-    {
-        int event_count = epoll_wait(this->epollFd, events, MAX_EVENTS, -1);
-        if (event_count == -1)
-        {
-            errorStr = "epoll_wait() failed. Errno: ";
-            errorStr += strerror(errno);
-            throw std::runtime_error(errorStr);
-        }
-        for (int i = 0; i < event_count; i++)
-        {
-            if (events[i].data.fd == this->fdSocket)
-                acceptConnections();
-            else
-                handleClient(events[i].data.fd);
-        }
-    }
-}
-
-void Server::handleClient(int clientFd) const {
-    char buffer[1024] = {0};
-    ssize_t bytesReceived = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
-    if (bytesReceived == 0)
-    {
-        DEBUG && std::cout << "Client disconnected" << std::endl;
-        close(clientFd);
-        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-    }
-    else if (bytesReceived > 0)
-    {
-        buffer[bytesReceived] = '\0';
-        DEBUG && std::cout << "Client: " << buffer << std::endl;
-        std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
-        send(clientFd, response.c_str(), response.size(), 0);
-    }
-    else
-    {
-        std::cerr << "Error: recv failed. Errno: " << strerror(errno) << std::endl;
-        close(clientFd);
-        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-    }
-}
-
-void Server::acceptConnections(void) const {
-    struct sockaddr_in client_addr;
-    std::string errorStr;
-    socklen_t client_len = sizeof(client_addr);
-    int client_socket = accept(this->fdSocket, (struct sockaddr *)&client_addr, &client_len);
-    if (client_socket == -1)
-    {
-        errorStr = "Error: accept failed. Errno: " ;
-        errorStr += strerror(errno);
-        throw std::runtime_error(errorStr);
-    }
-    fcntl(client_socket, F_SETFL, O_NONBLOCK);
-    
-    DEBUG && std::cout << "New connection accepted!" << std::endl;
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = client_socket;
-    if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, client_socket, &ev) == -1)
-    {
-        std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
-        close(client_socket);
-    }
-}
+Server::~Server() {}
