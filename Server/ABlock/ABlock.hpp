@@ -2,7 +2,7 @@
 #define ABLOCK_HPP
 
 #include <string>
-#include <unordered_map>
+// #include <unordered_map>
 #include <vector>
 
 
@@ -16,7 +16,7 @@ class ABlock {
         bool isAutoIndexOn;
         std::string root;
         size_t maxBodySize;
-        std::unordered_map<int, std::string> errorPages;
+        // std::unordered_map<int, std::string> errorPages;
         std::string uploadStore;
 
 

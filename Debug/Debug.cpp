@@ -18,7 +18,7 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
 void printServers(std::vector<Server> servers)
 {
     int i = 0;
-    for(std::vector<Server>::const_iterator it = servers.cbegin(); it != servers.cend(); it++, i++) {
+    for(std::vector<Server>::const_iterator it = servers.begin(); it != servers.end(); it++, i++) {
         std::cout << "Server " << i << '\n'
                   << *it << "--------------------------------------------------------\n";
     }

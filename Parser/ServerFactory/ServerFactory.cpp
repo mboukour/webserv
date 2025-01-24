@@ -32,10 +32,10 @@ Server ServerFactory::createServer(const Block &serverBlock)
     if (serverBlock.blockName.size() != 1 || serverBlock.blockName[0] != "server")
         throw std::logic_error("All server blocks must be under the name: server");
     // Directive checker
-    if (serverBlock.directives.cbegin()->cbegin()[0] != "listen")
+    if (serverBlock.directives.begin()->begin()[0] != "listen")
         throw std::logic_error("Listen directive must be the first directive in each server block");
-    for(std::vector<stringVec>::const_iterator ite = serverBlock.directives.cbegin();
-        ite != serverBlock.directives.cend(); ite++)
+    for(std::vector<stringVec>::const_iterator ite = serverBlock.directives.begin();
+        ite != serverBlock.directives.end(); ite++)
     {
         std::string currentDirective = ite->begin()[0];
         if (!isValidDirective(currentDirective))
@@ -61,7 +61,7 @@ Server ServerFactory::createServer(const Block &serverBlock)
         {
             if (ite->size() < 3) 
                 throw std::logic_error("Invalid error page directive");
-            for (stringVec::const_iterator itr = ite->cbegin() + 1; itr != ite->cend() - 1; itr++)
+            for (stringVec::const_iterator itr = ite->begin() + 1; itr != ite->end() - 1; itr++)
             {
                 if (!isValidErrorCode(*itr)) throw std::logic_error("Invalid error code found");
                 // Add func
@@ -111,8 +111,8 @@ Server ServerFactory::createServer(const Block &serverBlock)
         throw std::logic_error("Root directive not found");
     
     // subBlock checker ----> TO COMPLETE
-    for(std::vector<Block>::const_iterator itb = serverBlock.subBlocks.cbegin(); 
-        itb != serverBlock.subBlocks.cend(); itb++)
+    for(std::vector<Block>::const_iterator itb = serverBlock.subBlocks.begin(); 
+        itb != serverBlock.subBlocks.end(); itb++)
     {
         std::string subBlockName = itb->blockName[0];
         if (!isAcceptedSubBlock(subBlockName))
@@ -127,7 +127,7 @@ Server ServerFactory::createServer(const Block &serverBlock)
 std::vector<Server> ServerFactory::createServers(const std::vector<Block> &serverBlocks) {
     std::vector<Server> result;
     // result.reserve(serverBlocks.size());
-    for (std::vector<Block>::const_iterator it = serverBlocks.cbegin(); it != serverBlocks.cend(); it++)
+    for (std::vector<Block>::const_iterator it = serverBlocks.begin(); it != serverBlocks.end(); it++)
     {
         result.push_back(createServer(*it));
     }
