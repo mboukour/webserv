@@ -140,6 +140,7 @@ void Server::acceptConnections(void) const {
         throw std::runtime_error(errorStr);
     }
     fcntl(client_socket, F_SETFL, O_NONBLOCK);
+    
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
