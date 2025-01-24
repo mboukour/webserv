@@ -8,6 +8,7 @@
 #include <cstring>
 #include <sys/epoll.h>
 #include <csignal>
+#include <fcntl.h>
 #include "../Debug/Debug.hpp"
 
 void Server::setPort(int port) {this->port = port;}
@@ -29,6 +30,7 @@ void    Server::setupServerSocket(void) {
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
+    fcntl(this->fdSocket, F_SETFL, O_NONBLOCK);
     int opt = 1;
     if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
     {
@@ -137,7 +139,7 @@ void Server::acceptConnections(void) const {
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
-
+    fcntl(client_socket, F_SETFL, O_NONBLOCK);
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
