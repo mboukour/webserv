@@ -83,16 +83,30 @@ int main(int ac, char **av)
         std::cerr << "Usage: ./Webserv {config_file}\n";
         return 1;
     }
+    std::vector<Block> parseBlocks;
     try {
         std::ifstream file(av[1]);
         if (!file.is_open())
             throw std::logic_error("Unable to open file");
         Parser parser(file);
         Block res = parser.parseConfigFile();
-        std::vector<Server> servers = ServerFactory::createServers(res.subBlocks);
-        printServers(servers);
+        parseBlocks = res.subBlocks;
+
     } catch (std::exception &exc) {
-        std::cerr << "Parsing error: " << exc.what() << '\n';
-        std::exit(EXIT_FAILURE);
+        std::cerr << "Fatal parsing error: " << exc.what() << '\n';
+        return (1);
     }
+    
+
+    try
+    {
+        std::vector<Server> servers = ServerFactory::createServers(parseBlocks);
+        servers[0].startServer();
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Fatal Runtime error: " << e.what() << '\n';
+        return (1);
+    }
+    
 }
