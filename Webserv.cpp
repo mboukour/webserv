@@ -101,7 +101,9 @@ int main(int ac, char **av)
     try
     {
         std::vector<Server> servers = ServerFactory::createServers(parseBlocks);
-        servers[0].startServer();
+        // servers[0].startServer();
+        for (size_t i = 0; i < servers.size(); ++i)
+            servers[i].startServer();
     }
     catch(const std::exception& e)
     {

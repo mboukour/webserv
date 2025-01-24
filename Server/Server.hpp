@@ -14,15 +14,16 @@ class Server: public ABlock {
         int fdSocket;
         int epollFd;
         std::string serverName;
-        void acceptConnections(void) const;
-        void handleConnections(void) const;
-        void handleClient(int clientFd) const;
     public:
         std::vector<Location> locations;
         std::string getServerName(void) const;
         void setPort(int port);
         int getPort(void) const;
         void setServerName(const std::string &serverName);
+        void setupServerSocket(void);
+        void acceptConnections(void) const;
+        void handleConnections(void) const;
+        void handleClient(int clientFd) const;
 
 
 
