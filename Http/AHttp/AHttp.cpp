@@ -1,5 +1,8 @@
 #include "AHttp.hpp"
 
+
+AHttp::AHttp(): version(""), bodySize(0) , body("") {}
+
 std::string AHttp::getVersion() const {
     return this->version;
 }

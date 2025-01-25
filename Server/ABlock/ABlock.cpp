@@ -1,11 +1,12 @@
 #include "ABlock.hpp"
 #include <exception>
+#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
 
-ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
+ABlock::ABlock(): isGetAccepted(true), isPostAllowed(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),
-      isPostAccepted(other.isPostAccepted),
+      isPostAllowed(other.isPostAllowed),
       isDeleteAccepted(other.isDeleteAccepted),
       isAutoIndexOn(other.isAutoIndexOn),
       isLimited(other.isLimited),
@@ -28,7 +29,7 @@ bool ABlock::getMethod(int method) const {
         case GET:
             return this->isGetAccepted;
         case POST:
-            return this->isPostAccepted;
+            return this->isPostAllowed;
         case DELETE:
             return this->isDeleteAccepted;
         default:
@@ -56,7 +57,7 @@ void ABlock::setMethod(int method, bool toSet) {
             this->isGetAccepted = toSet;
             break;
         case POST:
-            this->isPostAccepted = toSet;
+            this->isPostAllowed = toSet;
             break;
         case DELETE:
             this->isDeleteAccepted = toSet;
@@ -70,7 +71,7 @@ void ABlock::setMethod(int method, bool toSet) {
 
 void ABlock::setAllMethodsAsDenied(void) {
     this->isGetAccepted = false;
-    this->isPostAccepted = false;
+    this->isPostAllowed = false;
     this->isDeleteAccepted = false;
 }
 
@@ -81,6 +82,16 @@ void ABlock::setAutoIndex(bool toSet) {
 bool ABlock::getIsLimited(void) const {return this->isLimited;}
 
 void ABlock::setIsLimited(bool isLimited) {this->isLimited = isLimited;}
+
+bool ABlock::isMethodAllowed(const std::string &method) const {
+    if (method == "POST")
+        return (this->isPostAllowed);
+    if (method == "GET")
+        return (this->isGetAccepted);
+    if (method == "DELETE")
+        return (this->isDeleteAccepted);
+    throw UnknownMethodException(method);
+}
 
 
 ABlock::~ABlock() {}

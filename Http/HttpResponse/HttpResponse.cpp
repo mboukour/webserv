@@ -1,15 +1,18 @@
 #include "HttpResponse.hpp"
+#include "../HttpRequest/HttpRequest.hpp"
+#include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
+#include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
+#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
+#include "../../Exceptions/NotImplementedException/NotImplementedException.hpp"
+
 #include <sstream>
 
+HttpResponse::HttpResponse() {}
 
 HttpResponse::HttpResponse(const HttpRequest& request, const Server &server) {
     this->version = request.getVersion();
 
-    if (server.getIsLimited() && request.getBodySize() > server.getMaxBodySize())
-    {
-        handleMaxBodySizeExceeded();
-        return ;
-    }
+    (void)server; // REMOVE IF WE DONT NEED IT LATER
     this->statusCode = 200;
     this->reasonPhrase = "OK";
     this->body = "<html><body><h1>Success</h1></body></html>";
@@ -19,18 +22,14 @@ HttpResponse::HttpResponse(const HttpRequest& request, const Server &server) {
     this->headers["Content-Length"] = ss.str();
 }
 
-
-
-void HttpResponse::handleMaxBodySizeExceeded(void) {
-    this->statusCode = 413;
-    this->reasonPhrase = "Payload Too Large";
-    this->body = "<html><body><h1>Payload Too Large</h1></body></html>";
-    this->headers["Content-Type"] = "text/html";
-    std::stringstream ss;
-    ss << this->body.size();
-    this->headers["Content-Length"] = ss.str();
-    // this body -> shou
+HttpResponse::HttpResponse(const std::string &version, int statusCode,
+    const std::string &reasonPhrase, const std::string &body) {
+    this->version = version;
+    this->statusCode = statusCode;
+    this->reasonPhrase = reasonPhrase;
+    this->body = body;
 }
+
 
 
 std::string HttpResponse::toString(void) const {

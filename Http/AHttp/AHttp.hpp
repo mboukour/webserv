@@ -12,6 +12,7 @@ class AHttp { // This is an abstract class for stuff that both request and repos
         std::map<std::string, std::string> headers;
 
     public:
+        AHttp();
         std::string getVersion() const;
         size_t getBodySize() const;
         std::string getBody() const;
