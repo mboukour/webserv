@@ -1,13 +1,14 @@
 #include "ABlock.hpp"
 #include <exception>
 
-ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), maxBodySize(0), root(""), uploadStore("") {}
+ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),
       isPostAccepted(other.isPostAccepted),
       isDeleteAccepted(other.isDeleteAccepted),
       isAutoIndexOn(other.isAutoIndexOn),
+      isLimited(other.isLimited),
       maxBodySize(other.maxBodySize),
       root(other.root),
       uploadStore(other.uploadStore) {}
@@ -76,5 +77,10 @@ void ABlock::setAllMethodsAsDenied(void) {
 void ABlock::setAutoIndex(bool toSet) {
     this->isAutoIndexOn = toSet;
 }
+
+bool ABlock::getIsLimited(void) const {return this->isLimited;}
+
+void ABlock::setIsLimited(bool isLimited) {this->isLimited = isLimited;}
+
 
 ABlock::~ABlock() {}

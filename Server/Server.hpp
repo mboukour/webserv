@@ -33,6 +33,7 @@ class Server: public ABlock {
         int getPort(void) const;
         int getFdSocket(void) const;
         void setServerName(const std::string &serverName);
+
         void startServer(void);
         ~Server();
 };

@@ -1,9 +1,11 @@
 #include "HttpRequest.hpp"
-#include "../Exceptions/UnknownMethod/UnknownMethod.hpp"
+#include "../../Exceptions/UnknownMethod/UnknownMethod.hpp"
 #include <sstream>
 #include <iostream> // to remove later
 
 HttpRequest::HttpRequest(const std::string &request) {
+
+    this->primalRequest = request;
     std::stringstream ss(request);
     std::string line;
     bool hostFound = false;
@@ -73,21 +75,6 @@ std::string HttpRequest::getPath() const {
     return this->path;
 }
 
-
-std::string HttpRequest::getHeader(const std::string &headerName) const {
-    return this->headers.at(headerName);
-}
-
-
-
-size_t HttpRequest::getBodySize() const {
-    return this->bodySize;
-}
-
-std::string HttpRequest::getBody() const {
-    return this->body;
-}
-
-std::string HttpRequest::getVersion() const {
-    return this->version;
+std::string HttpRequest::toString() const {
+    return this->primalRequest;
 }
