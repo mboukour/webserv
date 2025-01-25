@@ -38,6 +38,21 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
     return outputStream;
 }
 
+std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request) {
+    outputStream << "Method: " << request.getMethod() << "\n";
+    outputStream << "Path: " << request.getPath() << "\n";
+    outputStream << "Headers:\n";
+
+    // Iterate through headers using C++98 style
+    std::map<std::string, std::string>::const_iterator it;
+    for (it = request.headers.begin(); it != request.headers.end(); ++it) {
+        outputStream << "  " << it->first << ": " << it->second << "\n";
+    }
+
+    outputStream << "Body Size: " << request.getBodySize() << "\n";
+    outputStream << "Body: " << request.getBody() << "\n";
+    return outputStream;
+}
 
 void printServers(std::vector<Server> servers)
 {

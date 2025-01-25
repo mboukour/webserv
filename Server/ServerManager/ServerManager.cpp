@@ -8,8 +8,8 @@
 #include <csignal>
 #include <fcntl.h>
 #include <string>
-#include <iostream>
-
+#include "../../HttpRequest/HttpRequest.hpp"
+#include "../../Debug/Debug.hpp"
 
 ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
 
@@ -21,7 +21,7 @@ bool ServerManager::isAServerFdSocket(int fdSocket) const {
     }
     return (false);
 }
-
+std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 void ServerManager::handleClient(int clientFd) {
     char buffer[1024] = {0};
     ssize_t bytesReceived = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
@@ -35,7 +35,18 @@ void ServerManager::handleClient(int clientFd) {
     {
         // Response goes here
         buffer[bytesReceived] = '\0';
-        DEBUG && std::cout << "Client: " << buffer << std::endl;
+//         std::string req(buffer);
+//         for (size_t i = 0; i < req.size(); ++i) {
+//         if (req[i] == '\r' && i + 1 < req.size() && req[i + 1] == '\n') {
+//             std::cout << "\\r\\n"; // print '\r\n' as literals
+//             i++; // Skip the next '\n'
+//         } else {
+//             std::cout << req[i];
+//         }
+// }
+        HttpRequest request(buffer);
+
+        DEBUG && std::cout << "New request: " << request << std::endl;
         std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
         send(clientFd, response.c_str(), response.size(), 0);
     }
