@@ -10,11 +10,14 @@ Server::Server(const Server &other): ABlock(other), port(other.port), fdSocket(o
 
 void Server::setPort(int port) {this->port = port;}
 
+
 void Server::setServerName(const std::string &serverName) {this->serverName = serverName;}
 
 int Server::getPort(void) const {return this->port;}
 
 int Server::getFdSocket(void) const {return this->fdSocket;}
+
+
 
 std::string Server::getServerName(void) const {return this->serverName;}
 

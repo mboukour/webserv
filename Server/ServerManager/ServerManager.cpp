@@ -8,8 +8,9 @@
 #include <csignal>
 #include <fcntl.h>
 #include <string>
-#include <iostream>
-
+#include "../../Http/HttpRequest/HttpRequest.hpp"
+#include "../../Http/HttpResponse/HttpResponse.hpp"
+#include "../../Debug/Debug.hpp"
 
 ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
 
@@ -22,6 +23,17 @@ bool ServerManager::isAServerFdSocket(int fdSocket) const {
     return (false);
 }
 
+
+const Server &ServerManager::getServer(int port) {
+    for (std::vector<Server>::const_iterator it = this->servers.begin();
+        it != this->servers.end(); it++) { 
+            if (it->getPort() == port)
+                return (*it);
+        }
+    throw std::logic_error("Server not found"); // throw ServerNotFound(serverFd);
+}
+
+std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 void ServerManager::handleClient(int clientFd) {
     char buffer[1024] = {0};
     ssize_t bytesReceived = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
@@ -33,11 +45,22 @@ void ServerManager::handleClient(int clientFd) {
     }
     else if (bytesReceived > 0)
     {
-        // Response goes here
         buffer[bytesReceived] = '\0';
-        DEBUG && std::cout << "Client: " << buffer << std::endl;
-        std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
-        send(clientFd, response.c_str(), response.size(), 0);
+        // Wtf is this shit?
+        struct sockaddr_in addr;
+        socklen_t addrLen = sizeof(addr);
+        if (getsockname(clientFd, (struct sockaddr*)&addr, &addrLen) == -1) {
+            std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
+            close(clientFd);
+            epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+            return;
+        }
+        int port = ntohs(addr.sin_port);
+        HttpRequest request(buffer);
+        HttpResponse response(request, getServer(port)); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm!!!
+        DEBUG && std::cout << "New request: " << request << std::endl;
+        std::string responseStr = response.toString();
+        send(clientFd, responseStr.c_str(), responseStr.size(), 0);
     }
     else
     {

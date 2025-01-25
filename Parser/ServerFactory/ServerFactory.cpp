@@ -29,6 +29,7 @@ bool ServerFactory::isAcceptedSubBlock(const std::string &directive)
 void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directives) {
     std::string currentDirective = directives.begin()[0];
 
+
     if (currentDirective == "methods") {
         if (directives.size() == 1 || directives.size() > 4)
             throw std::logic_error("Invalid methods directive found");
@@ -64,6 +65,7 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
         result.setRoot(directives.begin()[1]);
     }
     else if (currentDirective == "client_max_body_size" ) {
+        result.setIsLimited(true);
         if (directives.size() != 2)
             throw std::logic_error("Invalid client max body size directive");
         std::stringstream ss(directives.begin()[1]);

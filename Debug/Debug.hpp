@@ -2,6 +2,7 @@
 #define DEBUG_HPP
 
 #include "../Server/Server.hpp"
+#include "../Http/HttpRequest/HttpRequest.hpp"
 #define DEBUG 1
 // Cout operator overloads
 std::ostream& operator<<(std::ostream& outputStream, const Server& other);

@@ -21,6 +21,7 @@ class ABlock {
         bool isPostAccepted;
         bool isDeleteAccepted;
         bool isAutoIndexOn;
+        bool isLimited;
         size_t maxBodySize;
         std::string root;
         std::string uploadStore;
@@ -36,6 +37,8 @@ class ABlock {
         void setAllMethodsAsDenied(void);
         void setMethod(int method, bool toSet);
         void setAutoIndex(bool toSet);
+        void setIsLimited(bool isLimited);
+        bool getIsLimited(void) const;
         virtual void startServer(void) = 0;
         virtual ~ABlock();
 };
