@@ -36,6 +36,10 @@ HttpResponse HttpResponseErrorMaker::handleServiceUnavailable() {
     return HttpResponse("HTTP/1.1", 503, "Service Unavailable", "<html><body><h1>503 Service Unavailable</h1></body></html>");
 }
 
+HttpResponse HttpResponseErrorMaker::handleConflict() {
+    return HttpResponse("HTTP/1.1", 409, "Conflict", "<html><body><h1>409 Conflict</h1></body></html>");
+}
+
 HttpResponse HttpResponseErrorMaker::makeHttpResponseError(int errorCode) {
     switch (errorCode) {
         case 400:
@@ -48,6 +52,8 @@ HttpResponse HttpResponseErrorMaker::makeHttpResponseError(int errorCode) {
             return handleNotFound();
         case 405:
             return handleMethodNotAllowed();
+        case 409:
+            return handleConflict();
         case 413:
             return handleMaxBodySizeExceeded();
         case 500:

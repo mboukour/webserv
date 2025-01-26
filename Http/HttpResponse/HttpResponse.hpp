@@ -12,6 +12,7 @@ enum ERRORCODES {
     UNAUTHORIZED=401,
     FORBIDDEN=403,
     NOT_FOUND=404,
+    CONFLICT=409,
     INTERNAL_SERVER_ERROR=505,
     NOT_IMPLEMENTED=501,
     SERVICE_UNAVAILABLE=503
@@ -28,6 +29,8 @@ class HttpResponse: public AHttp {
         HttpResponse();
         HttpResponse(const HttpRequest &request, const Server &server);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
+        void handleDeleteRequest(const HttpRequest &request, const Server &server);
+        bool removeDirectory(const std::string &path);
         std::string toString(void) const;
 };
 

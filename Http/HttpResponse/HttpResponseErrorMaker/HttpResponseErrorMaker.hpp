@@ -15,6 +15,7 @@ class HttpResponseErrorMaker {
         static HttpResponse handleInternalServerError(void);
         static HttpResponse handleNotImplemented(void);
         static HttpResponse handleServiceUnavailable(void);
+        static HttpResponse handleConflict(void);
 
     public:
         static HttpResponse makeHttpResponseError(int errorCode);
