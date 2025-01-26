@@ -17,6 +17,7 @@
 #include "../../Exceptions/NotImplementedException/NotImplementedException.hpp"
 #include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
 #include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
+#include "../../Exceptions/NotFoundException/NotFoundException.hpp"
 
 
 ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
@@ -79,7 +80,7 @@ void ServerManager::handleClient(int clientFd) {
             const Server &server = getServer(port);
             HttpRequest request(buffer, server);
             DEBUG && std::cout << "New request: " << request << std::endl;
-            HttpResponse response(request, server); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm!!!
+            HttpResponse response(request, server); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
             responseStr = response.toString();
             DEBUG && std::cout << "Response sent with code 200.\n";
             send(clientFd, responseStr.c_str(), responseStr.size(), 0);
@@ -92,6 +93,8 @@ void ServerManager::handleClient(int clientFd) {
             sendError(NOT_IMPLEMENTED, clientFd, exec.what());
         } catch (const PayloadTooLargeException &exec) {
             sendError(PAYLOAD_TOO_LARGE, clientFd, exec.what());
+        } catch (const NotFoundException &exec) { 
+            sendError(NOT_FOUND, clientFd, exec.what());
         } catch (const std::exception &exec) {
             sendError(INTERNAL_SERVER_ERROR, clientFd, exec.what());
         }

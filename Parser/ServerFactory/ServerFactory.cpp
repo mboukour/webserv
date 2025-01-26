@@ -24,7 +24,6 @@ bool ServerFactory::isAcceptedSubBlock(const std::string &directive)
     return (directive == "location");
 }
 
-// Todo: change error messages to be more precise (throwException)
 
 void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directives) {
     std::string currentDirective = directives.begin()[0];
@@ -97,6 +96,7 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
     // else // This normally should have invalid directives?
 }
 std::ostream& operator<<(std::ostream& outputStream, const Location& location);
+std::ostream& operator<<(std::ostream& outputStream, const Server& other);
 Server ServerFactory::createServer(const Block &serverBlock) {
     Server result;
 
@@ -152,7 +152,6 @@ Server ServerFactory::createServer(const Block &serverBlock) {
     std::vector <std::string> foundLocations;
     for (std::vector<Block>::const_iterator itb = serverBlock.subBlocks.begin(); 
          itb != serverBlock.subBlocks.end(); itb++) {
-
         std::string subBlockName = itb->blockName[0];
         if (!isAcceptedSubBlock(subBlockName))
             throw std::logic_error("Unknown sub block found");
@@ -173,7 +172,7 @@ Server ServerFactory::createServer(const Block &serverBlock) {
             else
                 setBlockDirectives(newLocation, *ite);
         }
-        result.locations.push_back(newLocation);
+        result.addLocation(newLocation);
     }
 
     return result;

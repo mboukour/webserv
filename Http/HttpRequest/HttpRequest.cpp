@@ -4,30 +4,46 @@
 #include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
 #include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
 #include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
+#include "../../Exceptions/NotFoundException/NotFoundException.hpp"
 
 #include <sstream>
 #include <iostream> // to remove later
 
 
-HttpRequest::HttpRequest(const std::string &request, const Server& server) {
+HttpRequest::HttpRequest(const std::string &request, const Server& server): requestBlock(&server) {
 
     this->primalRequest = request;
     std::stringstream ss(request);
     std::string line;
     bool hostFound = false;
-    // bool contentLengthFound = false;
-    // bool contentTypeFound = false;
-
+    bool foundLocation = false;
     if (!std::getline(ss, line))
         throw HttpRequestParseException("empty request");
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpRequestParseException("invalid request line");
 
+    std::cout << this->path << '\n';
+    if (this->path != "/")
+    {
+        for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+            it != server.locationsCend(); it++) {
+                if (this->path == it->getLocationName())
+                {
+                    this->requestBlock = &(*it);
+                    foundLocation = true;
+                    break ;
+                }
+            }
+            if (!foundLocation)
+                throw NotFoundException(this->path);   
+    }
+
     try
     {
-        if (!server.isMethodAllowed(this->method))
+        if (!this->requestBlock->isMethodAllowed(this->method))
             throw MethodNotAllowedException(this->method);
+        
     }
     catch(const UnknownMethodException& e)
     {
@@ -59,9 +75,8 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server) {
             std::string dummy;
             l >> dummy;
             if (!l.eof()) throw HttpRequestParseException("invalid content length header");
-            if (server.getIsLimited() && this->bodySize > server.getMaxBodySize())
-                throw PayloadTooLargeException(server.getMaxBodySize());
-            // contentLengthFound = true;
+            if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
+                throw PayloadTooLargeException(this->requestBlock->getMaxBodySize());
             continue;
         }
         this->headers[key] = value;

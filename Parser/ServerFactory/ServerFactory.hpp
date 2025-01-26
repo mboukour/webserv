@@ -20,6 +20,7 @@ class ServerFactory {
         static Server createServer(const Block& serverBlock);
         ServerFactory();
     public:
+        static void linkLocationsToServer(std::vector<Server> &servers);
         static std::vector<Server> createServers(const std::vector<Block> &serverBlocks);
 };
 
