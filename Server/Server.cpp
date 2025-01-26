@@ -6,7 +6,7 @@
 
 Server::Server(): ABlock(), port(-1), fdSocket(-1), serverName("") {}
 
-Server::Server(const Server &other): ABlock(other), port(other.port), fdSocket(other.fdSocket), serverName(other.serverName) {}
+Server::Server(const Server &other): ABlock(other), port(other.port), fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations) {}
 
 void Server::setPort(int port) {this->port = port;}
 
@@ -58,6 +58,27 @@ void Server::startServer(void) {
         throw std::runtime_error(errorStr);
     }
     DEBUG && std::cout << "Server listening on port " << this->port << std::endl;
+}
+
+
+std::vector<Location>::iterator Server::locationsBegin(void) {
+    return (this->locations.begin());
+}
+
+std::vector<Location>::iterator Server::locationsEnd(void) {
+    return (this->locations.end());
+}
+
+std::vector<Location>::const_iterator Server::locationsCbegin(void) const {
+    return (this->locations.begin());
+}
+
+std::vector<Location>::const_iterator Server::locationsCend(void) const {
+    return (this->locations.end());
+}
+
+void Server::addLocation(const Location &location) {
+    this->locations.push_back(location);
 }
 
 Server::~Server() {}

@@ -93,7 +93,31 @@ Block Parser::parseConfigFile(void)
         it++;
         globalBlock.subBlocks.push_back(parseBlock(it, true));
     }
+    setLocationsDirectives(globalBlock.subBlocks);
     return globalBlock;
+}
+
+void Parser::setLocationsDirectives(std::vector<Block> &servers) {
+    for (std::vector<Block>::iterator serverIt = servers.begin(); serverIt != servers.end(); ++serverIt) {
+        const std::vector<stringVec> &serverDirectives = serverIt->directives;
+        for (std::vector<Block>::iterator locationIt = serverIt->subBlocks.begin(); locationIt != serverIt->subBlocks.end(); ++locationIt) {
+            std::vector<stringVec> &locationDirectives = locationIt->directives;
+            for (std::vector<stringVec>::const_iterator serverDirIt = serverDirectives.begin(); serverDirIt != serverDirectives.end(); ++serverDirIt) {
+                const std::string &serverDirective = (*serverDirIt)[0];
+                bool foundDirective = false;
+                for (std::vector<stringVec>::const_iterator locationDirIt = locationDirectives.begin(); locationDirIt != locationDirectives.end(); ++locationDirIt) {
+                    const std::string &locationDirective = (*locationDirIt)[0];
+                    if (locationDirective == serverDirective) {
+                        foundDirective = true;
+                        break;
+                    }
+                }
+                if (!foundDirective) {
+                    locationDirectives.push_back(*serverDirIt);
+                }
+            }
+        }
+    }
 }
 
 Block Parser::parseBlock(tokenVec::iterator &it, bool getName)

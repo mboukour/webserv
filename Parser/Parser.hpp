@@ -35,9 +35,9 @@ class Parser {
         tokenVec tokens;
         std::vector<Block> blocks;
         void checkSyntaxError(void);
-    
         static bool isSkipChar(char c);
         static bool isOwnChar(char c);
+        static void setLocationsDirectives(std::vector<Block> &servers);
         Block parseBlock(tokenVec::iterator &it, bool getName);
     public:
         Parser(std::ifstream &configFile);

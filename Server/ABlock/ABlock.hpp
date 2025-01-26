@@ -18,7 +18,7 @@ class ABlock {
         ABlock();
         ABlock(const ABlock& other);
         bool isGetAccepted;
-        bool isPostAccepted;
+        bool isPostAllowed;
         bool isDeleteAccepted;
         bool isAutoIndexOn;
         bool isLimited;
@@ -39,6 +39,7 @@ class ABlock {
         void setAutoIndex(bool toSet);
         void setIsLimited(bool isLimited);
         bool getIsLimited(void) const;
+        bool isMethodAllowed(const std::string& method) const;
         virtual void startServer(void) = 0;
         virtual ~ABlock();
 };

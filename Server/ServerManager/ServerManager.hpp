@@ -13,6 +13,7 @@ class ServerManager {
         void acceptConnections(int fdSocket);
         bool isAServerFdSocket(int fdSocket) const;
         const Server &getServer(int serverFd);
+        void sendError(int errorCode, int clientFd, const char *what);
         // ServerManager();
     public:
         ServerManager(std::vector<Server> &servers);

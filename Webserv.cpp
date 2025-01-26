@@ -38,6 +38,7 @@ int main(int ac, char **av)
     try
     {
         std::vector<Server> servers = ServerFactory::createServers(parseBlocks);
+        printServers(servers);
         ServerManager manager(servers);
         manager.startServerManager();
     }

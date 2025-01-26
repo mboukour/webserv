@@ -23,17 +23,22 @@ class Server: public ABlock {
         int port;
         int fdSocket;
         std::string serverName;
+        std::vector<Location> locations;
 
     public:
         Server();
         Server(const Server& other);
-        std::vector<Location> locations;
         std::string getServerName(void) const;
         void setPort(int port);
         int getPort(void) const;
         int getFdSocket(void) const;
         void setServerName(const std::string &serverName);
+        std::vector<Location>::iterator locationsBegin(void) ;
+        std::vector<Location>::iterator locationsEnd(void) ;
+        std::vector<Location>::const_iterator locationsCbegin(void) const;
+        std::vector<Location>::const_iterator locationsCend(void) const;
 
+        void addLocation(const Location& location);
         void startServer(void);
         ~Server();
 };

@@ -1,4 +1,3 @@
-#include "ServerManager.hpp"
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -8,9 +7,18 @@
 #include <csignal>
 #include <fcntl.h>
 #include <string>
+
+#include "../../Debug/Debug.hpp"
+#include "ServerManager.hpp"
 #include "../../Http/HttpRequest/HttpRequest.hpp"
 #include "../../Http/HttpResponse/HttpResponse.hpp"
-#include "../../Debug/Debug.hpp"
+
+#include "../../Exceptions/HttpRequestParseException/HttpRequestParseException.hpp"
+#include "../../Exceptions/NotImplementedException/NotImplementedException.hpp"
+#include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
+#include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
+#include "../../Exceptions/NotFoundException/NotFoundException.hpp"
+
 
 ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
 
@@ -31,6 +39,17 @@ const Server &ServerManager::getServer(int port) {
                 return (*it);
         }
     throw std::logic_error("Server not found"); // throw ServerNotFound(serverFd);
+}
+
+void ServerManager::sendError(int errorCode, int clientFd, const char *what) {
+    // We need to close the connection in case of error
+    HttpResponse response = HttpResponseErrorMaker::makeHttpResponseError(errorCode);
+    std::string responseStr = response.toString();
+    DEBUG && std::cerr << "Response sent with code " << errorCode << " Reason: " << what << ".\n";
+    send(clientFd, responseStr.c_str(), responseStr.size(), 0);
+    close(clientFd);
+    epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+    DEBUG && std::cout << "Connection closed after error\n";
 }
 
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
@@ -56,11 +75,29 @@ void ServerManager::handleClient(int clientFd) {
             return;
         }
         int port = ntohs(addr.sin_port);
-        HttpRequest request(buffer);
-        HttpResponse response(request, getServer(port)); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm!!!
-        DEBUG && std::cout << "New request: " << request << std::endl;
-        std::string responseStr = response.toString();
-        send(clientFd, responseStr.c_str(), responseStr.size(), 0);
+        std::string responseStr;
+        try  {
+            const Server &server = getServer(port);
+            HttpRequest request(buffer, server);
+            DEBUG && std::cout << "New request: " << request << std::endl;
+            HttpResponse response(request, server); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
+            responseStr = response.toString();
+            DEBUG && std::cout << "Response sent with code 200.\n";
+            send(clientFd, responseStr.c_str(), responseStr.size(), 0);
+           
+        } catch (const HttpRequestParseException &exec) {
+            sendError(BAD_REQUEST, clientFd, exec.what());
+        } catch (const MethodNotAllowedException &exec) {
+            sendError(METHOD_NOT_ALLOWED, clientFd, exec.what());
+        } catch (const NotImplementedException &exec) {
+            sendError(NOT_IMPLEMENTED, clientFd, exec.what());
+        } catch (const PayloadTooLargeException &exec) {
+            sendError(PAYLOAD_TOO_LARGE, clientFd, exec.what());
+        } catch (const NotFoundException &exec) { 
+            sendError(NOT_FOUND, clientFd, exec.what());
+        } catch (const std::exception &exec) {
+            sendError(INTERNAL_SERVER_ERROR, clientFd, exec.what());
+        }
     }
     else
     {
