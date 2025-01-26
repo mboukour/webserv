@@ -48,46 +48,59 @@ bool HttpResponse::removeDirectory(const std::string &path)
         }
     }
     closedir(dir);
-    if (rmdir(path.c_str()) != 0)
-        return false;
+    // if (rmdir(path.c_str()) != 0)
+    //     return false;
     return true;
 }
 
 void HttpResponse::handleDeleteRequest(const HttpRequest &request, const Server &server)
 {
-    std::string path = server.getRoot() + request.getPath();
+    std::string path = server.getRoot();
+
+    // Manually check if the first character is '/'
+    if (request.getPath()[0] == '/')
+        path += request.getPath().substr(1);  // Remove the leading '/' if it exists
+    else
+        path += request.getPath();  // No leading '/' to remove
     struct stat filestat;
     /*
-    ** here i check if the file exists
-    ** if it doesn't i return 404 (Not Found)
+    ** Here I check if the file exists
+    ** If it doesn't, I return 404 (Not Found)
     */
     if (stat(path.c_str(), &filestat) != 0)
+    {
+        std::cout << "File not found: " << path << std::endl;
         throw NotFoundException();
+    }
     /*
-    ** here i check if the file is a directory
-    ** if it is i return 409 (Conflict)
+    ** Here I check if the file is a directory
+    ** If it is, I return 409 (Conflict)
     */
     if (S_ISDIR(filestat.st_mode))
     {
+        // Check if the directory path ends with '/'
         if (request.getPath()[request.getPath().size() - 1] != '/')
             throw ConflictException();
+
         // Attempt to delete the directory
         if (!removeDirectory(path))
             throw ForbiddenException();
-    } 
+    }
     else
     {
         // Attempt to delete a file
         if (remove(path.c_str()) != 0)
             throw ForbiddenException();
     }
+
     /*
-    ** if everything went well i return 204 (No Content)
+    ** If everything went well, I return 204 (No Content)
     */
     this->statusCode = 204;
     this->reasonPhrase = "No Content";
     std::cout << "Deleted: " << path << std::endl;
 }
+
 
 HttpResponse::HttpResponse() {}
 
