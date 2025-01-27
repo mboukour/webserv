@@ -53,9 +53,9 @@ bool HttpResponse::removeDirectory(const std::string &path)
     return true;
 }
 
-void HttpResponse::handleDeleteRequest(const HttpRequest &request, const Server &server)
+void HttpResponse::handleDeleteRequest(const HttpRequest &request, const std::string &root)
 {
-    std::string path = server.getRoot();
+    std::string path = root;
 
     // Manually check if the first character is '/'
     if (request.getPath()[0] == '/')
@@ -104,11 +104,11 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request, const Server 
 
 HttpResponse::HttpResponse() {}
 
-HttpResponse::HttpResponse(const HttpRequest& request, const Server &server) {
+HttpResponse::HttpResponse(const HttpRequest& request) {
     this->version = request.getVersion();
 
     if (request.getMethod() == "DELETE")
-        handleDeleteRequest(request, server);
+        handleDeleteRequest(request, request.getRequestBlock()->getRoot());
     else {
         this->statusCode = 405;
         this->reasonPhrase = "Method Not Allowed";

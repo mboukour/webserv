@@ -27,9 +27,9 @@ class HttpResponse: public AHttp {
         std::string reasonPhrase;
     public:
         HttpResponse();
-        HttpResponse(const HttpRequest &request, const Server &server);
+        HttpResponse(const HttpRequest &request);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
-        void handleDeleteRequest(const HttpRequest &request, const Server &server);
+        void handleDeleteRequest(const HttpRequest &request, const std::string &root);
         bool removeDirectory(const std::string &path);
         std::string toString(void) const;
 };

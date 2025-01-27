@@ -20,7 +20,7 @@ class HttpRequest: public AHttp {
         std::string getMethod() const;
         std::string getPath() const;
         std::string toString() const;
-        
+        const ABlock *getRequestBlock(void) const;
 };
 
 

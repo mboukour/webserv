@@ -80,7 +80,7 @@ void ServerManager::handleClient(int clientFd) {
             const Server &server = getServer(port);
             HttpRequest request(buffer, server);
             DEBUG && std::cout << "New request: " << request << std::endl;
-            HttpResponse response(request, server); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
+            HttpResponse response(request); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
             responseStr = response.toString();
             DEBUG && std::cout << "Response sent with code 200.\n";
             send(clientFd, responseStr.c_str(), responseStr.size(), 0);
