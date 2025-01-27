@@ -107,3 +107,8 @@ std::string HttpRequest::getPath() const {
 std::string HttpRequest::toString() const {
     return this->primalRequest;
 }
+
+const ABlock *HttpRequest::getRequestBlock(void) const {
+    return this->requestBlock;
+}
+
