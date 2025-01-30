@@ -4,6 +4,10 @@
 #include "../AHttp/AHttp.hpp"
 
 #include "../../Server/Server.hpp"
+#include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
+#include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
+#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
+#include "../../Exceptions/NotImplementedException/NotImplementedException.hpp"
 
 enum ERRORCODES {
     BAD_REQUEST=400,
@@ -13,6 +17,7 @@ enum ERRORCODES {
     FORBIDDEN=403,
     NOT_FOUND=404,
     CONFLICT=409,
+    URI_TOO_LONG=414,
     INTERNAL_SERVER_ERROR=505,
     NOT_IMPLEMENTED=501,
     SERVICE_UNAVAILABLE=503

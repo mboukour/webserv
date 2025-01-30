@@ -4,7 +4,9 @@
 #include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
 #include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
 #include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
-#include "../../Exceptions/NotFoundException/NotFoundException.hpp"
+#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
+#include "../../Exceptions/BadRequestException/BadRequestException.hpp"
+#include "../../Exceptions/UriTooLongException/UriTooLongException.hpp"
 
 #include <sstream>
 #include <iostream> // to remove later
@@ -16,18 +18,21 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
     std::stringstream ss(request);
     std::string line;
     bool hostFound = false;
+    bool contentLengthFound = false;
     if (!std::getline(ss, line))
         throw HttpRequestParseException("empty request");
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpRequestParseException("invalid request line");
 
-
+    if (this->path.length() > URI_MAX_SIZE)
+        throw UriTooLongException();
     // implement better matching? 
     std::cout << "Path: " << this->path << '\n';
     std::string toMatch = this->path;
-    if (toMatch[toMatch.size()] != '/')
-        toMatch = toMatch + '/';
+    if (toMatch[toMatch.size() - 1] == '/')
+        toMatch = toMatch.substr(0, toMatch.size() - 1);
+    std::cout << "To Match: " << toMatch << '\n';
     for (std::vector<Location>::const_iterator it = server.locationsCbegin();
         it != server.locationsCend(); it++) {
             std::cout << "Current location: " << it->getLocationName() << '\n';
@@ -77,6 +82,7 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
             if (!l.eof()) throw HttpRequestParseException("invalid content length header");
             if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
                 throw PayloadTooLargeException(this->requestBlock->getMaxBodySize());
+            contentLengthFound = true;
             continue;
         }
         this->headers[key] = value;
@@ -85,7 +91,11 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
     if (line != "\r") throw std::logic_error("Invalid headers terminator");
     if (!hostFound) throw std::logic_error("Host header not found");
     // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
-    // if (!contentLengthFound) throw std::logic_error("Content-Length header not found");
+    if (this->method == "POST")
+    {
+        if (!contentLengthFound) // or no Transfer-Encoding??
+            throw BadRequestException("Content-Length header not found");
+    }
     // if (static_cast<size_t>(ss.rdbuf()->in_avail()) != this->bodySize) throw std::logic_error("Content-Length header and actual length don't match");
 
     if (this->bodySize > 0)

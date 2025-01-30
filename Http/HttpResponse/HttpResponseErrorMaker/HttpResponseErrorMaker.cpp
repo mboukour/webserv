@@ -40,6 +40,10 @@ HttpResponse HttpResponseErrorMaker::handleConflict() {
     return HttpResponse("HTTP/1.1", 409, "Conflict", "<html><body><h1>409 Conflict</h1></body></html>");
 }
 
+HttpResponse HttpResponseErrorMaker::handleUriTooLong() {
+    return HttpResponse("HTTP/1.1", 414, "Uri Too Long", "<html><body><h1>414 Uri Too Long</h1></body></html>");
+}
+
 HttpResponse HttpResponseErrorMaker::makeHttpResponseError(int errorCode) {
     switch (errorCode) {
         case 400:
@@ -56,6 +60,8 @@ HttpResponse HttpResponseErrorMaker::makeHttpResponseError(int errorCode) {
             return handleConflict();
         case 413:
             return handleMaxBodySizeExceeded();
+        case 414:
+            return handleUriTooLong();
         case 500:
             return handleInternalServerError();
         case 501:
