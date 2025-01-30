@@ -61,7 +61,10 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
     }
     else if (currentDirective == "root") {
         if (directives.size() != 2) throw std::logic_error("Invalid root directive");
-        result.setRoot(directives.begin()[1]);
+        std::string root = directives.begin()[1];
+        if (root[root.size() - 1] != '/')
+            root += "/";
+        result.setRoot(root);
     }
     else if (currentDirective == "client_max_body_size" ) {
         result.setIsLimited(true);
@@ -89,10 +92,15 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
             else if (unit == 'g' || unit == 'G')
                 integerPart *= GB;
             else
-                throw std::logic_error("Invalid unit found on max body size directive 3");
+                throw std::logic_error("Inva0lid unit found on max body size directive 3");
             result.setMaxBodySize(integerPart);
         }
     }
+    // else
+    // {
+    //     std::cout << currentDirective << '\n';
+    //     throw std::logic_error("Unknown directive found");
+    // }
     // else // This normally should have invalid directives?
 }
 std::ostream& operator<<(std::ostream& outputStream, const Location& location);
@@ -103,11 +111,9 @@ Server ServerFactory::createServer(const Block &serverBlock) {
     if (serverBlock.blockName.size() != 1 || serverBlock.blockName[0] != "server")
         throw std::logic_error("All server blocks must be under the name: server");
 
-    // Directive checker
     if (serverBlock.directives.begin()->begin()[0] != "listen")
         throw std::logic_error("Listen directive must be the first directive in each server block");
 
-    // Iterate through directives and check/set them
     for (std::vector<stringVec>::const_iterator ite = serverBlock.directives.begin();
          ite != serverBlock.directives.end(); ite++) {
 
@@ -156,8 +162,12 @@ Server ServerFactory::createServer(const Block &serverBlock) {
         if (!isAcceptedSubBlock(subBlockName))
             throw std::logic_error("Unknown sub block found");
         if (subBlockName == "location")
+        {
             if (itb->blockName.size() != 2)
                 throw std::logic_error("Invalid location block found");
+            if (itb->blockName[1][0] != '/')
+                throw std::logic_error("Locations must start with a /");
+        }
         Location newLocation;
         if (std::find(foundLocations.begin(), foundLocations.end(), itb->blockName[1]) != foundLocations.end()) 
             throw std::logic_error("Duplicate location paths are not accepted.");
@@ -167,7 +177,9 @@ Server ServerFactory::createServer(const Block &serverBlock) {
             ite != itb->directives.end(); ite++) {
             std::string currentDirective = ite->begin()[0];
             if (currentDirective == "return") {
-                // i will impelement return code later cuz im tired as FUCK
+                if (itb->blockName.size() != 3)
+                    throw std::logic_error("Invalid return directive");
+                
             }
             else
                 setBlockDirectives(newLocation, *ite);

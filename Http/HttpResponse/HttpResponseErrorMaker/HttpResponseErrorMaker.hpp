@@ -16,7 +16,7 @@ class HttpResponseErrorMaker {
         static HttpResponse handleNotImplemented(void);
         static HttpResponse handleServiceUnavailable(void);
         static HttpResponse handleConflict(void);
-
+        static HttpResponse handleUriTooLong(void);
     public:
         static HttpResponse makeHttpResponseError(int errorCode);
 };

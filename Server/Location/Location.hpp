@@ -12,6 +12,7 @@ class Location: public ABlock
     private:
         std::string locationName;
         const Server *myServer;
+        
     public:
         Location();
         Location(const Location &other);

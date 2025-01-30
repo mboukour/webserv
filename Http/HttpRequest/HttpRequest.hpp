@@ -8,6 +8,8 @@
 #include "../../Server/Server.hpp"
 
 
+#define URI_MAX_SIZE 2048
+
 class HttpRequest: public AHttp {
     private:
         std::string method;
