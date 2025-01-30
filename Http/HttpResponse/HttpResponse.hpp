@@ -30,13 +30,15 @@ class HttpResponse: public AHttp {
     private:
         int statusCode;
         std::string reasonPhrase;
+        bool isDirectory;
     public:
         HttpResponse();
         HttpResponse(const HttpRequest &request);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
         void handleDeleteRequest(const HttpRequest &request, const std::string &root);
-        void handleGetRequest(const HttpRequest &request, const std::string &root);
-        void handlePostRequest(const HttpRequest &request, const std::string &root);
+        bool handleGetFile(const std::string &path);
+        bool handleGetDirectory(const std::string &path);
+        int  handleGetRequest(const HttpRequest &request, const std::string &root);
         bool removeDirectory(const std::string &path);
         std::string toString(void) const;
 };

@@ -13,9 +13,11 @@ HttpResponse::HttpResponse() {}
 
 HttpResponse::HttpResponse(const HttpRequest& request) {
     this->version = request.getVersion();
-
+    std::cout << "Version: " << this->version << std::endl;
     if (request.getMethod() == "DELETE")
         handleDeleteRequest(request, request.getRequestBlock()->getRoot());
+    else if (request.getMethod() == "GET")
+        handleGetRequest(request, request.getRequestBlock()->getRoot());
     else {
         this->statusCode = 405;
         this->reasonPhrase = "Method Not Allowed";

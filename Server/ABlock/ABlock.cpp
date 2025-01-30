@@ -2,11 +2,11 @@
 #include <exception>
 #include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
 
-ABlock::ABlock(): isGetAccepted(true), isPostAllowed(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
+ABlock::ABlock(): isGetAccepted(true), isPostaccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),
-      isPostAllowed(other.isPostAllowed),
+      isPostaccepted(other.isPostaccepted),
       isDeleteAccepted(other.isDeleteAccepted),
       isAutoIndexOn(other.isAutoIndexOn),
       isLimited(other.isLimited),
@@ -29,7 +29,7 @@ bool ABlock::getMethod(int method) const {
         case GET:
             return this->isGetAccepted;
         case POST:
-            return this->isPostAllowed;
+            return this->isPostaccepted;
         case DELETE:
             return this->isDeleteAccepted;
         default:
@@ -57,7 +57,7 @@ void ABlock::setMethod(int method, bool toSet) {
             this->isGetAccepted = toSet;
             break;
         case POST:
-            this->isPostAllowed = toSet;
+            this->isPostaccepted = toSet;
             break;
         case DELETE:
             this->isDeleteAccepted = toSet;
@@ -71,7 +71,7 @@ void ABlock::setMethod(int method, bool toSet) {
 
 void ABlock::setAllMethodsAsDenied(void) {
     this->isGetAccepted = false;
-    this->isPostAllowed = false;
+    this->isPostaccepted = false;
     this->isDeleteAccepted = false;
 }
 
@@ -85,7 +85,7 @@ void ABlock::setIsLimited(bool isLimited) {this->isLimited = isLimited;}
 
 bool ABlock::isMethodAllowed(const std::string &method) const {
     if (method == "POST")
-        return (this->isPostAllowed);
+        return (this->isPostaccepted);
     if (method == "GET")
         return (this->isGetAccepted);
     if (method == "DELETE")
