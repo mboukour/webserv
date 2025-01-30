@@ -84,7 +84,6 @@ void ServerManager::handleClient(int clientFd) {
             responseStr = response.toString();
             DEBUG && std::cout << "Response sent with code 200.\n";
             send(clientFd, responseStr.c_str(), responseStr.size(), 0);
-           
         } catch (const HttpRequestParseException &exec) {
             sendError(BAD_REQUEST, clientFd, exec.what());
         } catch (const MethodNotAllowedException &exec) {

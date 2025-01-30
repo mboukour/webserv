@@ -53,17 +53,24 @@ Parser::Parser(std::ifstream &configFile)
 void Parser::checkSyntaxError(void)
 {
     int braceCount = 0;
+    int lastType = 0;
     for (tokenVec::iterator it = this->tokens.begin(); it != this->tokens.end(); it++)
     {
         if (it->type == OPEN_BRACE)
             braceCount++;
         else if (it->type == CLOSE_BRACE)
+        {
+            if (lastType == OPEN_BRACE)
+                throw std::logic_error("Empty blocks are not allowed.");
             braceCount--;
+        }
+            
         else if (it->type == SEMICOLON)
         {
             if (it != this->tokens.begin() && (it - 1)->type != WORD)
                 throw std::logic_error("Empty directive not accepted");
         }
+        lastType = it->type;
     }
     if (braceCount)
         throw std::logic_error("Unclosed braces");

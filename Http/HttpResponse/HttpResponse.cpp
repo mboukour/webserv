@@ -62,6 +62,7 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request, const std::st
         path += request.getPath().substr(1);  // Remove the leading '/' if it exists
     else
         path += request.getPath();  // No leading '/' to remove
+    std::cout << "Current path: "  << path << '\n';
     struct stat filestat;
     /*
     ** Here I check if the file exists

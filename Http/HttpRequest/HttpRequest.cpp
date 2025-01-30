@@ -16,28 +16,28 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
     std::stringstream ss(request);
     std::string line;
     bool hostFound = false;
-    bool foundLocation = false;
     if (!std::getline(ss, line))
         throw HttpRequestParseException("empty request");
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpRequestParseException("invalid request line");
 
-    std::cout << this->path << '\n';
-    if (this->path != "/")
-    {
-        for (std::vector<Location>::const_iterator it = server.locationsCbegin();
-            it != server.locationsCend(); it++) {
-                if (this->path == it->getLocationName())
-                {
-                    this->requestBlock = &(*it);
-                    foundLocation = true;
-                    break ;
-                }
+
+    // implement better matching? 
+    std::cout << "Path: " << this->path << '\n';
+    std::string toMatch = this->path;
+    if (toMatch[toMatch.size()] != '/')
+        toMatch = toMatch + '/';
+    for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+        it != server.locationsCend(); it++) {
+            std::cout << "Current location: " << it->getLocationName() << '\n';
+            if (this->path == it->getLocationName() || toMatch == it->getLocationName())
+            {
+                this->requestBlock = &(*it);
+                std::cout << "MATCHED\n";
+                break ;
             }
-            if (!foundLocation)
-                throw NotFoundException(this->path);   
-    }
+        }
 
     try
     {
