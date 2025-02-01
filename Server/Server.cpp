@@ -33,7 +33,10 @@ void Server::startServer(void) {
     hints.ai_socktype = SOCK_STREAM;
     std::stringstream ss;
     ss << this->port;
-    if (getaddrinfo(this->host.c_str(), ss.str().c_str(), &hints, &res) != 0)
+    const char *hostCString = "0.0.0.0"; // any address
+    if (this->host != "")
+        hostCString = (char *)this->host.c_str();
+    if (getaddrinfo(hostCString, ss.str().c_str(), &hints, &res) != 0)
     {
         errorStr = "Error: getaddrinfo failed. Errno: ";
         errorStr += strerror(errno);
@@ -47,14 +50,14 @@ void Server::startServer(void) {
         throw std::runtime_error(errorStr);
     }
     fcntl(this->fdSocket, F_SETFL, O_NONBLOCK);
-    int opt = 1;
-    if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
-    {
-        errorStr = "Error: setsockopt failed. Errno: ";
-        errorStr += strerror(errno);
-        close(this->fdSocket);
-        throw std::runtime_error(errorStr);
-    }
+    // int opt = 1;
+    // if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
+    // {
+    //     errorStr = "Error: setsockopt failed. Errno: ";
+    //     errorStr += strerror(errno);
+    //     close(this->fdSocket);
+    //     throw std::runtime_error(errorStr);
+    // }
     if (bind(this->fdSocket, res->ai_addr, res->ai_addrlen) == -1)
     {
         errorStr = "Error: bind failed. Errno: ";
