@@ -4,6 +4,23 @@
 #include <string>
 #include <map>
 
+
+enum ERRORCODES {
+    BAD_REQUEST=400,
+    METHOD_NOT_ALLOWED=405,
+    PAYLOAD_TOO_LARGE=413,
+    UNAUTHORIZED=401,
+    FORBIDDEN=403,
+    NOT_FOUND=404,
+    CONFLICT=409,
+    URI_TOO_LONG=414,
+    INTERNAL_SERVER_ERROR=505,
+    NOT_IMPLEMENTED=501,
+    SERVICE_UNAVAILABLE=503,
+    HTTP_VERSION_NOT_SUPPORTED=505
+};
+
+
 class AHttp { // This is an abstract class for stuff that both request and reposnse need
     protected:
         std::string version;

@@ -1,0 +1,11 @@
+#include "../HttpResponse.hpp"
+#include "../../HttpRequest/HttpRequest.hpp"
+#include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+
+
+
+
+void HttpResponse::handlePostRequest(const HttpRequest& request) {
+    std::string path = request.getRequestBlock()->getRoot();
+    throw HttpErrorException(request.getVersion(), NOT_IMPLEMENTED, "Not Implemented", "no code yet ;)");
+}

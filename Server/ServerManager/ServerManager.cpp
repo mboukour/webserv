@@ -37,14 +37,7 @@ const Server &ServerManager::getServer(int port) {
     throw std::logic_error("Server not found"); // throw ServerNotFound(serverFd);
 }
 
-void ServerManager::sendError(int errorCode, int clientFd, const char *what) {
-    // We need to close the connection in case of error
-    HttpResponse response = HttpResponseErrorMaker::makeHttpResponseError(errorCode);
-    std::string responseStr = response.toString();
-    DEBUG && std::cerr << "Response sent with code " << errorCode << " Reason: " << what << "\n" << std::endl;
-    send(clientFd, responseStr.c_str(), responseStr.size(), 0);
 
-}
 
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 void ServerManager::handleClient(int clientFd) {
@@ -74,15 +67,12 @@ void ServerManager::handleClient(int clientFd) {
             const Server &server = getServer(port);
             HttpRequest request(buffer, server);
             DEBUG && std::cout << "New request: " << request << std::endl;
-            HttpResponse response(request); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
-            responseStr = response.toString();
-            DEBUG && std::cout << "Response sent with code 200.\n";
-            send(clientFd, responseStr.c_str(), responseStr.size(), 0);
+            HttpResponse response(request, clientFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
         // might make exceptions have error codes so we catch a singular exception...0
         } catch (const HttpErrorException &exec) {
             DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
-            std::string errorPageStr = exec.getErrorPageHtml();
-            send(clientFd, errorPageStr.c_str(), errorPageStr.size(), 0);
+            std::string respStr = exec.getResponseString();
+            send(clientFd, respStr.c_str(), respStr.size(), 0);
             close(clientFd);
             epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
             DEBUG && std::cout << "Connection closed after error\n";

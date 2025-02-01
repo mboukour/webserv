@@ -1,5 +1,6 @@
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
+#include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -7,9 +8,6 @@
 #include <dirent.h>
 
 
-#include "../../../Exceptions/NotFoundException/NotFoundException.hpp"
-#include "../../../Exceptions/ConflictException/ConflictException.hpp"
-#include "../../../Exceptions/ForbiddenException/ForbiddenException.hpp"
 
 
 bool HttpResponse::removeDirectory(const std::string &path)
@@ -51,9 +49,9 @@ bool HttpResponse::removeDirectory(const std::string &path)
     return true;
 }
 
-void HttpResponse::handleDeleteRequest(const HttpRequest &request, const std::string &root)
+void HttpResponse::handleDeleteRequest(const HttpRequest &request)
 {
-    std::string path = root;
+    std::string path = request.getRequestBlock()->getRoot();
 
     // Manually check if the first character is '/'
     if (request.getPath()[0] == '/')
@@ -67,10 +65,7 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request, const std::st
     ** If it doesn't, I return 404 (Not Found)
     */
     if (stat(path.c_str(), &filestat) != 0)
-    {
-        std::cout << "File not found: " << path << std::endl;
-        throw NotFoundException();
-    }
+        throw HttpErrorException(request.getVersion(), NOT_FOUND, "Not Found", "file not found: " + path);
     /*
     ** Here I check if the file is a directory
     ** If it is, I return 409 (Conflict)
@@ -79,17 +74,19 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request, const std::st
     {
         // Check if the directory path ends with '/'
         if (request.getPath()[request.getPath().size() - 1] != '/')
-            throw ConflictException();
+            throw HttpErrorException(request.getVersion() ,CONFLICT, "Conflict", "directory doesn't end with /");
 
         // Attempt to delete the directory
         if (!removeDirectory(path))
-            throw ForbiddenException();
+            throw HttpErrorException(request.getVersion() ,FORBIDDEN, "Forbidden", "removeDirectory() returned false");
+
     }
     else
     {
         // Attempt to delete a file
-        if (remove(path.c_str()) != 0)
-            throw ForbiddenException();
+        if (remove(path.c_str()) != 0) // do we need to check errno for better error management???
+            throw HttpErrorException(request.getVersion() ,FORBIDDEN, "Forbidden", "remove() failed");
+            
     }
 
     /*
@@ -98,4 +95,5 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request, const std::st
     this->statusCode = 204;
     this->reasonPhrase = "No Content";
     std::cout << "Deleted: " << path << std::endl;
+    this->sendResponse();
 }
