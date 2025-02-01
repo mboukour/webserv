@@ -113,6 +113,8 @@ void Parser::setLocationsDirectives(std::vector<Block> &servers) {
             std::vector<stringVec> &locationDirectives = locationIt->directives;
             for (std::vector<stringVec>::const_iterator serverDirIt = serverDirectives.begin(); serverDirIt != serverDirectives.end(); ++serverDirIt) {
                 const std::string &serverDirective = (*serverDirIt)[0];
+                if (serverDirective == "error_page")
+                    continue;
                 bool foundDirective = false;
                 for (std::vector<stringVec>::const_iterator locationDirIt = locationDirectives.begin(); locationDirIt != locationDirectives.end(); ++locationDirIt) {
                     const std::string &locationDirective = (*locationDirIt)[0];

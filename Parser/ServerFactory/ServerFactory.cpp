@@ -4,6 +4,8 @@
 #include <climits>
 #include <algorithm>
 #include <string>
+#include <utility>
+#include <vector>
 
 ServerFactory::ServerFactory() {}
 
@@ -217,6 +219,23 @@ Server ServerFactory::createServer(const Block &serverBlock) {
         result.addLocation(newLocation);
     }
 
+    // Inheriting error codes
+    for (std::vector<Location>::iterator it = result.locationsBegin(); it != result.locationsEnd(); it++) {
+        for (std::map<std::string, std::string>::const_iterator ite = result.errorPagesCbegin(); ite != result.errorPagesCend(); ite++) {
+            const std::string &errorCode = ite->first;
+            const std::string &errorPath = ite->second;
+            bool foundKey = false;
+            for (std::map<std::string, std::string>::const_iterator lE = it->errorPagesCbegin(); lE != it->errorPagesCend(); lE++) {
+                if (lE->first == errorCode)
+                {
+                    foundKey = true;
+                    break;
+                }
+            }   
+            if (!foundKey)
+                it->setErrorPagePath(errorCode, errorPath);
+        }
+    }
     return result;
 }
 
