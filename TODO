@@ -1,0 +1,34 @@
+- Add methods / autoindex to the ServerFactory
+- Parse Location subBlocks
+
+
+I might implement this if i have time
+
+1. location xd
+Behavior: This is a prefix-based location that matches any URI starting with xd.
+
+Examples:
+
+/xd → Matches.
+
+/xdfile → Matches.
+
+/path/xd → Does not match (because xd is not at the start of the URI).
+
+Use Case: Rarely used, as it can lead to unexpected matches (e.g., /xdfile).
+
+2. location /xd
+Behavior: This is a prefix-based location that matches any URI starting with /xd.
+
+Examples:
+
+/xd → Matches.
+
+/xd/file → Matches.
+
+/xdfile → Does not match (because /xd is not a complete prefix).
+
+Use Case: Commonly used to match specific subpaths (e.g., /xd, /xd/...).
+
+
+UNDERSTAND MORE THE SLASHES
