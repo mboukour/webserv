@@ -50,14 +50,14 @@ void Server::startServer(void) {
         throw std::runtime_error(errorStr);
     }
     fcntl(this->fdSocket, F_SETFL, O_NONBLOCK);
-    // int opt = 1;
-    // if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
-    // {
-    //     errorStr = "Error: setsockopt failed. Errno: ";
-    //     errorStr += strerror(errno);
-    //     close(this->fdSocket);
-    //     throw std::runtime_error(errorStr);
-    // }
+    int opt = 1;
+    if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
+    {
+        errorStr = "Error: setsockopt failed. Errno: ";
+        errorStr += strerror(errno);
+        close(this->fdSocket);
+        throw std::runtime_error(errorStr);
+    }
     if (bind(this->fdSocket, res->ai_addr, res->ai_addrlen) == -1)
     {
         errorStr = "Error: bind failed. Errno: ";
