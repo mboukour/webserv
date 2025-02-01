@@ -3,6 +3,7 @@
 #include <sstream>
 #include <climits>
 #include <algorithm>
+#include <string>
 
 ServerFactory::ServerFactory() {}
 
@@ -142,13 +143,32 @@ Server ServerFactory::createServer(const Block &serverBlock) {
         if (currentDirective == "listen") {
             if (ite->size() != 2)
                 throw std::logic_error("Invalid listen directive");
-            std::stringstream ss(ite->begin()[1]); 
+
+            std::string value = ite->begin()[1];
+            if (value[0] == ':')
+                throw std::logic_error("Invalid listen directive");
+            std::string host;
             int port;
-            ss >> port;
-            if (ss.fail() || !ss.eof() || port < 1 || port > __UINT16_MAX__)
-                throw std::logic_error("Invalid port found");
+            size_t twoPointPos = value.find(':');
+            if (twoPointPos != std::string::npos) {
+                host = value.substr(0, twoPointPos);
+                std::string portStr = value.substr(twoPointPos + 1);
+                std::stringstream ss(portStr);
+                ss >> port;
+                if (ss.fail() || !ss.eof() || port < 1 || port > __UINT16_MAX__)
+                    throw std::logic_error("Invalid port found");
+            } else {
+                host = "";
+                std::stringstream ss(value);
+                ss >> port;
+                if (ss.fail() || !ss.eof() || port < 1 || port > __UINT16_MAX__)
+                    throw std::logic_error("Invalid port found");
+            }
+            if (!host.empty()) {
+                result.setHost(host);
+            }
             result.setPort(port);
-        } 
+        }
         else if (currentDirective == "server_name") {
             if (ite->size() != 2)
                 throw std::logic_error("Invalid server name");

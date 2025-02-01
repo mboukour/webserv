@@ -1,12 +1,14 @@
 #include "Server.hpp"
 #include <iostream> // to remove later
 #include <cstdlib>
-
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include "../Debug/Debug.hpp"
 
-Server::Server(): ABlock(), port(-1), fdSocket(-1), serverName("") {}
+Server::Server(): ABlock(), port(-1), host(""),  fdSocket(-1), serverName("") {}
 
-Server::Server(const Server &other): ABlock(other), port(other.port), fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations) {}
+Server::Server(const Server &other): ABlock(other), port(other.port), host(other.host) ,fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations) {}
 
 void Server::setPort(int port) {this->port = port;}
 
@@ -41,8 +43,9 @@ void Server::startServer(void) {
         throw std::runtime_error(errorStr);
     }
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_addr.s_addr = INADDR_ANY; // WROOOOOOOOOONG
     server_addr.sin_port = htons(this->port);
+    // Get addr info is necessary to set the ip address
     if (bind(this->fdSocket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
     {
         errorStr = "Error: bind failed. Errno: ";
@@ -79,6 +82,14 @@ std::vector<Location>::const_iterator Server::locationsCend(void) const {
 
 void Server::addLocation(const Location &location) {
     this->locations.push_back(location);
+}
+
+void Server::setHost(const std::string &host) {
+    this->host = host;
+}
+
+std::string Server::getHost(void) const {
+    return this->host;
 }
 
 Server::~Server() {}

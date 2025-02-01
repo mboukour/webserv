@@ -31,6 +31,12 @@ std::ostream& operator<<(std::ostream& outputStream, const Location& location) {
 }
 
 std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
+    outputStream << "Host: ";
+    std::string host = other.getHost();
+    if (host.empty())
+        std::cout << "Any\n";
+    else
+        std::cout << host << '\n';
     outputStream << "Port: " << other.getPort() << "\n";
     outputStream << "Server Name: " << other.getServerName() << "\n";
     outputStream << "Root Directory: " << other.getRoot() << "\n";
