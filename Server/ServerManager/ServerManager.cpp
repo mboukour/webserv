@@ -64,11 +64,9 @@ void ServerManager::handleClient(int clientFd) {
         int port = ntohs(addr.sin_port);
         std::string responseStr;
         try  {
-            const Server &server = getServer(port);
-            HttpRequest request(buffer, server);
+            HttpRequest request(buffer, this->servers, port);
             DEBUG && std::cout << "New request: " << request << std::endl;
             HttpResponse response(request, clientFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
-        // might make exceptions have error codes so we catch a singular exception...0
         } catch (const HttpErrorException &exec) {
             DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
             std::string respStr = exec.getResponseString();
@@ -90,23 +88,23 @@ void ServerManager::acceptConnections(int fdSocket) {
     struct sockaddr_in client_addr;
     std::string errorStr;
     socklen_t client_len = sizeof(client_addr);
-    int client_socket = accept(fdSocket, (struct sockaddr *)&client_addr, &client_len);
-    if (client_socket == -1)
+    int clientFd = accept(fdSocket, (struct sockaddr *)&client_addr, &client_len);
+    if (clientFd == -1)
     {
         errorStr = "Error: accept failed. Errno: " ;
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
-    fcntl(client_socket, F_SETFL, O_NONBLOCK);
+    fcntl(clientFd, F_SETFL, O_NONBLOCK);
     
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
-    ev.data.fd = client_socket;
-    if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, client_socket, &ev) == -1)
+    ev.data.fd = clientFd;
+    if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
     {
         std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
-        close(client_socket);
+        close(clientFd);
     }
 }
 

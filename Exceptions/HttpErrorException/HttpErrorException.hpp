@@ -13,14 +13,15 @@ class HttpErrorException : public std::exception {
         std::string version;
         int statusCode;
         std::string reasonPhrase;
-
+        std::string body;
+        
         HttpErrorException();
 
         std::string getErrorPageHtml(void) const;
 
-        static const std::string errorHtml;
+        static const std::string defaultErrorHtml;
     public:
-        HttpErrorException(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &message);
+        HttpErrorException(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &message, const std::string &body);
         int getStatusCode(void) const;
         std::string getReasonPhrase(void);
         std::string getResponseString(void) const;

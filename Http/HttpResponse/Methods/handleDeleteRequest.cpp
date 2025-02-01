@@ -65,7 +65,7 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request)
     ** If it doesn't, I return 404 (Not Found)
     */
     if (stat(path.c_str(), &filestat) != 0)
-        throw HttpErrorException(request.getVersion(), NOT_FOUND, "Not Found", "file not found: " + path);
+        throw HttpErrorException(request.getVersion(), NOT_FOUND, "Not Found", "file not found: " + path, request.getRequestBlock()->getErrorPageHtml(NOT_FOUND));
     /*
     ** Here I check if the file is a directory
     ** If it is, I return 409 (Conflict)
@@ -74,18 +74,18 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request)
     {
         // Check if the directory path ends with '/'
         if (request.getPath()[request.getPath().size() - 1] != '/')
-            throw HttpErrorException(request.getVersion() ,CONFLICT, "Conflict", "directory doesn't end with /");
+            throw HttpErrorException(request.getVersion() ,CONFLICT, "Conflict", "directory doesn't end with /", request.getRequestBlock()->getErrorPageHtml(CONFLICT));
 
         // Attempt to delete the directory
         if (!removeDirectory(path))
-            throw HttpErrorException(request.getVersion() ,FORBIDDEN, "Forbidden", "removeDirectory() returned false");
+            throw HttpErrorException(request.getVersion() ,FORBIDDEN, "Forbidden", "removeDirectory() returned false", request.getRequestBlock()->getErrorPageHtml(FORBIDDEN));
 
     }
     else
     {
         // Attempt to delete a file
         if (remove(path.c_str()) != 0) // do we need to check errno for better error management???
-            throw HttpErrorException(request.getVersion() ,FORBIDDEN, "Forbidden", "remove() failed");
+            throw HttpErrorException(request.getVersion() ,FORBIDDEN, "Forbidden", "remove() failed", request.getRequestBlock()->getErrorPageHtml(FORBIDDEN));
             
     }
 

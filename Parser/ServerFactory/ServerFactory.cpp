@@ -3,12 +3,16 @@
 #include <sstream>
 #include <climits>
 #include <algorithm>
+#include <string>
 
 ServerFactory::ServerFactory() {}
 
+
+
 bool ServerFactory::isValidErrorCode(const std::string &code) // TO IMPROVE
 {
-    return (code == "404" || code == "500" || code == "502" || code == "503" || code == "504");
+
+    return (code == "400" || code == "403" || code == "404" || code == "405" || code == "409" || code == "413" || code == "414" || code == "500"  || code == "501" || code == "502" || code == "503" || code == "504" || code == "505");
 }
 
 
@@ -28,8 +32,13 @@ bool ServerFactory::isAcceptedSubBlock(const std::string &directive)
 void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directives) {
     std::string currentDirective = directives.begin()[0];
 
-
-    if (currentDirective == "methods") {
+    if (currentDirective == "index") {
+        if (directives.size() < 2)
+            throw std::logic_error("Invalid index directive found");
+        for (stringVec::const_iterator itr = directives.begin() + 1; itr != directives.end(); itr++)
+            result.addIndex(*itr);
+    }
+    else if (currentDirective == "methods") {
         if (directives.size() == 1 || directives.size() > 4)
             throw std::logic_error("Invalid methods directive found");
         result.setAllMethodsAsDenied();
@@ -95,7 +104,16 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
                 throw std::logic_error("Inva0lid unit found on max body size directive 3");
             result.setMaxBodySize(integerPart);
         }
-    }
+    } else if (currentDirective == "error_page") {
+            if (directives.size() < 3) 
+                throw std::logic_error("Invalid error page directive");
+            const std::string errorPath = *(directives.end() - 1);
+            for (stringVec::const_iterator itr = directives.begin() + 1; itr != directives.end() - 1; itr++) {
+                if (!isValidErrorCode(*itr)) throw std::logic_error("Invalid error code found");
+                const std::string errorCode = *itr;
+                result.setErrorPagePath(errorCode, errorPath);
+            }
+        }
     // else
     // {
     //     std::cout << currentDirective << '\n';
@@ -125,26 +143,38 @@ Server ServerFactory::createServer(const Block &serverBlock) {
         if (currentDirective == "listen") {
             if (ite->size() != 2)
                 throw std::logic_error("Invalid listen directive");
-            std::stringstream ss(ite->begin()[1]); 
+
+            std::string value = ite->begin()[1];
+            if (value[0] == ':')
+                throw std::logic_error("Invalid listen directive");
+            std::string host;
             int port;
-            ss >> port;
-            if (ss.fail() || !ss.eof() || port < 1 || port > __UINT16_MAX__)
-                throw std::logic_error("Invalid port found");
+            size_t twoPointPos = value.find(':');
+            if (twoPointPos != std::string::npos) {
+                host = value.substr(0, twoPointPos);
+                std::string portStr = value.substr(twoPointPos + 1);
+                std::stringstream ss(portStr);
+                ss >> port;
+                if (ss.fail() || !ss.eof() || port < 1 || port > __UINT16_MAX__)
+                    throw std::logic_error("Invalid port found");
+            } else {
+                host = "";
+                std::stringstream ss(value);
+                ss >> port;
+                if (ss.fail() || !ss.eof() || port < 1 || port > __UINT16_MAX__)
+                    throw std::logic_error("Invalid port found");
+            }
+            if (!host.empty()) {
+                result.setHost(host);
+            }
             result.setPort(port);
-        } 
+        }
         else if (currentDirective == "server_name") {
             if (ite->size() != 2)
                 throw std::logic_error("Invalid server name");
             result.setServerName(ite->begin()[1]);
         }
-        else if (currentDirective == "error_page") {
-            if (ite->size() < 3) 
-                throw std::logic_error("Invalid error page directive");
-            for (stringVec::const_iterator itr = ite->begin() + 1; itr != ite->end() - 1; itr++) {
-                if (!isValidErrorCode(*itr)) throw std::logic_error("Invalid error code found");
-                // Add func
-            }
-        }
+
         else if (currentDirective == "return")
             throw std::logic_error("The return directive can not be used in the server block.");
         else

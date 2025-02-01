@@ -1,12 +1,15 @@
 #include "Server.hpp"
 #include <iostream> // to remove later
 #include <cstdlib>
-
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include "../Debug/Debug.hpp"
+#include <sstream>
 
-Server::Server(): ABlock(), port(-1), fdSocket(-1), serverName("") {}
+Server::Server(): ABlock(), port(-1), host(""),  fdSocket(-1), serverName("") {}
 
-Server::Server(const Server &other): ABlock(other), port(other.port), fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations) {}
+Server::Server(const Server &other): ABlock(other), port(other.port), host(other.host) ,fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations) {}
 
 void Server::setPort(int port) {this->port = port;}
 
@@ -22,9 +25,24 @@ int Server::getFdSocket(void) const {return this->fdSocket;}
 std::string Server::getServerName(void) const {return this->serverName;}
 
 void Server::startServer(void) {
-    struct sockaddr_in server_addr;
+    struct addrinfo hints, *res;
     std::string errorStr;
-    this->fdSocket = socket(AF_INET, SOCK_STREAM, 0); // listen to incoming clients
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    std::stringstream ss;
+    ss << this->port;
+    const char *hostCString = "0.0.0.0"; // any address
+    if (this->host != "")
+        hostCString = (char *)this->host.c_str();
+    if (getaddrinfo(hostCString, ss.str().c_str(), &hints, &res) != 0)
+    {
+        errorStr = "Error: getaddrinfo failed. Errno: ";
+        errorStr += strerror(errno);
+        throw std::runtime_error(errorStr);
+    }
+    this->fdSocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol); // listen to incoming clients
     if (this->fdSocket == -1)
     {
         errorStr = "Error: socket failed. Errno: ";
@@ -32,18 +50,15 @@ void Server::startServer(void) {
         throw std::runtime_error(errorStr);
     }
     fcntl(this->fdSocket, F_SETFL, O_NONBLOCK);
-    int opt = 1;
-    if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
-    {
-        errorStr = "Error: setsockopt failed. Errno: ";
-        errorStr += strerror(errno);
-        close(this->fdSocket);
-        throw std::runtime_error(errorStr);
-    }
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(this->port);
-    if (bind(this->fdSocket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
+    // int opt = 1;
+    // if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
+    // {
+    //     errorStr = "Error: setsockopt failed. Errno: ";
+    //     errorStr += strerror(errno);
+    //     close(this->fdSocket);
+    //     throw std::runtime_error(errorStr);
+    // }
+    if (bind(this->fdSocket, res->ai_addr, res->ai_addrlen) == -1)
     {
         errorStr = "Error: bind failed. Errno: ";
         errorStr += strerror(errno);
@@ -79,6 +94,14 @@ std::vector<Location>::const_iterator Server::locationsCend(void) const {
 
 void Server::addLocation(const Location &location) {
     this->locations.push_back(location);
+}
+
+void Server::setHost(const std::string &host) {
+    this->host = host;
+}
+
+std::string Server::getHost(void) const {
+    return this->host;
 }
 
 Server::~Server() {}

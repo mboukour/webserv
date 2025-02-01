@@ -5,6 +5,7 @@
 // #include <unordered_map>
 #include <vector>
 #include <iostream>
+#include <map>
 
 enum HttpMethod {
     GET,
@@ -25,21 +26,41 @@ class ABlock {
         size_t maxBodySize;
         std::string root;
         std::string uploadStore;
-
+        std::map<std::string, std::string> errorPages;
+        std::vector<std::string> index;
 
     public:
+        ABlock &operator=(const ABlock &other);
+
         std::string getRoot(void) const;
         size_t getMaxBodySize(void) const;
+
         bool getMethod(int method) const;
-        bool getIsAutoIndexOn(void) const;
         void setRoot(const std::string &root);
         void setMaxBodySize(size_t maxBodySize);
-        void setAllMethodsAsDenied(void);
-        void setMethod(int method, bool toSet);
+
         void setAutoIndex(bool toSet);
-        void setIsLimited(bool isLimited);
-        bool getIsLimited(void) const;
+        bool getIsAutoIndexOn(void) const;
+
         bool isMethodAllowed(const std::string& method) const;
+        void setMethod(int method, bool toSet);
+        void setAllMethodsAsDenied(void);
+
+        bool getIsLimited(void) const;
+        void setIsLimited(bool isLimited);
+
+
+        void setErrorPagePath(const std::string &errorCode, const std::string &errorPage);
+        std::string getErrorPageHtml(int errorCode) const;
+        // to iterate over the error pages map, use these the const iterators 
+        std::map<std::string, std::string>::const_iterator errorPagesCbegin(void) const;
+        std::map<std::string, std::string>::const_iterator errorPagesCend(void) const;
+
+        void addIndex(const std::string &index);
+        // to iterate over the index vector, use these the const iterators
+        std::vector<std::string>::const_iterator indexCbegin(void) const;
+        std::vector<std::string>::const_iterator indexCend(void) const;
+
         virtual void startServer(void) = 0;
         virtual ~ABlock();
 };

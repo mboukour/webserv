@@ -32,3 +32,8 @@ Use Case: Commonly used to match specific subpaths (e.g., /xd, /xd/...).
 
 
 UNDERSTAND MORE THE SLASHES
+
+
+
+- Make httpRequest find the server based on host/port
+- add the ip in the listen directive

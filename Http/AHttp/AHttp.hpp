@@ -34,6 +34,7 @@ class AHttp { // This is an abstract class for stuff that both request and repos
         size_t getBodySize() const;
         std::string getBody() const;
         std::string getHeader(const std::string &headerName) const;
+        void setHeader(const std::string &headerName, const std::string &headerValue);
         virtual std::string toString() const = 0;
         virtual ~AHttp() {}
 };

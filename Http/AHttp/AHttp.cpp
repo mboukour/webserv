@@ -22,3 +22,7 @@ std::string AHttp::getHeader(const std::string &headerName) const {
     }
     return ""; // throw MissingHeader(headerName);
 }
+
+void AHttp::setHeader(const std::string &headerName, const std::string &headerValue) {
+    this->headers[headerName] = headerValue;
+}
