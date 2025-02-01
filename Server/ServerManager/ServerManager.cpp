@@ -65,8 +65,8 @@ void ServerManager::handleClient(int clientFd) {
         std::string responseStr;
         try  {
             // need to get host from the request before
-            const Server &server = getServer(port);
-            HttpRequest request(buffer, server);
+            // const Server &server = getServer(port);
+            HttpRequest request(buffer, this->servers, port);
             DEBUG && std::cout << "New request: " << request << std::endl;
             HttpResponse response(request, clientFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
         // might make exceptions have error codes so we catch a singular exception...0

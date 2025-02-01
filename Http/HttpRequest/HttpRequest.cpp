@@ -3,11 +3,13 @@
 
 
 #include <exception>
+#include <iterator>
 #include <sstream>
 #include <iostream> // to remove later
 #include <stdexcept>
+#include <vector>
 
-HttpRequest::HttpRequest(const std::string &request, const Server& server): requestBlock(&server) {
+HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL) {
 
     this->primalRequest = request;
     std::stringstream ss(request);
@@ -15,35 +17,30 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
     bool hostFound = false;
     bool contentLengthFound = false;
     if (!std::getline(ss, line))
-        throw HttpErrorException("HTTP/1.1", BAD_REQUEST, "Bad Request", "empty request", server.getErrorPageHtml(BAD_REQUEST)); // we assume the version?
+        throw HttpErrorException("HTTP/1.1", BAD_REQUEST, "Bad Request", "empty request", ""); // we assume the version?
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
-        throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", "invalid request line", server.getErrorPageHtml(BAD_REQUEST));
+        throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", "invalid request line", "");
 
     if (this->version != "HTTP/1.1")
-        throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, server.getErrorPageHtml(HTTP_VERSION_NOT_SUPPORTED));
+        throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
     if (this->path.length() > URI_MAX_SIZE)
-        throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", server.getErrorPageHtml(URI_TOO_LONG));
+        throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
     // implement better matching? 
     std::cout << "Path: " << this->path << '\n';
-    std::string toMatch = this->path;
-    if (toMatch[toMatch.size() - 1] == '/')
-        toMatch = toMatch.substr(0, toMatch.size() - 1);
-    std::cout << "To Match: " << toMatch << '\n';
-    for (std::vector<Location>::const_iterator it = server.locationsCbegin();
-        it != server.locationsCend(); it++) {
-            std::cout << "Current location: " << it->getLocationName() << '\n';
-            if (this->path == it->getLocationName() || toMatch == it->getLocationName())
-            {
-                this->requestBlock = &(*it);
-                std::cout << "MATCHED\n";
-                break ;
-            }
-        }
 
+    // std::cout << "To Match: " << toMatch << '\n';
+    // for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+    //     it != server.locationsCend(); it++) {
+    //         std::cout << "Current location: " << it->getLocationName() << '\n';
+    //         if (this->path == it->getLocationName() || toMatch == it->getLocationName())
+    //         {
+    //             this->requestBlock = &(*it);
+    //             std::cout << "MATCHED\n";
+    //             break ;
+    //         }
+    //     }
 
-    if (!this->requestBlock->isMethodAllowed(this->method))
-        throw HttpErrorException(this->version, METHOD_NOT_ALLOWED, "Method Not Allowed", "method not allowed: " + this->method, requestBlock->getErrorPageHtml(METHOD_NOT_ALLOWED));
 
 
 
@@ -58,8 +55,6 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
         lineSs >> key;
         // if (lineSs.fail() || lineSs.eof() || key[key.size() - 1] != ':') throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid header", requestBlock->getErrorPageHtml(BAD_REQUEST));
         key = key.substr(0, key.size() - 1);
-        if (key == "Host")
-            hostFound = true;
         // else if (key == "Content-Type")
         //     contentTypeFound = true;
         lineSs >> value;
@@ -78,11 +73,34 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
             continue;
         }
         this->headers[key] = value;
+        if (key == "Host")
+        {
+            hostFound = true;
+            const Server &server = getServer(value, servers, serverPort);
+            this->requestBlock = &server;
+            std::string toMatch = this->path;
+            if (toMatch[toMatch.size() - 1] == '/')
+                toMatch = toMatch.substr(0, toMatch.size() - 1);
+               for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+                it != server.locationsCend(); it++) {
+                    // DEBUG && std::cout << "Current location: " << it->getLocationName() << '\n';
+                    if (this->path == it->getLocationName() || toMatch == it->getLocationName())
+                    {
+                        this->requestBlock = &(*it);
+                        std::cout << "MATCHED\n";
+                        break ;
+                    }
+                }
+        }
     }
 
     // if (line != "\r") throw std::logic_error("Invalid headers terminator");
     if (!hostFound) throw std::logic_error("Host header not found");
     // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
+    if (!this->requestBlock->isMethodAllowed(this->method))
+        throw HttpErrorException(this->version, METHOD_NOT_ALLOWED, "Method Not Allowed", "method not allowed: " + this->method, "");
+
+
     if (this->method == "POST")
     {
         if (!contentLengthFound) // or no Transfer-Encoding??
@@ -114,3 +132,26 @@ const ABlock *HttpRequest::getRequestBlock(void) const {
     return this->requestBlock;
 }
 
+const Server &HttpRequest::getServer(const std::string &host, const std::vector<Server>& servers, int serverPort) {
+
+    std::string actualHost = host;
+    size_t pos = actualHost.find(":");
+    if (pos != std::string::npos)
+        actualHost = actualHost.substr(0, pos);
+    // std::cout << "server port: " << serverPort << '\n';
+    const Server *firstServerPort = NULL;
+    for (std::vector<Server>::const_iterator it = servers.begin(); it != servers.end(); it++) {
+        std::cout << "S port: " << it->getPort() << '\n';
+        if (actualHost == it->getServerName() && serverPort == it->getPort()) {
+            // std::cout << "Found exact match for host: " << actualHost << " and port: " << serverPort << '\n';
+            return *it;
+        } else {
+            // std::cout << "No exact match for host: [" << actualHost << "] and port: " << serverPort << '\n';
+            // std::cout << "Current server being checked - Host: [" << it->getServerName() << "], Port: " << it->getPort() << '\n';
+        }
+        if (!firstServerPort && serverPort == it->getPort())
+            firstServerPort = &(*it);
+    }
+    std::cout << "Accepted default server for port: " << firstServerPort->getPort() << '\n';
+    return *firstServerPort;
+}
