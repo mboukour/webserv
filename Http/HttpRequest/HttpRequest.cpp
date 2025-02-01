@@ -1,13 +1,8 @@
 #include "HttpRequest.hpp"
-#include "../../Exceptions/HttpRequestParseException/HttpRequestParseException.hpp"
-#include "../../Exceptions/NotImplementedException/NotImplementedException.hpp"
-#include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
-#include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
-#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
-#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
-#include "../../Exceptions/BadRequestException/BadRequestException.hpp"
-#include "../../Exceptions/UriTooLongException/UriTooLongException.hpp"
+#include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
+
+#include <exception>
 #include <sstream>
 #include <iostream> // to remove later
 
@@ -20,13 +15,13 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
     bool hostFound = false;
     bool contentLengthFound = false;
     if (!std::getline(ss, line))
-        throw HttpRequestParseException("empty request");
+        throw HttpErrorException(BAD_REQUEST, "Bad Request", "empty request");
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
-        throw HttpRequestParseException("invalid request line");
+        throw HttpErrorException(BAD_REQUEST, "Bad Request", "invalid request line");
 
     if (this->path.length() > URI_MAX_SIZE)
-        throw UriTooLongException();
+        throw HttpErrorException(URI_TOO_LONG, "Uri Too Long", "uri too long");
     // implement better matching? 
     std::cout << "Path: " << this->path << '\n';
     std::string toMatch = this->path;
@@ -47,12 +42,13 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
     try
     {
         if (!this->requestBlock->isMethodAllowed(this->method))
-            throw MethodNotAllowedException(this->method);
+            throw HttpErrorException(METHOD_NOT_ALLOWED, "Method Not Allowed", "method not allowed: " + this->method);
+
         
     }
-    catch(const UnknownMethodException& e)
+    catch(const std::exception& e)
     {
-        throw NotImplementedException(this->method);
+        throw HttpErrorException(NOT_IMPLEMENTED, "Not Implemented", "method not implemented");
     }
     
     this->bodySize = 0;
@@ -64,24 +60,24 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
         std::string value;
 
         lineSs >> key;
-        if (lineSs.fail() || lineSs.eof() || key[key.size() - 1] != ':') throw HttpRequestParseException("invalid header");
+        if (lineSs.fail() || lineSs.eof() || key[key.size() - 1] != ':') throw HttpErrorException(BAD_REQUEST, "Bad Request", "invalid header");
         key = key.substr(0, key.size() - 1);
         if (key == "Host")
             hostFound = true;
         // else if (key == "Content-Type")
         //     contentTypeFound = true;
         lineSs >> value;
-        if (lineSs.fail()) throw HttpRequestParseException("invalid header");
+        if (lineSs.fail()) throw HttpErrorException(BAD_REQUEST, "Bad Request", "invalid header");
         if (key == "Content-Length")
         {
             std::stringstream l(value);
             l >> this->bodySize;
-            if (l.fail()) throw HttpRequestParseException("invalid content length header");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST, "Bad Request", "invalid content length header");
             std::string dummy;
             l >> dummy;
-            if (!l.eof()) throw HttpRequestParseException("invalid content length header");
+            if (!l.eof()) throw HttpErrorException(BAD_REQUEST, "Bad Request", "invalid content length header");
             if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
-                throw PayloadTooLargeException(this->requestBlock->getMaxBodySize());
+                throw  HttpErrorException(PAYLOAD_TOO_LARGE, "Payload Too Large", "payload too large");
             contentLengthFound = true;
             continue;
         }
@@ -94,7 +90,7 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
     if (this->method == "POST")
     {
         if (!contentLengthFound) // or no Transfer-Encoding??
-            throw BadRequestException("Content-Length header not found");
+            throw HttpErrorException(BAD_REQUEST, "Bad Request", "Content-Length header not found");
     }
     // if (static_cast<size_t>(ss.rdbuf()->in_avail()) != this->bodySize) throw std::logic_error("Content-Length header and actual length don't match");
 

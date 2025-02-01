@@ -18,7 +18,7 @@ class ABlock {
         ABlock();
         ABlock(const ABlock& other);
         bool isGetAccepted;
-        bool isPostAllowed;
+        bool isPostAccepted;
         bool isDeleteAccepted;
         bool isAutoIndexOn;
         bool isLimited;

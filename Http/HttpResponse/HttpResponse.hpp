@@ -4,10 +4,7 @@
 #include "../AHttp/AHttp.hpp"
 
 #include "../../Server/Server.hpp"
-#include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
-#include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
-#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
-#include "../../Exceptions/NotImplementedException/NotImplementedException.hpp"
+#include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
 enum ERRORCODES {
     BAD_REQUEST=400,

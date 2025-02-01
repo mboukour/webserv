@@ -1,12 +1,13 @@
 #include "ABlock.hpp"
 #include <exception>
-#include "../../Exceptions/UnknownMethodException/UnknownMethodException.hpp"
+#include <stdexcept>
 
-ABlock::ABlock(): isGetAccepted(true), isPostAllowed(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
+
+ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),
-      isPostAllowed(other.isPostAllowed),
+      isPostAccepted(other.isPostAccepted),
       isDeleteAccepted(other.isDeleteAccepted),
       isAutoIndexOn(other.isAutoIndexOn),
       isLimited(other.isLimited),
@@ -29,7 +30,7 @@ bool ABlock::getMethod(int method) const {
         case GET:
             return this->isGetAccepted;
         case POST:
-            return this->isPostAllowed;
+            return this->isPostAccepted;
         case DELETE:
             return this->isDeleteAccepted;
         default:
@@ -57,7 +58,7 @@ void ABlock::setMethod(int method, bool toSet) {
             this->isGetAccepted = toSet;
             break;
         case POST:
-            this->isPostAllowed = toSet;
+            this->isPostAccepted = toSet;
             break;
         case DELETE:
             this->isDeleteAccepted = toSet;
@@ -71,7 +72,7 @@ void ABlock::setMethod(int method, bool toSet) {
 
 void ABlock::setAllMethodsAsDenied(void) {
     this->isGetAccepted = false;
-    this->isPostAllowed = false;
+    this->isPostAccepted = false;
     this->isDeleteAccepted = false;
 }
 
@@ -85,12 +86,12 @@ void ABlock::setIsLimited(bool isLimited) {this->isLimited = isLimited;}
 
 bool ABlock::isMethodAllowed(const std::string &method) const {
     if (method == "POST")
-        return (this->isPostAllowed);
+        return (this->isPostAccepted);
     if (method == "GET")
         return (this->isGetAccepted);
     if (method == "DELETE")
         return (this->isDeleteAccepted);
-    throw UnknownMethodException(method);
+    throw std::runtime_error("Unkown method");
 }
 
 

@@ -13,14 +13,7 @@
 #include "../../Http/HttpRequest/HttpRequest.hpp"
 #include "../../Http/HttpResponse/HttpResponse.hpp"
 
-#include "../../Exceptions/HttpRequestParseException/HttpRequestParseException.hpp"
-#include "../../Exceptions/NotImplementedException/NotImplementedException.hpp"
-#include "../../Exceptions/MethodNotAllowedException/MethodNotAllowedException.hpp"
-#include "../../Exceptions/PayloadTooLargeException/PayloadTooLargeException.hpp"
-#include "../../Exceptions/NotFoundException/NotFoundException.hpp"
-#include "../../Exceptions/UriTooLongException/UriTooLongException.hpp"
-#include "../../Exceptions/ConflictException/ConflictException.hpp"
-
+#include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
 
 ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
@@ -50,9 +43,7 @@ void ServerManager::sendError(int errorCode, int clientFd, const char *what) {
     std::string responseStr = response.toString();
     DEBUG && std::cerr << "Response sent with code " << errorCode << " Reason: " << what << "\n" << std::endl;
     send(clientFd, responseStr.c_str(), responseStr.size(), 0);
-    close(clientFd);
-    epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-    DEBUG && std::cout << "Connection closed after error\n";
+
 }
 
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
@@ -88,22 +79,13 @@ void ServerManager::handleClient(int clientFd) {
             DEBUG && std::cout << "Response sent with code 200.\n";
             send(clientFd, responseStr.c_str(), responseStr.size(), 0);
         // might make exceptions have error codes so we catch a singular exception...0
-        } catch (const HttpRequestParseException &exec) {
-            sendError(BAD_REQUEST, clientFd, exec.what());
-        } catch (const UriTooLongException &exec) {
-            sendError(URI_TOO_LONG, clientFd, exec.what());
-        } catch (const MethodNotAllowedException &exec) {
-            sendError(METHOD_NOT_ALLOWED, clientFd, exec.what());
-        } catch (const NotImplementedException &exec) {
-            sendError(NOT_IMPLEMENTED, clientFd, exec.what());
-        } catch (const PayloadTooLargeException &exec) {
-            sendError(PAYLOAD_TOO_LARGE, clientFd, exec.what());
-        } catch (const NotFoundException &exec) { 
-            sendError(NOT_FOUND, clientFd, exec.what());
-        } catch (const ConflictException &exec) {
-            sendError(CONFLICT, clientFd, exec.what());
-        } catch (const std::exception &exec) {
-            sendError(INTERNAL_SERVER_ERROR, clientFd, exec.what());
+        } catch (const HttpErrorException &exec) {
+            DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+            std::string errorPageStr = exec.getErrorPageHtml();
+            send(clientFd, errorPageStr.c_str(), errorPageStr.size(), 0);
+            close(clientFd);
+            epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+            DEBUG && std::cout << "Connection closed after error\n";
         }
     }
     else
