@@ -5,6 +5,7 @@
 // #include <unordered_map>
 #include <vector>
 #include <iostream>
+#include <map>
 
 enum HttpMethod {
     GET,
@@ -25,11 +26,12 @@ class ABlock {
         size_t maxBodySize;
         std::string root;
         std::string uploadStore;
-
+        std::map<std::string, std::string> errorPages;
 
     public:
         std::string getRoot(void) const;
         size_t getMaxBodySize(void) const;
+        ABlock& operator=(const ABlock& other);
         bool getMethod(int method) const;
         bool getIsAutoIndexOn(void) const;
         void setRoot(const std::string &root);
@@ -39,7 +41,12 @@ class ABlock {
         void setAutoIndex(bool toSet);
         void setIsLimited(bool isLimited);
         bool getIsLimited(void) const;
+        void setErrorPagePath(const std::string &errorCode, const std::string &errorPage);
+        std::string getErrorPageHtml(int errorCode) const;
         bool isMethodAllowed(const std::string& method) const;
+        std::map<std::string, std::string>::const_iterator errorPagesCbegin(void) const;
+        std::map<std::string, std::string>::const_iterator errorPagesCend(void) const;
+
         virtual void startServer(void) = 0;
         virtual ~ABlock();
 };

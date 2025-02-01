@@ -1,7 +1,8 @@
 #include "ABlock.hpp"
 #include <exception>
 #include <stdexcept>
-
+#include <sstream>
+#include <fstream>
 
 ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
 
@@ -13,7 +14,23 @@ ABlock::ABlock(const ABlock &other)
       isLimited(other.isLimited),
       maxBodySize(other.maxBodySize),
       root(other.root),
-      uploadStore(other.uploadStore) {}
+      uploadStore(other.uploadStore),
+      errorPages(other.errorPages) {}  
+
+ABlock &ABlock::operator=(const ABlock &other) {
+    if (this == &other)
+        return *this;
+    this->isGetAccepted = other.isGetAccepted;
+    this->isPostAccepted = other.isPostAccepted;
+    this->isDeleteAccepted = other.isDeleteAccepted;
+    this->isAutoIndexOn = other.isAutoIndexOn;
+    this->isLimited = other.isLimited;
+    this->maxBodySize = other.maxBodySize;
+    this->root = other.root;
+    this->uploadStore = other.uploadStore;
+    this->errorPages = other.errorPages;
+    return *this;
+}
 
 std::string ABlock::getRoot(void) const {
     return root;
@@ -92,6 +109,37 @@ bool ABlock::isMethodAllowed(const std::string &method) const {
     if (method == "DELETE")
         return (this->isDeleteAccepted);
     throw std::runtime_error("Unkown method");
+}
+
+
+void ABlock::setErrorPagePath(const std::string &errorCode, const std::string &errorPage) {
+    this->errorPages[errorCode] = errorPage;
+}
+
+std::string ABlock::getErrorPageHtml(int errorCode) const {
+    std::stringstream ss;
+    ss << errorCode;
+    std::string errorPath("");
+    std::map<std::string, std::string>::const_iterator it = this->errorPages.find(ss.str());
+    if (it != this->errorPages.end()) {
+        errorPath =  it->second;
+    }
+    std::ifstream file(errorPath.c_str());
+    if (!file.is_open()) {
+        return "";
+    }
+    ss.clear();
+    ss << file.rdbuf();
+    return ss.str();
+
+}
+
+std::map<std::string, std::string>::const_iterator ABlock::errorPagesCbegin(void) const {
+    return this->errorPages.begin();
+}
+
+std::map<std::string, std::string>::const_iterator ABlock::errorPagesCend(void) const {
+    return this->errorPages.end();
 }
 
 

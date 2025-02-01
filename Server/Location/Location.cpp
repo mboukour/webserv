@@ -1,7 +1,7 @@
 #include "Location.hpp"
 #include "../Server.hpp"
 
-Location::Location(): ABlock(), locationName(""), myServer(NULL) {}
+Location::Location(): ABlock(), locationName("") {}
 
 void Location::startServer(void)
 {
@@ -9,22 +9,26 @@ void Location::startServer(void)
 }
 
 Location::Location(const Location& other)
-    : ABlock(other), locationName(other.locationName), myServer(other.myServer) {}
+    : ABlock(other), locationName(other.locationName) {}
+
+Location& Location::operator=(const Location& other)
+{
+    if (this == &other)
+        return *this;
+    ABlock::operator=(other);
+    this->locationName = other.locationName;
+    return *this;
+}
 
 void Location::setLocationName(const std::string &locationName) {
     this->locationName = locationName;
 }
+
 
 std::string Location::getLocationName(void) const {
     return (this->locationName);
 }
 
 
-void Location::setMyServer(const Server *server) {
-    this->myServer = server;
-}
 
-
-const Server *Location::getMyServer(void) const {
-    return (this->myServer);
-}
+Location::~Location() {}

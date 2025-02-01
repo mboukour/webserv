@@ -6,9 +6,12 @@
 
 ServerFactory::ServerFactory() {}
 
+
+
 bool ServerFactory::isValidErrorCode(const std::string &code) // TO IMPROVE
 {
-    return (code == "404" || code == "500" || code == "502" || code == "503" || code == "504");
+
+    return (code == "400" || code == "403" || code == "404" || code == "405" || code == "409" || code == "413" || code == "414" || code == "500"  || code == "501" || code == "502" || code == "503" || code == "504" || code == "505");
 }
 
 
@@ -95,7 +98,16 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
                 throw std::logic_error("Inva0lid unit found on max body size directive 3");
             result.setMaxBodySize(integerPart);
         }
-    }
+    } else if (currentDirective == "error_page") {
+            if (directives.size() < 3) 
+                throw std::logic_error("Invalid error page directive");
+            const std::string errorPath = *(directives.end() - 1);
+            for (stringVec::const_iterator itr = directives.begin() + 1; itr != directives.end() - 1; itr++) {
+                if (!isValidErrorCode(*itr)) throw std::logic_error("Invalid error code found");
+                const std::string errorCode = *itr;
+                result.setErrorPagePath(errorCode, errorPath);
+            }
+        }
     // else
     // {
     //     std::cout << currentDirective << '\n';
@@ -137,14 +149,7 @@ Server ServerFactory::createServer(const Block &serverBlock) {
                 throw std::logic_error("Invalid server name");
             result.setServerName(ite->begin()[1]);
         }
-        else if (currentDirective == "error_page") {
-            if (ite->size() < 3) 
-                throw std::logic_error("Invalid error page directive");
-            for (stringVec::const_iterator itr = ite->begin() + 1; itr != ite->end() - 1; itr++) {
-                if (!isValidErrorCode(*itr)) throw std::logic_error("Invalid error code found");
-                // Add func
-            }
-        }
+
         else if (currentDirective == "return")
             throw std::logic_error("The return directive can not be used in the server block.");
         else
@@ -184,6 +189,7 @@ Server ServerFactory::createServer(const Block &serverBlock) {
             else
                 setBlockDirectives(newLocation, *ite);
         }
+        std::cout << newLocation << '\n';
         result.addLocation(newLocation);
     }
 

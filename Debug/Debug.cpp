@@ -16,6 +16,11 @@ std::ostream& operator<<(std::ostream& outputStream, const Location& location) {
     outputStream << indent << "    POST Accepted: " << (location.getMethod(POST) ? "Yes" : "No") << "\n";
     outputStream << indent << "    DELETE Accepted: " << (location.getMethod(DELETE) ? "Yes" : "No") << "\n";
     outputStream << indent << "    Auto Index On: " << (location.getIsAutoIndexOn() ? "Yes" : "No") << "\n";
+    outputStream << indent << "    Error Pages:\n";
+    std::map<std::string, std::string>::const_iterator it;
+    for (it = location.errorPagesCbegin(); it != location.errorPagesCend(); ++it) {
+        outputStream << indent << "    " << it->first << ": " << it->second << "\n";
+    }
 
     return outputStream;
 }
@@ -33,6 +38,11 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
     outputStream << "POST Accepted: " << (other.getMethod(POST) ? "Yes" : "No") << "\n";
     outputStream << "DELETE Accepted: " << (other.getMethod(DELETE) ? "Yes" : "No") << "\n";
     outputStream << "Auto Index On: " << (other.getIsAutoIndexOn() ? "Yes" : "No") << "\n";
+    outputStream << "Error Pages:\n";
+    std::map<std::string, std::string>::const_iterator ite;
+    for (ite = other.errorPagesCbegin(); ite != other.errorPagesCend(); ++ite) {
+        outputStream << "  " << ite->first << ": " << ite->second << "\n";
+    }
     outputStream << "Locations:\n";
     std::vector<Location>::const_iterator it;
     // for (it = other.locationsBegin(); it != other.locationsEnd(); ++it) {
