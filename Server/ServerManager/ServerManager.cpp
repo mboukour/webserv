@@ -64,6 +64,7 @@ void ServerManager::handleClient(int clientFd) {
         int port = ntohs(addr.sin_port);
         std::string responseStr;
         try  {
+            // need to get host from the request before
             const Server &server = getServer(port);
             HttpRequest request(buffer, server);
             DEBUG && std::cout << "New request: " << request << std::endl;

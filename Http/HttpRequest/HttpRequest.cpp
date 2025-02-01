@@ -80,7 +80,7 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
         this->headers[key] = value;
     }
 
-    if (line != "\r") throw std::logic_error("Invalid headers terminator");
+    // if (line != "\r") throw std::logic_error("Invalid headers terminator");
     if (!hostFound) throw std::logic_error("Host header not found");
     // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
     if (this->method == "POST")

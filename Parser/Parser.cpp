@@ -104,6 +104,8 @@ Block Parser::parseConfigFile(void)
     return globalBlock;
 }
 
+
+// Need to figure out a way to inherit error pages.
 void Parser::setLocationsDirectives(std::vector<Block> &servers) {
     for (std::vector<Block>::iterator serverIt = servers.begin(); serverIt != servers.end(); ++serverIt) {
         const std::vector<stringVec> &serverDirectives = serverIt->directives;

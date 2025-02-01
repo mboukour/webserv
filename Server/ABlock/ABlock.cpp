@@ -4,7 +4,7 @@
 #include <sstream>
 #include <fstream>
 
-ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages() {}
+ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages(), index() {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),
@@ -15,7 +15,9 @@ ABlock::ABlock(const ABlock &other)
       maxBodySize(other.maxBodySize),
       root(other.root),
       uploadStore(other.uploadStore),
-      errorPages(other.errorPages) {}  
+      errorPages(other.errorPages),
+      index(other.index)
+      {}  
 
 ABlock &ABlock::operator=(const ABlock &other) {
     if (this == &other)
@@ -29,6 +31,7 @@ ABlock &ABlock::operator=(const ABlock &other) {
     this->root = other.root;
     this->uploadStore = other.uploadStore;
     this->errorPages = other.errorPages;
+    this->index = other.index;
     return *this;
 }
 
@@ -140,6 +143,18 @@ std::map<std::string, std::string>::const_iterator ABlock::errorPagesCbegin(void
 
 std::map<std::string, std::string>::const_iterator ABlock::errorPagesCend(void) const {
     return this->errorPages.end();
+}
+
+void ABlock::addIndex(const std::string &index) {
+    this->index.push_back(index);
+}
+
+std::vector<std::string>::const_iterator ABlock::indexCbegin(void) const {
+    return this->index.begin();
+}
+
+std::vector<std::string>::const_iterator ABlock::indexCend(void) const {
+    return this->index.end();
 }
 
 

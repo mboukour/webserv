@@ -31,8 +31,13 @@ bool ServerFactory::isAcceptedSubBlock(const std::string &directive)
 void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directives) {
     std::string currentDirective = directives.begin()[0];
 
-
-    if (currentDirective == "methods") {
+    if (currentDirective == "index") {
+        if (directives.size() < 2)
+            throw std::logic_error("Invalid index directive found");
+        for (stringVec::const_iterator itr = directives.begin() + 1; itr != directives.end(); itr++)
+            result.addIndex(*itr);
+    }
+    else if (currentDirective == "methods") {
         if (directives.size() == 1 || directives.size() > 4)
             throw std::logic_error("Invalid methods directive found");
         result.setAllMethodsAsDenied();
@@ -189,7 +194,6 @@ Server ServerFactory::createServer(const Block &serverBlock) {
             else
                 setBlockDirectives(newLocation, *ite);
         }
-        std::cout << newLocation << '\n';
         result.addLocation(newLocation);
     }
 

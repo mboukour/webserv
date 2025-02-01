@@ -12,6 +12,11 @@ std::ostream& operator<<(std::ostream& outputStream, const Location& location) {
         outputStream << "Unlimited\n";
     else
         outputStream << location.getMaxBodySize() << " bytes\n";
+    outputStream << indent << "    Index:\n";
+    std::vector<std::string>::const_iterator iti;
+    for (iti = location.indexCbegin(); iti != location.indexCend(); ++iti) {
+        outputStream << indent << "        " << *iti << "\n";
+    }
     outputStream << indent << "    GET Accepted: " << (location.getMethod(GET) ? "Yes" : "No") << "\n";
     outputStream << indent << "    POST Accepted: " << (location.getMethod(POST) ? "Yes" : "No") << "\n";
     outputStream << indent << "    DELETE Accepted: " << (location.getMethod(DELETE) ? "Yes" : "No") << "\n";
@@ -19,7 +24,7 @@ std::ostream& operator<<(std::ostream& outputStream, const Location& location) {
     outputStream << indent << "    Error Pages:\n";
     std::map<std::string, std::string>::const_iterator it;
     for (it = location.errorPagesCbegin(); it != location.errorPagesCend(); ++it) {
-        outputStream << indent << "    " << it->first << ": " << it->second << "\n";
+        outputStream << indent << "        " << it->first << ": " << it->second << "\n";
     }
 
     return outputStream;
@@ -34,6 +39,11 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
         outputStream << "Unlimited\n";
     else
         outputStream << other.getMaxBodySize() << " bytes\n";
+    outputStream << "Index:\n";
+    std::vector<std::string>::const_iterator iti;
+    for (iti = other.indexCbegin(); iti != other.indexCend(); ++iti) {
+        outputStream << "  " << *iti << "\n";
+    }
     outputStream << "GET Accepted: " << (other.getMethod(GET) ? "Yes" : "No") << "\n";
     outputStream << "POST Accepted: " << (other.getMethod(POST) ? "Yes" : "No") << "\n";
     outputStream << "DELETE Accepted: " << (other.getMethod(DELETE) ? "Yes" : "No") << "\n";
