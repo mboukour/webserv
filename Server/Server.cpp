@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "../Debug/Debug.hpp"
+#include <sstream>
 
 Server::Server(): ABlock(), port(-1), host(""),  fdSocket(-1), serverName("") {}
 
@@ -24,9 +25,21 @@ int Server::getFdSocket(void) const {return this->fdSocket;}
 std::string Server::getServerName(void) const {return this->serverName;}
 
 void Server::startServer(void) {
-    struct sockaddr_in server_addr;
+    struct addrinfo hints, *res;
     std::string errorStr;
-    this->fdSocket = socket(AF_INET, SOCK_STREAM, 0); // listen to incoming clients
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    std::stringstream ss;
+    ss << this->port;
+    if (getaddrinfo(this->host.c_str(), ss.str().c_str(), &hints, &res) != 0)
+    {
+        errorStr = "Error: getaddrinfo failed. Errno: ";
+        errorStr += strerror(errno);
+        throw std::runtime_error(errorStr);
+    }
+    this->fdSocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol); // listen to incoming clients
     if (this->fdSocket == -1)
     {
         errorStr = "Error: socket failed. Errno: ";
@@ -42,11 +55,7 @@ void Server::startServer(void) {
         close(this->fdSocket);
         throw std::runtime_error(errorStr);
     }
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY; // WROOOOOOOOOONG
-    server_addr.sin_port = htons(this->port);
-    // Get addr info is necessary to set the ip address
-    if (bind(this->fdSocket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
+    if (bind(this->fdSocket, res->ai_addr, res->ai_addrlen) == -1)
     {
         errorStr = "Error: bind failed. Errno: ";
         errorStr += strerror(errno);
