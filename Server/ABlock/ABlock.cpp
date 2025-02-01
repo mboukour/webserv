@@ -4,7 +4,7 @@
 #include <sstream>
 #include <fstream>
 
-ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore("") {}
+ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages() {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),

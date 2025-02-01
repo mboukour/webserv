@@ -5,7 +5,7 @@
 #include <exception>
 #include <sstream>
 #include <iostream> // to remove later
-
+#include <stdexcept>
 
 HttpRequest::HttpRequest(const std::string &request, const Server& server): requestBlock(&server) {
 
@@ -41,23 +41,12 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
             }
         }
 
-    try
-    {
-        try {
-        
-            if (!this->requestBlock->isMethodAllowed(this->method))
-                throw HttpErrorException(this->version, METHOD_NOT_ALLOWED, "Method Not Allowed", "method not allowed: " + this->method, requestBlock->getErrorPageHtml(METHOD_NOT_ALLOWED));
-        } catch (const std::exception &exec) {
-                throw HttpErrorException(this->version, NOT_IMPLEMENTED, "Not Implemented", "method not implemented: " + this->method, requestBlock->getErrorPageHtml(NOT_IMPLEMENTED));
-        }
 
-        
-    }
-    catch(const std::exception& e)
-    {
-        throw HttpErrorException(this->version, NOT_IMPLEMENTED, "Not Implemented", "method not implemented", requestBlock->getErrorPageHtml(NOT_IMPLEMENTED));
-    }
-    
+    if (!this->requestBlock->isMethodAllowed(this->method))
+        throw HttpErrorException(this->version, METHOD_NOT_ALLOWED, "Method Not Allowed", "method not allowed: " + this->method, requestBlock->getErrorPageHtml(METHOD_NOT_ALLOWED));
+
+
+
     this->bodySize = 0;
     while(getline(ss, line) && line != "\r") {
         if (line[line.size() - 1] == '\r')
@@ -91,7 +80,7 @@ HttpRequest::HttpRequest(const std::string &request, const Server& server): requ
         this->headers[key] = value;
     }
 
-    // if (line != "\r") throw std::logic_error("Invalid headers terminator");
+    if (line != "\r") throw std::logic_error("Invalid headers terminator");
     if (!hostFound) throw std::logic_error("Host header not found");
     // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
     if (this->method == "POST")
