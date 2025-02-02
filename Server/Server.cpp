@@ -65,6 +65,7 @@ void Server::startServer(void) {
         close(this->fdSocket);
         throw std::runtime_error(errorStr);
     }
+    freeaddrinfo(res);
     if (listen(this->fdSocket, 10) == -1)
     {
         errorStr = "Error: listen failed. Errno: ";
