@@ -14,7 +14,9 @@ class HttpRequest: public AHttp {
     private:
         std::string method;
         std::string path;
+        std::string queryString;
         std::string primalRequest;
+        const Server *server;
         const ABlock *requestBlock;
 
         static const Server& getServer(const std::string &host, const std::vector<Server> &servers, int serverPort);
@@ -22,7 +24,9 @@ class HttpRequest: public AHttp {
         HttpRequest(const std::string &request, const std::vector<Server>& servers, int serverPort); // throws exceptions that should never terminate execution of the program
         std::string getMethod() const;
         std::string getPath() const;
+        std::string getQueryString() const;
         std::string toString() const;
+        const Server *getServer(void) const;
         const ABlock *getRequestBlock(void) const;
 };
 

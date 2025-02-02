@@ -10,6 +10,7 @@
 #include <algorithm>
 
 
+
 int main(int ac, char **av)
 {
     std::string line;

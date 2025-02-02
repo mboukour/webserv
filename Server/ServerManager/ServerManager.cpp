@@ -132,7 +132,7 @@ void ServerManager::handleConnections(void) {
                 handleClient(fd);
         }
 
-        }
+    }
 }
 
 
