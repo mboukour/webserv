@@ -2,30 +2,25 @@
 #define CGI_HPP
 
 #include "../Http/HttpRequest/HttpRequest.hpp"
-// #include "../Http/HttpResponse/HttpResponse.hpp"
 #include <string>
-
+#include <map>
 
 #define CGI_TIMEOUT 5
-// needs to handle big responses (chunked encoding)
+
 class Cgi {
     private:
-        std::string interpreterPath;
-        std::string scriptName;
-        std::map<std::string, std::string> env;
+        Cgi();
 
-        std::string cgiResponse;
-        char **_env;
         static bool isValidCgiExtension(const std::string &extension);
-        static std::string getExtentionPath(const std::string &extension);
-        void setCgiNames(const HttpRequest &request);
+        static std::string getInterpreterPath(const std::string &extension, const HttpRequest &request);
+        static std::string getScriptName(const HttpRequest &request);
+        static std::map<std::string, std::string> createCgiEnv(const HttpRequest &request);
+        static char **convertEnvToDoublePointer(const std::map<std::string, std::string> &env);
+        static void cleanupEnv(char **env);
 
     public:
-        Cgi(const HttpRequest &request);
-        ~Cgi();
-        char  **swaptoDoublePointer(void);
-        void    cleanCgi(void);
-        std::string    getCgiResponse(void) const;
+        static std::string getCgiResponse(const HttpRequest &request);
+
 };
 
 #endif
