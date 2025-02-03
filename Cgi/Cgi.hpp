@@ -10,9 +10,6 @@
 // needs to handle big responses (chunked encoding)
 class Cgi {
     private:
-        // int sockets[2];
-        // int pid;
-        // int code;
         std::string interpreterPath;
         std::string scriptName;
         std::map<std::string, std::string> env;
@@ -26,7 +23,6 @@ class Cgi {
     public:
         Cgi(const HttpRequest &request);
         ~Cgi();
-        // void    setEnv();
         char  **swaptoDoublePointer(void);
         void    cleanCgi(void);
         std::string    getCgiResponse(void) const;

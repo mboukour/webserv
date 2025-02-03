@@ -11,17 +11,6 @@
 #include <sys/stat.h>
 #include <cstdlib>
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
-/*
-    For the enviroment i need:
-        REQUEST_METHOD = (POST, GET, DELETE)
-        CONTENT_LENGTH = (size of the body)
-        QUERY_STRING = (the query string)
-        SCRIPT_NAME = (the path to the script)
-        SERVER_PROTOCOL = (HTTP/1.1)
-        SERVER_NAME = (the server name)
-        SERVER_PORT = (the server port)
-        GATEWAY_INTERFACE = (CGI/1.1)
-*/
 
 
 Cgi::Cgi(const HttpRequest &request) {
@@ -39,22 +28,22 @@ Cgi::Cgi(const HttpRequest &request) {
     int socket[2];
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket) == -1)
         throw std::logic_error("Socketpair failed");
-    char **env = this->swaptoDoublePointer(); // should be protected
+    this->_env = this->swaptoDoublePointer();
     pid_t pid = fork();
     if (pid == -1)
         throw std::logic_error("Fork failed");
     if (pid == 0) {
         close(socket[0]); // parent side of the sockets
         dup2(socket[1], STDOUT_FILENO); // this will need to only write the result
+        close(socket[1]);
         char *argv[3];
         std::string interpreterPath = this->interpreterPath;
         std::string scriptName = this->scriptName;
         argv[0] = const_cast<char*>(interpreterPath.data());
         argv[1] = const_cast<char*>(scriptName.data());
         argv[2] = NULL;
-        execve(this->interpreterPath.c_str(), argv, env);
+        execve(this->interpreterPath.c_str(), argv, this->_env);
         cleanCgi();
-        close(socket[1]);
         std::cerr << "CGI did not work\n";
         std::exit(1);
     }
@@ -119,8 +108,6 @@ void Cgi::setCgiNames(const HttpRequest &request) {
 }
 
 
-
-
 Cgi::~Cgi() {
 };
 
@@ -128,19 +115,28 @@ bool Cgi::isValidCgiExtension(const std::string &extension) { // add more if we 
     return (extension == "php" || extension == "py" || extension == "pl");
 };
 
-
-char **Cgi::swaptoDoublePointer(void) {
-    char **env = new char*[this->env.size() + 1];
-    int i = 0;
-    for (std::map<std::string, std::string>::iterator it = this->env.begin(); it != this->env.end(); it++) {
-        env[i] = new char[it->first.size() + it->second.size() + 2];
-        strcpy(env[i], (it->first + "=" + it->second).c_str());
-        i++;
+char **Cgi::swaptoDoublePointer() {
+    try {
+        _env = new char*[env.size() + 1];
+    } catch (const std::bad_alloc &) {
+        throw std::logic_error("Memory allocation failed for CGI environment");
     }
-    env[i] = NULL;
-    _env = env;
-    return (env);
-};
+    int i = 0;
+    try {
+        for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it) {
+            std::string entry = it->first + "=" + it->second;
+            _env[i] = new char[entry.size() + 1];
+            std::strcpy(_env[i], entry.c_str());
+            i++;
+        }
+        _env[i] = NULL;
+    } catch (const std::bad_alloc &) {
+        cleanCgi();
+        throw std::logic_error("Memory allocation failed for CGI environment variables");
+    }
+    return _env;
+}
+
 
 void Cgi::cleanCgi(void) {
     if (_env) {
