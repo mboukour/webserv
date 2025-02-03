@@ -25,7 +25,7 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd): clientFd(c
     if (method == "DELETE")
         handleDeleteRequest(request);
     else if (method == "GET")
-        handlePostRequest(request);
+        handleGetRequest(request);
     else if (method == "POST")
         handlePostRequest(request);
 }
@@ -43,7 +43,7 @@ HttpResponse::HttpResponse(const std::string &version, int statusCode,
 std::string HttpResponse::toString(void) const {
     std::stringstream ss;
     ss << this->version << " " << this->statusCode << " " << this->reasonPhrase << "\r\n";
-    for(std::map<std::string, std::string >::const_iterator it = this->headers.begin(); 
+    for(std::map<std::string, std::string >::const_iterator it = this->headers.begin();
         it != this->headers.end(); it++) {
             ss << it->first << ": " << it->second << "\r\n";
         }
