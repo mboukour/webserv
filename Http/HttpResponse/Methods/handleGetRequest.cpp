@@ -10,7 +10,7 @@ const std::string YELLOW = "\033[33m";
 const std::string RESET = "\033[0m";
 #include <string>
 #include <sys/socket.h>
-
+#include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
 std::string const generateContent(const HttpRequest &request, HttpResponse &response, std::string const path){
     std::string content;
@@ -18,7 +18,7 @@ std::string const generateContent(const HttpRequest &request, HttpResponse &resp
     (void)request;
     std::fstream fileSs(path.c_str());
     if (fileSs.fail() == true)
-        content = "<html><body><h1>404 Not Found</h1><p>The requested URL was not found on this server.</p></body></html>";
+        throw HttpErrorException(request.getVersion(), NOT_FOUND, "Not Found", "cant find file", request.getRequestBlock()->getErrorPageHtml(NOT_FOUND));
     std::string line;
     while (std::getline(fileSs, line))
         content += line + "\n";
