@@ -53,7 +53,8 @@ class ABlock {
 
         void setCgiInfo(const std::string &language, const std::string &path);
         const std::string &getCgiPath(const std::string &language) const;
-
+        std::map<std::string, std::string>::const_iterator cgisCbegin(void) const;
+        std::map<std::string, std::string>::const_iterator cgisCend(void) const;
 
         void setErrorPagePath(const std::string &errorCode, const std::string &errorPage);
         std::string getErrorPageHtml(int errorCode) const;

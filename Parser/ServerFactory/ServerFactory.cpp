@@ -27,7 +27,7 @@ bool ServerFactory::isValidDirective(const std::string &directive) // TO IMPROVE
 {
     return (directive == "listen" || directive == "server_name" || directive == "error_page"
             || directive == "client_max_body_size" || directive == "root" || directive == "methods"
-            || directive == "autoindex" || directive == "index" || directive == "return" || directive == "upload_store");
+            || directive == "autoindex" || directive == "index" || directive == "return" || directive == "upload_store" || directive == "cgi");
 }
 
 bool ServerFactory::isAcceptedSubBlock(const std::string &directive)
