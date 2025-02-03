@@ -35,7 +35,7 @@ Cgi::Cgi(const HttpRequest &request) {
     if (pid == 0) {
         close(socket[0]); // parent side of the sockets
         dup2(socket[1], STDOUT_FILENO); // this will need to only write the result
-        // close(socket[1]); // for leaks ?
+        close(socket[1]);
         char *argv[3];
         std::string interpreterPath = this->interpreterPath;
         std::string scriptName = this->scriptName;
@@ -44,7 +44,6 @@ Cgi::Cgi(const HttpRequest &request) {
         argv[2] = NULL;
         execve(this->interpreterPath.c_str(), argv, this->_env);
         cleanCgi();
-        close(socket[1]);
         std::cerr << "CGI did not work\n";
         std::exit(1);
     }
