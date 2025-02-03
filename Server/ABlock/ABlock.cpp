@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages(), index() {}
+ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages(), index(), cgis() {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),
@@ -19,7 +19,8 @@ ABlock::ABlock(const ABlock &other)
       root(other.root),
       uploadStore(other.uploadStore),
       errorPages(other.errorPages),
-      index(other.index)
+      index(other.index),
+        cgis(other.cgis)
       {}  
 
 ABlock &ABlock::operator=(const ABlock &other) {
@@ -35,6 +36,8 @@ ABlock &ABlock::operator=(const ABlock &other) {
     this->uploadStore = other.uploadStore;
     this->errorPages = other.errorPages;
     this->index = other.index;
+    this->cgis = other.cgis;
+    
     return *this;
 }
 
@@ -168,6 +171,15 @@ void ABlock::setCgiInfo(const std::string &language, const std::string &path) {
 const std::string &ABlock::getCgiPath(const std::string &language) const { // will throw out_of_range if not found
     return this->cgis.at(language);
 }
+
+std::map<std::string, std::string>::const_iterator ABlock::cgisCbegin(void) const {
+    return this->cgis.begin();
+}
+
+std::map<std::string, std::string>::const_iterator ABlock::cgisCend(void) const {
+    return this->cgis.end();
+}
+
 
 
 ABlock::~ABlock() {}
