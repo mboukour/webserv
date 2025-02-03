@@ -69,20 +69,46 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
             hostFound = true;
             const Server &server = getServer(value, servers, serverPort);
             this->server = &server;
-            this->requestBlock = &server;
+            this->requestBlock = &server; // absolute fallback
             std::string toMatch = this->path;
-            if (toMatch[toMatch.size() - 1] == '/')
-                toMatch = toMatch.substr(0, toMatch.size() - 1);
-               for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+            bool exactMatchFound = false;
+            bool prefixMatchFound = false;
+            std::string longestMatch;
+
+            for (std::vector<Location>::const_iterator it = server.locationsCbegin();
                 it != server.locationsCend(); it++) {
-                    // DEBUG && std::cout << "Current location: " << it->getLocationName() << '\n';
-                    if (this->path == it->getLocationName() || toMatch == it->getLocationName())
-                    {
+                std::string locationName = it->getLocationName();
+
+                if (locationName[locationName.size() - 1] == '/') {
+                    locationName = locationName.substr(0, locationName.size() - 1);
+                }
+
+                if (toMatch == locationName) {
+                    this->requestBlock = &(*it);
+                    exactMatchFound = true;
+                    break;
+                }
+
+                if (!exactMatchFound && toMatch.find(locationName) == 0) {
+                    if (locationName.length() > longestMatch.length()) {
+                        longestMatch = locationName;
                         this->requestBlock = &(*it);
-                        std::cout << "MATCHED\n";
-                        break ;
+                        prefixMatchFound = true;
                     }
                 }
+            }
+    
+            if (!exactMatchFound && !prefixMatchFound) {
+                for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+                    it != server.locationsCend(); it++) {
+                    if (it->getLocationName() == "/") {
+                        this->requestBlock = &(*it);
+                        break;
+                    }
+                }
+            }
+
+
         }
         setIsCgi();
     }

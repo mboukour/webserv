@@ -32,6 +32,7 @@ std::string const generateContent(const HttpRequest &request, HttpResponse &resp
 
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
+    std::cout << YELLOW << "path: [" << path << "]" << RESET << std::endl;
     std::string const content = generateContent(request, *this, path);
 	std::stringstream responseSs;
     std::cout << YELLOW << "path: [" << path << "]" << RESET << std::endl;

@@ -18,6 +18,9 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
     }
     std::string interpreterPath = getInterpreterPath(extension, request);
     std::string scriptName = getScriptName(request);
+    if (access(scriptName.c_str(), F_OK) == -1)
+        throw HttpErrorException(request.getVersion(), 404, "Not Found", "The requested script was not found", request.getRequestBlock()->getErrorPageHtml(404));
+
     std::map<std::string, std::string> env = createCgiEnv(request);
     char **envp = convertEnvToDoublePointer(env);
 
