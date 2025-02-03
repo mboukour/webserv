@@ -18,7 +18,7 @@ std::string const generateContent(const HttpRequest &request, HttpResponse &resp
     (void)request;
     std::fstream fileSs(path.c_str());
     if (fileSs.fail() == true)
-        throw HttpErrorException(request.getVersion(), NOT_FOUND, "Not Found", "cant find file", request.getRequestBlock()->getErrorPageHtml(NOT_FOUND));
+        throw HttpErrorException(NOT_FOUND, request, "cant find file");
     std::string line;
     while (std::getline(fileSs, line))
         content += line + "\n";
@@ -32,9 +32,9 @@ std::string const generateContent(const HttpRequest &request, HttpResponse &resp
 
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
+    std::cout << YELLOW << "path: [" << path << "]" << RESET << std::endl;
     std::string const content = generateContent(request, *this, path);
 	std::stringstream responseSs;
-    std::cout << YELLOW << "path: [" << path << "]" << RESET << std::endl;
 	responseSs << "HTTP/1.1 200 OK\r\n";
 	responseSs << "Content-Type: text/html\r\n";
 	responseSs << "Connection: close\r\n";

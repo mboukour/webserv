@@ -54,12 +54,12 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         {
             std::stringstream l(value);
             l >> this->bodySize;
-            if (l.fail()) throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid content length header", requestBlock->getErrorPageHtml(BAD_REQUEST));
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
             std::string dummy;
             l >> dummy;
-            if (!l.eof()) throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid content length header", requestBlock->getErrorPageHtml(BAD_REQUEST));
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
             if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
-                throw  HttpErrorException(this->version, PAYLOAD_TOO_LARGE, "Payload Too Large", "payload too large", requestBlock->getErrorPageHtml(PAYLOAD_TOO_LARGE));
+                throw HttpErrorException(PAYLOAD_TOO_LARGE, *this, "payload too large");
             contentLengthFound = true;
             continue;
         }
@@ -69,20 +69,46 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
             hostFound = true;
             const Server &server = getServer(value, servers, serverPort);
             this->server = &server;
-            this->requestBlock = &server;
+            this->requestBlock = &server; // absolute fallback
             std::string toMatch = this->path;
-            if (toMatch[toMatch.size() - 1] == '/')
-                toMatch = toMatch.substr(0, toMatch.size() - 1);
-               for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+            bool exactMatchFound = false;
+            bool prefixMatchFound = false;
+            std::string longestMatch;
+
+            for (std::vector<Location>::const_iterator it = server.locationsCbegin();
                 it != server.locationsCend(); it++) {
-                    // DEBUG && std::cout << "Current location: " << it->getLocationName() << '\n';
-                    if (this->path == it->getLocationName() || toMatch == it->getLocationName())
-                    {
+                std::string locationName = it->getLocationName();
+
+                if (locationName[locationName.size() - 1] == '/') {
+                    locationName = locationName.substr(0, locationName.size() - 1);
+                }
+
+                if (toMatch == locationName) {
+                    this->requestBlock = &(*it);
+                    exactMatchFound = true;
+                    break;
+                }
+
+                if (!exactMatchFound && toMatch.find(locationName) == 0) {
+                    if (locationName.length() > longestMatch.length()) {
+                        longestMatch = locationName;
                         this->requestBlock = &(*it);
-                        std::cout << "MATCHED\n";
-                        break ;
+                        prefixMatchFound = true;
                     }
                 }
+            }
+    
+            if (!exactMatchFound && !prefixMatchFound) {
+                for (std::vector<Location>::const_iterator it = server.locationsCbegin();
+                    it != server.locationsCend(); it++) {
+                    if (it->getLocationName() == "/") {
+                        this->requestBlock = &(*it);
+                        break;
+                    }
+                }
+            }
+
+
         }
         setIsCgi();
     }
@@ -91,13 +117,13 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     if (!hostFound) throw std::logic_error("Host header not found");
     // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
     if (!this->requestBlock->isMethodAllowed(this->method))
-        throw HttpErrorException(this->version, METHOD_NOT_ALLOWED, "Method Not Allowed", "method not allowed: " + this->method, "");
+        throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
 
 
     if (this->method == "POST")
     {
         if (!contentLengthFound) // or no Transfer-Encoding??
-            throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "Content-Length header not found", requestBlock->getErrorPageHtml(BAD_REQUEST));
+            throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found");
     }
     // if (static_cast<size_t>(ss.rdbuf()->in_avail()) != this->bodySize) throw std::logic_error("Content-Length header and actual length don't match");
 
