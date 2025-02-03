@@ -19,7 +19,7 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
     std::string interpreterPath = getInterpreterPath(extension, request);
     std::string scriptName = getScriptName(request);
     if (access(scriptName.c_str(), F_OK) == -1)
-        throw HttpErrorException(request.getVersion(), 404, "Not Found", "The requested script was not found", request.getRequestBlock()->getErrorPageHtml(404));
+        throw HttpErrorException(NOT_FOUND, request, "The requested script was not found");
 
     std::map<std::string, std::string> env = createCgiEnv(request);
     char **envp = convertEnvToDoublePointer(env);
@@ -61,7 +61,7 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
         if ((clock() - start) / CLOCKS_PER_SEC > CGI_TIMEOUT) {
             kill(pid, SIGKILL);
             close(socket[0]);
-            throw HttpErrorException(request.getVersion() ,504, "Gateway Timeout", "The CGI script took too long to respond", request.getRequestBlock()->getErrorPageHtml(504));
+            throw HttpErrorException(GATEWAY_TIMEOUT, request, "The CGI script took too long to respond");
         }
     }
 

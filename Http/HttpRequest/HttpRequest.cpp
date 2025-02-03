@@ -54,12 +54,12 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         {
             std::stringstream l(value);
             l >> this->bodySize;
-            if (l.fail()) throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid content length header", requestBlock->getErrorPageHtml(BAD_REQUEST));
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
             std::string dummy;
             l >> dummy;
-            if (!l.eof()) throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid content length header", requestBlock->getErrorPageHtml(BAD_REQUEST));
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
             if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
-                throw  HttpErrorException(this->version, PAYLOAD_TOO_LARGE, "Payload Too Large", "payload too large", requestBlock->getErrorPageHtml(PAYLOAD_TOO_LARGE));
+                throw HttpErrorException(PAYLOAD_TOO_LARGE, *this, "payload too large");
             contentLengthFound = true;
             continue;
         }
@@ -117,13 +117,13 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     if (!hostFound) throw std::logic_error("Host header not found");
     // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
     if (!this->requestBlock->isMethodAllowed(this->method))
-        throw HttpErrorException(this->version, METHOD_NOT_ALLOWED, "Method Not Allowed", "method not allowed: " + this->method, "");
+        throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
 
 
     if (this->method == "POST")
     {
         if (!contentLengthFound) // or no Transfer-Encoding??
-            throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "Content-Length header not found", requestBlock->getErrorPageHtml(BAD_REQUEST));
+            throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found");
     }
     // if (static_cast<size_t>(ss.rdbuf()->in_avail()) != this->bodySize) throw std::logic_error("Content-Length header and actual length don't match");
 

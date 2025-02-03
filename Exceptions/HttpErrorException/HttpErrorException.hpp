@@ -6,6 +6,7 @@
 #include <string>
 #include <exception>
 
+class HttpRequest;
 class HttpErrorException : public std::exception {
     private:
         std::string message;
@@ -20,8 +21,11 @@ class HttpErrorException : public std::exception {
         std::string getErrorPageHtml(void) const;
 
         static const std::string defaultErrorHtml;
+        
+        static std::string getReasonPhrase(int statusCode);
     public:
         HttpErrorException(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &message, const std::string &body);
+        HttpErrorException(int statusCode, const HttpRequest &request, const std::string &message);
         int getStatusCode(void) const;
         std::string getReasonPhrase(void);
         std::string getResponseString(void) const;
