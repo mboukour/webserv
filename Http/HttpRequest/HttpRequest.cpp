@@ -2,11 +2,13 @@
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
 
+#include <cstddef>
 #include <exception>
 #include <iterator>
 #include <sstream>
 #include <iostream> // to remove later
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL) {
@@ -21,28 +23,17 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", "invalid request line", "");
-
+    size_t pos = this->path.find("?");
+    if (pos != std::string::npos)
+    {
+        this->queryString = this->path.substr(pos + 1);
+        this->path = this->path.substr(0, pos);
+    }
     if (this->version != "HTTP/1.1")
         throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
     if (this->path.length() > URI_MAX_SIZE)
         throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
     // implement better matching? 
-    std::cout << "Path: " << this->path << '\n';
-
-    // std::cout << "To Match: " << toMatch << '\n';
-    // for (std::vector<Location>::const_iterator it = server.locationsCbegin();
-    //     it != server.locationsCend(); it++) {
-    //         std::cout << "Current location: " << it->getLocationName() << '\n';
-    //         if (this->path == it->getLocationName() || toMatch == it->getLocationName())
-    //         {
-    //             this->requestBlock = &(*it);
-    //             std::cout << "MATCHED\n";
-    //             break ;
-    //         }
-    //     }
-
-
-
 
     this->bodySize = 0;
     while(getline(ss, line) && line != "\r") {
@@ -77,6 +68,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         {
             hostFound = true;
             const Server &server = getServer(value, servers, serverPort);
+            this->server = &server;
             this->requestBlock = &server;
             std::string toMatch = this->path;
             if (toMatch[toMatch.size() - 1] == '/')
@@ -92,6 +84,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
                     }
                 }
         }
+        setIsCgi();
     }
 
     // if (line != "\r") throw std::logic_error("Invalid headers terminator");
@@ -130,6 +123,29 @@ std::string HttpRequest::toString() const {
 
 const ABlock *HttpRequest::getRequestBlock(void) const {
     return this->requestBlock;
+}
+
+const Server *HttpRequest::getServer(void) const {
+    return this->server;
+}
+
+std::string HttpRequest::getQueryString(void) const {
+    return this->queryString;
+}
+
+void HttpRequest::setIsCgi(void) {
+    size_t pos = this->path.find_last_of('.');
+    if (pos == std::string::npos)
+    {
+        this->isCgi = false;
+        return ;
+    }
+    std::string extension = this->path.substr(pos + 1);
+    this->isCgi =  (extension == "php" || extension == "py" || extension == "pl"); // add more if we need to
+}
+
+bool HttpRequest::isCgiRequest(void) const {
+    return this->isCgi;
 }
 
 const Server &HttpRequest::getServer(const std::string &host, const std::vector<Server>& servers, int serverPort) {

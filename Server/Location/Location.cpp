@@ -1,5 +1,6 @@
 #include "Location.hpp"
 #include "../Server.hpp"
+#include <sstream>
 
 Location::Location(): ABlock(), locationName("") {}
 
@@ -29,6 +30,13 @@ std::string Location::getLocationName(void) const {
     return (this->locationName);
 }
 
-
+void Location::setReturnDirective(const std::string &returnCode, const std::string &path) {
+    std::stringstream ss;
+    ss << returnCode;
+    int code;
+    ss >> code;
+    this->returnDir.code = code;
+    this->returnDir.path = path;
+}
 
 Location::~Location() {}

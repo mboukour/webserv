@@ -3,6 +3,7 @@
 
 #include <string>
 // #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <iostream>
 #include <map>
@@ -16,6 +17,7 @@ enum HttpMethod {
 // This is an abstract class that defines functionality different blocks might have
 class ABlock {
     protected:
+
         ABlock();
         ABlock(const ABlock& other);
         bool isGetAccepted;
@@ -28,7 +30,7 @@ class ABlock {
         std::string uploadStore;
         std::map<std::string, std::string> errorPages;
         std::vector<std::string> index;
-
+        std::map<std::string, std::string> cgis;
     public:
         ABlock &operator=(const ABlock &other);
 
@@ -48,6 +50,9 @@ class ABlock {
 
         bool getIsLimited(void) const;
         void setIsLimited(bool isLimited);
+
+        void setCgiInfo(const std::string &language, const std::string &path);
+        const std::string &getCgiPath(const std::string &language) const;
 
 
         void setErrorPagePath(const std::string &errorCode, const std::string &errorPage);

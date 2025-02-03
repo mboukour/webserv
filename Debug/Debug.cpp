@@ -75,6 +75,7 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request) {
     outputStream << "Method: " << request.getMethod() << "\n";
     outputStream << "Path: " << request.getPath() << "\n";
+    outputStream << "Query string: " << request.getQueryString() << "\n";
     outputStream << "Headers:\n";
 
     // change this by funcs that returns const iterators
@@ -82,7 +83,6 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     // for (it = request.headers.begin(); it != request.headers.end(); ++it) {
     //     outputStream << "  " << it->first << ": " << it->second << "\n";
     // }
-
     outputStream << "Body Size: " << request.getBodySize() << "\n";
     outputStream << "Body: " << request.getBody() << "\n";
     return outputStream;

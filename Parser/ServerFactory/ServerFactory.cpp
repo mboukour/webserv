@@ -3,6 +3,7 @@
 #include <sstream>
 #include <climits>
 #include <algorithm>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,6 +11,10 @@
 ServerFactory::ServerFactory() {}
 
 
+
+bool ServerFactory::isValidSucccessCode(const std::string &code) {
+    return (code == "200"); // add more later ig
+}
 
 bool ServerFactory::isValidErrorCode(const std::string &code) // TO IMPROVE
 {
@@ -115,7 +120,13 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
                 const std::string errorCode = *itr;
                 result.setErrorPagePath(errorCode, errorPath);
             }
-        }
+    }
+    else if (currentDirective == "cgi") {
+        if (directives.size() < 3)
+            throw std::logic_error("Invalid cgi directive");
+        result.setCgiInfo(directives.begin()[1], directives.begin()[2]);
+
+    }
     // else
     // {
     //     std::cout << currentDirective << '\n';
@@ -209,9 +220,15 @@ Server ServerFactory::createServer(const Block &serverBlock) {
             ite != itb->directives.end(); ite++) {
             std::string currentDirective = ite->begin()[0];
             if (currentDirective == "return") {
-                if (itb->blockName.size() != 3)
+                const std::string code = ite->begin()[1];
+                if (ite->size() == 1 || ite->size() > 3)
                     throw std::logic_error("Invalid return directive");
-                
+                if (!isValidSucccessCode(code) && !isValidErrorCode(code))
+                    throw std::logic_error("Invalid status code in return directive");
+                if (ite->size() == 2)
+                    newLocation.setReturnDirective(code, "");
+                else
+                    newLocation.setReturnDirective(code, ite->begin()[2]);
             }
             else
                 setBlockDirectives(newLocation, *ite);
@@ -236,6 +253,7 @@ Server ServerFactory::createServer(const Block &serverBlock) {
                 it->setErrorPagePath(errorCode, errorPath);
         }
     }
+
     return result;
 }
 

@@ -12,7 +12,8 @@
 
 
 class ServerFactory {
-    private:        
+    private:
+        static bool isValidSucccessCode(const std::string &code);
         static bool isValidErrorCode(const std::string &code);
         static bool isValidDirective(const std::string &directive);
         static bool isAcceptedSubBlock(const std::string &directive);

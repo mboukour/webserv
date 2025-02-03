@@ -1,8 +1,11 @@
 #include "ABlock.hpp"
 #include <exception>
+#include <map>
 #include <stdexcept>
 #include <sstream>
 #include <fstream>
+#include <string>
+#include <utility>
 
 ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages(), index() {}
 
@@ -155,6 +158,15 @@ std::vector<std::string>::const_iterator ABlock::indexCbegin(void) const {
 
 std::vector<std::string>::const_iterator ABlock::indexCend(void) const {
     return this->index.end();
+}
+
+void ABlock::setCgiInfo(const std::string &language, const std::string &path) {
+    this->cgis[language] = path;
+}
+
+
+const std::string &ABlock::getCgiPath(const std::string &language) const { // will throw out_of_range if not found
+    return this->cgis.at(language);
 }
 
 

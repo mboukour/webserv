@@ -71,6 +71,7 @@ void ServerManager::handleClient(int clientFd) {
             DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
             std::string respStr = exec.getResponseString();
             send(clientFd, respStr.c_str(), respStr.size(), 0);
+            std::cout << "clientFd: " << clientFd <<std::endl;
             close(clientFd);
             epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
             DEBUG && std::cout << "Connection closed after error\n";
@@ -78,7 +79,7 @@ void ServerManager::handleClient(int clientFd) {
     }
     else
     {
-        std::cerr << "Error: recv failed. Errno: " << strerror(errno) << std::endl;
+        std::cerr << "Error: recv failed. Errno: " << strerror(errno) << " fd: " << clientFd << std::endl;
         close(clientFd);
         epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL); // this can fail
     }
@@ -132,7 +133,7 @@ void ServerManager::handleConnections(void) {
                 handleClient(fd);
         }
 
-        }
+    }
 }
 
 

@@ -42,10 +42,7 @@ std::string HttpErrorException::getResponseString() const {
     if (body == "")
         errorPage = getErrorPageHtml();
     else
-    {
-        std::cout << "Found body\n";
         errorPage = body;
-    }
     HttpResponse resp(this->version, this->statusCode, this->reasonPhrase, errorPage);
     resp.setHeader("Content-Type", "text/html");
     return resp.toString();
