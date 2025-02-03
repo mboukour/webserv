@@ -16,8 +16,7 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd): clientFd(c
 
     const std::string &method = request.getMethod();
     if (request.isCgiRequest()) {
-        Cgi cgi(request);
-        std::string response = cgi.getCgiResponse();
+        std::string response = Cgi::getCgiResponse(request);
         response.insert(0, "HTTP/1.1 200 OK\r\n");
         // std::cout << "Received cgi's response: \n" << response << '\n';
         send(clientFd, response.c_str(), response.size(), 0);

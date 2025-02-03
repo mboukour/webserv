@@ -1,149 +1,142 @@
 #include "Cgi.hpp"
-#include <cstddef>
-#include <ctime>
-#include <sstream>
-#include <stdexcept>
+#include <iostream>
+#include <cstdlib>
 #include <string>
 #include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
-#include <cstdlib>
+#include <cstring>
+#include <sstream>
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
+std::string Cgi::getCgiResponse(const HttpRequest &request) {
+    // Validate CGI extension
+    std::string extension = request.getPath().substr(request.getPath().find_last_of('.') + 1);
+    if (!isValidCgiExtension(extension)) {
+        throw std::logic_error("Invalid CGI extension");
+    }
+    std::string interpreterPath = getInterpreterPath(extension, request);
+    std::string scriptName = getScriptName(request);
+    std::map<std::string, std::string> env = createCgiEnv(request);
+    char **envp = convertEnvToDoublePointer(env);
 
-Cgi::Cgi(const HttpRequest &request) {
-    this->setCgiNames(request);
-    this->env["REQUEST_METHOD"] = request.getMethod();
-    this->env["CONTENT_LENGTH"] = request.getBodySize();
-    this->env["CONTENT_TYPE"] = request.getHeader("Content-Type");
-    this->env["QUERY_STRING"] = request.getQueryString();
-    this->env["SERVER_PROTOCOL"] = request.getVersion();
-    this->env["GATEWAY_INTERFACE"] = "CGI/1.1";
-    this->env["SERVER_NAME"] = request.getServer()->getServerName();
-    std::stringstream ss;
-    ss << request.getServer()->getPort();
-    this->env["SERVER_PORT"] = ss.str();
     int socket[2];
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket) == -1)
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket) == -1) {
+        cleanupEnv(envp);
         throw std::logic_error("Socketpair failed");
-    this->_env = this->swaptoDoublePointer();
+    }
+
     pid_t pid = fork();
-    if (pid == -1)
+    if (pid == -1) {
+        cleanupEnv(envp);
+        close(socket[0]);
+        close(socket[1]);
         throw std::logic_error("Fork failed");
+    }
+
     if (pid == 0) {
-        close(socket[0]); // parent side of the sockets
-        dup2(socket[1], STDOUT_FILENO); // this will need to only write the result
+        close(socket[0]);
+        dup2(socket[1], STDOUT_FILENO);
         close(socket[1]);
         char *argv[3];
-        std::string interpreterPath = this->interpreterPath;
-        std::string scriptName = this->scriptName;
-        argv[0] = const_cast<char*>(interpreterPath.data());
-        argv[1] = const_cast<char*>(scriptName.data());
+        argv[0] = const_cast<char*>(interpreterPath.c_str());
+        argv[1] = const_cast<char*>(scriptName.c_str());
         argv[2] = NULL;
-        execve(this->interpreterPath.c_str(), argv, this->_env);
-        cleanCgi();
-        std::cerr << "CGI did not work\n";
+        execve(interpreterPath.c_str(), argv, envp);
+        cleanupEnv(envp);
+        std::cerr << "CGI execution failed\n";
         std::exit(1);
     }
-    
-    cleanCgi();
-    close(socket[1]);
-    clock_t start = clock();
 
+
+    cleanupEnv(envp);
+    close(socket[1]);
+
+    clock_t start = clock();
     while (waitpid(pid, NULL, WNOHANG) != -1) {
-        if ((clock() - start) / CLOCKS_PER_SEC > CGI_TIMEOUT)
-        {
+        if ((clock() - start) / CLOCKS_PER_SEC > CGI_TIMEOUT) {
             kill(pid, SIGKILL);
             close(socket[0]);
             throw HttpErrorException(request.getVersion() ,504, "Gateway Timeout", "The CGI script took too long to respond", request.getRequestBlock()->getErrorPageHtml(504));
         }
-    } // wait for the child to finish or timeout, increase the timeout in case of chunked encoding??????
+    }
+
+    std::string cgiResponse;
     char buffer[4096];
     ssize_t bytesRead;
-    while ((bytesRead = recv(socket[0], buffer, 4096, 0)) > 0) {
-        this->cgiResponse.append(buffer, bytesRead);
+    while ((bytesRead = recv(socket[0], buffer, sizeof(buffer), 0)) > 0) {
+        cgiResponse.append(buffer, bytesRead);
     }
-    if (bytesRead == -1)
+
+    if (bytesRead == -1) {
+        close(socket[0]);
         throw std::logic_error("Error reading from the socket");
+    }
+
     close(socket[0]);
-};
-
-std::string Cgi::getCgiResponse() const {
-    return this->cgiResponse;
+    return cgiResponse;
 }
 
-void Cgi::setCgiNames(const HttpRequest &request) {
-
-    std::string extension = request.getPath();
-    size_t pos = extension.find_last_of('.');
-    size_t slashPos = extension.find_last_of('/');
-    if (pos == std::string::npos || slashPos == std::string::npos)
-        throw std::logic_error("No valid file extension found"); // this should never happen since we check for valid extensions before using the cgi class, but just in case
-    this->scriptName = request.getRequestBlock()->getRoot() + extension.substr(slashPos + 1);
-    extension = extension.substr(pos + 1);
-    try {
-    
-         this->interpreterPath = request.getRequestBlock()->getCgiPath(extension);
-    } catch (const std::out_of_range& exec) {    
-        if (extension == "php") // might implement a better way to find the interpreter using the PATH env variable
-            this->interpreterPath = "/usr/bin/php-cgi";
-        else if (extension == "py")
-            this->interpreterPath = "/usr/bin/python3";
-        else if (extension == "pl")
-            this->interpreterPath = "/usr/bin/perl";
-        else // this should never happen since we check for valid extensions before using the cgi class, but just in case
-            throw std::logic_error("No interpreter found for this extension");
-    }
-
-
-    // check if the interpreter exists and is executable using fstat
-    struct stat buf;
-    if (stat(this->interpreterPath.c_str(), &buf) == -1)
-        throw std::logic_error("Interpreter not found");    
-    if (!(buf.st_mode & S_IXUSR))
-        throw std::logic_error("Interpreter is not executable");
-
-}
-
-
-Cgi::~Cgi() {
-};
-
-bool Cgi::isValidCgiExtension(const std::string &extension) { // add more if we need to
+bool Cgi::isValidCgiExtension(const std::string &extension) {
     return (extension == "php" || extension == "py" || extension == "pl");
-};
+}
 
-char **Cgi::swaptoDoublePointer() {
+std::string Cgi::getInterpreterPath(const std::string &extension, const HttpRequest &request) {
     try {
-        _env = new char*[env.size() + 1];
-    } catch (const std::bad_alloc &) {
-        throw std::logic_error("Memory allocation failed for CGI environment");
+        return request.getRequestBlock()->getCgiPath(extension);
+    } catch (const std::out_of_range &) {
+        if (extension == "php") return "/usr/bin/php-cgi";
+        if (extension == "py") return "/usr/bin/python3";
+        if (extension == "pl") return "/usr/bin/perl";
+        throw std::logic_error("No interpreter found for this extension");
     }
+}
+
+std::string Cgi::getScriptName(const HttpRequest &request) {
+    std::string path = request.getPath();
+    size_t slashPos = path.find_last_of('/');
+    if (slashPos == std::string::npos) {
+        throw std::logic_error("Invalid script path");
+    }
+    return request.getRequestBlock()->getRoot() + path.substr(slashPos + 1);
+}
+
+std::map<std::string, std::string> Cgi::createCgiEnv(const HttpRequest &request) {
+    std::map<std::string, std::string> env;
+    env["REQUEST_METHOD"] = request.getMethod();
+    std::stringstream ss;
+    ss << request.getBodySize();
+    env["CONTENT_LENGTH"] = ss.str();
+    env["CONTENT_TYPE"] = request.getHeader("Content-Type");
+    env["QUERY_STRING"] = request.getQueryString();
+    env["SERVER_PROTOCOL"] = request.getVersion();
+    env["GATEWAY_INTERFACE"] = "CGI/1.1";
+    env["SERVER_NAME"] = request.getServer()->getServerName();
+    ss.clear();
+    ss << request.getServer()->getPort();
+    env["SERVER_PORT"] = ss.str();
+    return env;
+}
+
+char **Cgi::convertEnvToDoublePointer(const std::map<std::string, std::string> &env) {
+    char **envp = new char*[env.size() + 1];
     int i = 0;
-    try {
-        for (std::map<std::string, std::string>::iterator it = env.begin(); it != env.end(); ++it) {
-            std::string entry = it->first + "=" + it->second;
-            _env[i] = new char[entry.size() + 1];
-            std::strcpy(_env[i], entry.c_str());
-            i++;
+    for (std::map<std::string, std::string>::const_iterator it = env.begin(); it != env.end(); it++) {
+        std::string entry = it->first + "=" + it->second;
+        envp[i] = new char[entry.size() + 1];
+        std::strcpy(envp[i], entry.c_str());
+        i++;
+    }
+    envp[i] = NULL;
+    return envp;
+}
+
+void Cgi::cleanupEnv(char **env) {
+    if (env) {
+        for (int i = 0; env[i] != NULL; i++) {
+            delete[] env[i];
         }
-        _env[i] = NULL;
-    } catch (const std::bad_alloc &) {
-        cleanCgi();
-        throw std::logic_error("Memory allocation failed for CGI environment variables");
-    }
-    return _env;
-}
-
-
-void Cgi::cleanCgi(void) {
-    if (_env) {
-        for (int i = 0; _env[i] != NULL; i++)
-            delete[] _env[i];
-        delete[] _env;
-        _env = NULL;
+        delete[] env;
     }
 }
-
