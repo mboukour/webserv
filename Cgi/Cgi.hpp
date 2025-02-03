@@ -2,28 +2,34 @@
 #define CGI_HPP
 
 #include "../Http/HttpRequest/HttpRequest.hpp"
-#include "../Http/HttpResponse/HttpResponse.hpp"
+// #include "../Http/HttpResponse/HttpResponse.hpp"
 #include <string>
 
+
+#define CGI_TIMEOUT 5
+// needs to handle big responses (chunked encoding)
 class Cgi {
     private:
-        int sockets[2];
-        int pid;
-        int code;
+        // int sockets[2];
+        // int pid;
+        // int code;
         std::string interpreterPath;
+        std::string scriptName;
         std::map<std::string, std::string> env;
+
+        std::string cgiResponse;
         char **_env;
         static bool isValidCgiExtension(const std::string &extension);
         static std::string getExtentionPath(const std::string &extension);
-        void setInterperterPath(HttpRequest &request);
+        void setCgiNames(const HttpRequest &request);
 
     public:
-        Cgi(HttpRequest &request);
+        Cgi(const HttpRequest &request);
         ~Cgi();
         // void    setEnv();
         char  **swaptoDoublePointer(void);
         void    cleanCgi(void);
-        void    execCgi(void);
+        std::string    getCgiResponse(void) const;
 };
 
 #endif

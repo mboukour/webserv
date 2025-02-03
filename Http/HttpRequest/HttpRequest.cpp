@@ -84,6 +84,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
                     }
                 }
         }
+        setIsCgi();
     }
 
     // if (line != "\r") throw std::logic_error("Invalid headers terminator");
@@ -130,6 +131,21 @@ const Server *HttpRequest::getServer(void) const {
 
 std::string HttpRequest::getQueryString(void) const {
     return this->queryString;
+}
+
+void HttpRequest::setIsCgi(void) {
+    size_t pos = this->path.find_last_of('.');
+    if (pos == std::string::npos)
+    {
+        this->isCgi = false;
+        return ;
+    }
+    std::string extension = this->path.substr(pos + 1);
+    this->isCgi =  (extension == "php" || extension == "py" || extension == "pl"); // add more if we need to
+}
+
+bool HttpRequest::isCgiRequest(void) const {
+    return this->isCgi;
 }
 
 const Server &HttpRequest::getServer(const std::string &host, const std::vector<Server>& servers, int serverPort) {

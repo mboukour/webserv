@@ -5,6 +5,7 @@
 
 #include "../../Server/Server.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include "../../Cgi/Cgi.hpp"
 
 class HttpRequest;
 
@@ -16,6 +17,7 @@ class HttpResponse: public AHttp {
         std::string reasonPhrase;
 
         void sendResponse(void) const;
+
     public:
         HttpResponse();
         HttpResponse(const HttpRequest &request, int clientFd);
