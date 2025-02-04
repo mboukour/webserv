@@ -53,11 +53,15 @@ Parser::Parser(std::ifstream &configFile)
 void Parser::checkSyntaxError(void)
 {
     int braceCount = 0;
+    bool foundBraces = false;
     int lastType = 0;
     for (tokenVec::iterator it = this->tokens.begin(); it != this->tokens.end(); it++)
     {
         if (it->type == OPEN_BRACE)
+        {
+            foundBraces = true;
             braceCount++;
+        }
         else if (it->type == CLOSE_BRACE)
         {
             if (lastType == OPEN_BRACE)
@@ -72,6 +76,8 @@ void Parser::checkSyntaxError(void)
         }
         lastType = it->type;
     }
+    if (!foundBraces)
+        throw std::logic_error("Unrecongnised config file structure");
     if (braceCount)
         throw std::logic_error("Unclosed braces");
 }

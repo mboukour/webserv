@@ -3,19 +3,22 @@
 #include "Parser/ServerFactory/ServerFactory.hpp"
 #include "Server/ServerManager/ServerManager.hpp"
 #include "Debug/Debug.hpp"
+#include <csignal>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
 #include <stdexcept>
 #include <algorithm>
 
-
+void sigint_handler(int) {
+    std::exit(0);
+}
 
 int main(int ac, char **av)
 {
     std::string line;
     
-    
+    signal(SIGINT, sigint_handler);
     if (ac != 2)
     {
         std::cerr << "Usage: ./Webserv {config_file}\n";
