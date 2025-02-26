@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include <cstddef>
 #include <iostream> // to remove later
 #include <cstdlib>
 #include <sys/types.h>
@@ -6,13 +7,39 @@
 #include <netdb.h>
 #include "../Debug/Debug.hpp"
 #include <sstream>
+#include <fstream>
 
 Server::Server(): ABlock(), port(-1), host(""),  fdSocket(-1), serverName("") {}
 
-Server::Server(const Server &other): ABlock(other), port(other.port), host(other.host) ,fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations) {}
+Server::Server(const Server &other): ABlock(other), port(other.port), host(other.host) ,fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations), mimeTypes(other.mimeTypes) {}
 
 void Server::setPort(int port) {this->port = port;}
 
+void Server::parseMimeTypeFile(const std::string &path) { // might add comment handling later
+    size_t dotPos = path.find_last_of('.');
+    if (dotPos == std::string::npos || path.substr(dotPos) != ".types")
+        throw std::logic_error("Invalid mime_types file");
+    std::fstream mimeTypeFile(path.c_str());
+    if (!mimeTypeFile.is_open())
+        throw std::logic_error("Invalid mime_types file");
+    std::string line;
+    while (std::getline(mimeTypeFile, line)) {
+        std::stringstream ss(line);
+        std::string extension;
+        std::string type;
+        ss >> extension >> type;
+        if (ss.fail() || !ss.eof())
+            throw std::logic_error("Invalid mime_types file");
+        this->mimeTypes[extension] = type;
+    }
+}
+// will return the actual type if it exists, if not it returns the default option: application/octet-stream
+std::string Server::getMimeType(const std::string &extension) const {
+    std::map<std::string, std::string> ::const_iterator it = this->mimeTypes.find(extension);
+    if (it == this->mimeTypes.end())
+        return "application/octet-stream";
+    return it->second;
+}
 
 void Server::setServerName(const std::string &serverName) {this->serverName = serverName;}
 

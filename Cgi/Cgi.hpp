@@ -5,7 +5,7 @@
 #include <string>
 #include <map>
 
-#define CGI_TIMEOUT 5
+#define CGI_TIMEOUT 2
 
 class Cgi {
     private:

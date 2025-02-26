@@ -10,15 +10,15 @@
 #include <stdexcept>
 #include <algorithm>
 
-void sigint_handler(int) {
-    std::exit(0);
-}
+// void sigint_handler(int) {
+//     std::exit(0);
+// }
 
 int main(int ac, char **av)
 {
     std::string line;
     
-    signal(SIGINT, sigint_handler);
+    signal(SIGPIPE, SIG_IGN);
     if (ac != 2)
     {
         std::cerr << "Usage: ./Webserv {config_file}\n";

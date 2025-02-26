@@ -26,6 +26,7 @@ class HttpErrorException : public std::exception {
     public:
         HttpErrorException(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &message, const std::string &body);
         HttpErrorException(int statusCode, const HttpRequest &request, const std::string &message);
+        HttpErrorException(int statusCode, const std::string &message); // to use for errors with no request
         int getStatusCode(void) const;
         std::string getReasonPhrase(void);
         std::string getResponseString(void) const;

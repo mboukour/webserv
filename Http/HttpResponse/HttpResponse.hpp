@@ -13,14 +13,15 @@ class HttpRequest;
 class HttpResponse: public AHttp {
     private:
         const int clientFd;
+        const int epollFd;
         int statusCode;
         std::string reasonPhrase;
 
-        void sendResponse(void) const;
-
+        void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
+        void sendResponse(void) const;  
     public:
         HttpResponse();
-        HttpResponse(const HttpRequest &request, int clientFd);
+        HttpResponse(const HttpRequest &request, int clientFd, int epollFd);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);
