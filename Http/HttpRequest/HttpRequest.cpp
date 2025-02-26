@@ -36,7 +36,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     // implement better matching? 
 
     this->bodySize = 0;
-    while(getline(ss, line) && line != "\r") {
+    while(getline(ss, line) && line != "\r") { // looping through headers
         if (line[line.size() - 1] == '\r')
             line[line.size() - 1] = '\0';
         std::stringstream lineSs(line);
@@ -44,6 +44,15 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         std::string value;
 
         lineSs >> key;
+        size_t pos =  key.find(":");
+        if (pos == std::string::npos)
+        {
+            if (hostFound)
+                throw HttpErrorException(BAD_REQUEST, *this, ": not found in header");
+            else
+                throw HttpErrorException(BAD_REQUEST, ": not found in header");
+        }
+
         // if (lineSs.fail() || lineSs.eof() || key[key.size() - 1] != ':') throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid header", requestBlock->getErrorPageHtml(BAD_REQUEST));
         key = key.substr(0, key.size() - 1);
         // else if (key == "Content-Type")
@@ -64,7 +73,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
             continue;
         }
         this->headers[key] = value;
-        if (key == "Host")
+        if (key == "Host" || key == "host")
         {
             hostFound = true;
             const Server &server = getServer(value, servers, serverPort);
@@ -114,7 +123,8 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     }
 
     // if (line != "\r") throw std::logic_error("Invalid headers terminator");
-    if (!hostFound) throw std::logic_error("Host header not found");
+    if (!hostFound)
+        throw HttpErrorException(BAD_REQUEST,  "Host header not found");
     // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
     if (!this->requestBlock->isMethodAllowed(this->method))
         throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
@@ -196,4 +206,10 @@ const Server &HttpRequest::getServer(const std::string &host, const std::vector<
     }
     std::cout << "Accepted default server for port: " << firstServerPort->getPort() << '\n';
     return *firstServerPort;
+}
+
+void HttpRequest::printHeaders(void) const {
+    for (std::map<std::string, std::string>::const_iterator it = this->headers.begin(); it != this->headers.end(); it++) {
+        std::cout << it->first << ": " << it->second << '\n';
+    }
 }

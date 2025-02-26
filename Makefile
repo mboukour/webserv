@@ -6,7 +6,7 @@ SRC = Webserv.cpp Parser/Parser.cpp Parser/ServerFactory/ServerFactory.cpp Serve
 EXCEPTIONS = Exceptions/HttpErrorException/HttpErrorException.cpp
 HTTP = Http/AHttp/AHttp.cpp Http/HttpRequest/HttpRequest.cpp Http/HttpResponse/HttpResponse.cpp \
        Http/HttpResponse/Methods/handleDeleteRequest.cpp Http/HttpResponse/Methods/handleGetRequest.cpp \
-       Http/HttpResponse/Methods/handlePostRequest.cpp
+       Http/HttpResponse/Methods/handlePostRequest.cpp Http/HttpResponse/ResponseState/ResponseState.cpp
 CGI = Cgi/Cgi.cpp
 SRC += $(EXCEPTIONS) $(HTTP) $(CGI)
 OBJ = $(SRC:.cpp=.o)

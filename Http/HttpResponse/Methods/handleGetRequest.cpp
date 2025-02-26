@@ -1,11 +1,16 @@
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include <cerrno>
 #include <fstream>
+#include <ios>
 #include <sstream>
 #include <iostream>
-#include <stdexcept>
-
+#include <cstdlib>
+#include <sys/epoll.h>
+#include <sys/types.h>
+ #include <sys/stat.h>
+#include "../ResponseState/ResponseState.hpp"
 const std::string YELLOW = "\033[33m";
 const std::string RESET = "\033[0m";
 #include <string>
@@ -13,16 +18,17 @@ const std::string RESET = "\033[0m";
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
 std::string const generateContent(const HttpRequest &request, HttpResponse &response, std::string const path){
-    std::string content;
     (void)response;
     (void)request;
-    std::fstream fileSs(path.c_str());
-    if (fileSs.fail() == true)
+    std::fstream fileToGet(path.c_str());
+    if (fileToGet.fail() == true)
         throw HttpErrorException(NOT_FOUND, request, "cant find file");
-    std::string line;
-    while (std::getline(fileSs, line))
-        content += line + "\n";
-    return content;
+    // std::string line;
+    // while (std::getline(fileToGet, line))
+    //     content += line + "\n";
+    std::stringstream ss;
+    ss << fileToGet.rdbuf();
+    return ss.str();
 }
 
 // std::string generateHeader(){
@@ -33,17 +39,80 @@ std::string const generateContent(const HttpRequest &request, HttpResponse &resp
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
     std::cout << YELLOW << "path: [" << path << "]" << RESET << std::endl;
-    std::string const content = generateContent(request, *this, path);
-	std::stringstream responseSs;
+    // std::string const content = generateContent(request, *this, path);
+    struct stat filestat;
+    if (stat(path.c_str(), &filestat) == -1)
+        throw HttpErrorException(NOT_FOUND, request, "cant find file");
+
+    std::fstream fileToGet(path.c_str());
+    if (fileToGet.fail() == true)
+        throw HttpErrorException(NOT_FOUND, request, "cant find file");
+    std::stringstream responseSs;
+
 	responseSs << "HTTP/1.1 200 OK\r\n";
-	responseSs << "Content-Type: text/html\r\n";
+	responseSs << "Content-Type: video/mp4\r\n";
 	responseSs << "Connection: close\r\n";
-	responseSs << "Content-Length: " << content.length() << "\r\n";
+	responseSs << "Content-Length: " << filestat.st_size << "\r\n";
 	responseSs << "\r\n";
-	responseSs << content;
-    std::string response = responseSs.str();
-    std::cout << YELLOW << response << RESET << std::endl;
-	send(this->clientFd, response.c_str(), response.size(), 0);
+    // std::string &response = responseSs.str();
+    send(this->clientFd, responseSs.str().c_str(), responseSs.str().size(), 0);
+    std::vector<char> buffer(4096);  // 4KB buffer
+    while (true) {
+        fileToGet.read(buffer.data(), buffer.size());
+        std::streamsize bytesRead = fileToGet.gcount();
+    
+        if (bytesRead == 0) break;  // EOF
+    
+        // Send the data
+        ssize_t totalSent = 0;
+        while (totalSent < bytesRead) {
+            ssize_t bytesSent = send(clientFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
+            if (bytesSent == -1) {
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    std::streampos filePos = fileToGet.tellg();
+                    filePos -= (bytesRead - totalSent);
+                    struct epoll_event ev;
+                    ev.events = EPOLLIN | EPOLLOUT;
+                    ev.data.fd = this->clientFd;
+                    ev.data.ptr = new ResponseState(path, filePos, this->clientFd, this->epollFd);
+                    epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->clientFd, &ev);
+                    return;
+                } else {
+                    perror("Error: ");
+                    exit(1);
+                }
+            }
+            totalSent += bytesSent;
+        }
+    }
+    // const std::string &range = request.getHeader("Range");
+    // if (range.empty()) {
+    //     std::string content;
+    //     std::string line;
+    //     while (std::getline(fileToGet, line))
+    //         content += line + "\n";
+    //     send(this->clientFd, content.c_str(), content.size(), 0);
+    // } else {
+        
+    // }
+	// responseSs << content;
+    // std::cout << 
+    // std::cout << YELLOW << response << RESET << std::endl;]
+    // std::cout << YELLOW << "Size: " << content.size() << RESET << std::endl;
+    // ssize_t bytesSent = send(this->clientFd, content.c_str(), content.size(), 0);
+    // if (bytesSent == -1) {
+    //     if (errno == EWOULDBLOCK || errno == EAGAIN) {
+    //         std::cout << "Blocked :(";
+    //         exit(1);
+    //     }
+    // }
+
+    // if (bytesSent != static_cast<ssize_t>(content.size())) {
+    //     std::cout << YELLOW << "Not all bytes: " << bytesSent << RESET << std::endl;
+    // }
+	// if (bytesSent == -1) {
+
+    // } 
 
     // getHeader will return the value of the header if it exists, or an empty string if it doesn't
     // nta dik sa3a checki hado w 3la hasab lvalue gha tkml, lt7t kayn examples d chno t9d tl9a

@@ -12,6 +12,7 @@
 #include "ServerManager.hpp"
 #include "../../Http/HttpRequest/HttpRequest.hpp"
 #include "../../Http/HttpResponse/HttpResponse.hpp"
+#include "../../Http/HttpResponse/ResponseState/ResponseState.hpp"
 
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
@@ -66,7 +67,7 @@ void ServerManager::handleClient(int clientFd) {
         try  {
             HttpRequest request(buffer, this->servers, port);
             DEBUG && std::cout << "New request: " << request << std::endl;
-            HttpResponse response(request, clientFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
+            HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
         } catch (const HttpErrorException &exec) {
             DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
             std::string respStr = exec.getResponseString();
@@ -74,7 +75,7 @@ void ServerManager::handleClient(int clientFd) {
             std::cout << "clientFd: " << clientFd <<std::endl;
             close(clientFd);
             epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-            DEBUG && std::cout << "Connection closed after error\n";
+            DEBUG && std::cout << "Connection closed after error: " << buffer << std::endl;
         }
     }
     else
@@ -127,10 +128,16 @@ void ServerManager::handleConnections(void) {
         for (int i = 0; i < event_count; i++)
         {
             int fd = events[i].data.fd;
-            if (isAServerFdSocket(fd))
-                acceptConnections(fd);
-            else
-                handleClient(fd);
+            if (events[i].events == EPOLLIN) {
+                if (isAServerFdSocket(fd))
+                    acceptConnections(fd);
+                else
+                    handleClient(fd);
+            } else if (events[i].events == EPOLLOUT) {
+                ResponseState* state = reinterpret_cast<ResponseState *>(events[i].data.ptr);
+                state->continueSending();
+                delete state;
+            }
         }
 
     }

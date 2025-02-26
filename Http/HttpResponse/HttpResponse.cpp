@@ -9,9 +9,9 @@
 
 
 
-HttpResponse::HttpResponse(): clientFd(-1) {}
+HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1) {}
 
-HttpResponse::HttpResponse(const HttpRequest& request, int clientFd): clientFd(clientFd) {
+HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd) {
     this->version = request.getVersion();
 
     const std::string &method = request.getMethod();
@@ -31,7 +31,7 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd): clientFd(c
 }
 
 HttpResponse::HttpResponse(const std::string &version, int statusCode,
-    const std::string &reasonPhrase, const std::string &body): clientFd(-1) { // no client fd needed in case of error
+    const std::string &reasonPhrase, const std::string &body): clientFd(-1), epollFd(-1) { // no client fd needed in case of error
     this->version = version;
     this->statusCode = statusCode;
     this->reasonPhrase = reasonPhrase;

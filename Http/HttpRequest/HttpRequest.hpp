@@ -31,6 +31,7 @@ class HttpRequest: public AHttp {
         bool isCgiRequest(void) const;
         const Server *getServer(void) const;
         const ABlock *getRequestBlock(void) const;
+        void printHeaders(void) const;
 };
 
 

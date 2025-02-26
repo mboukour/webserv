@@ -93,6 +93,7 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     // for (it = request.headers.begin(); it != request.headers.end(); ++it) {
     //     outputStream << "  " << it->first << ": " << it->second << "\n";
     // }
+    request.printHeaders();
     outputStream << "Body Size: " << request.getBodySize() << "\n";
     outputStream << "Body: " << request.getBody() << "\n";
     return outputStream;
