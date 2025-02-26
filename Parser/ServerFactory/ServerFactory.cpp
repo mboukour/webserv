@@ -1,4 +1,5 @@
 #include "ServerFactory.hpp"
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <climits>
@@ -27,7 +28,7 @@ bool ServerFactory::isValidDirective(const std::string &directive) // TO IMPROVE
 {
     return (directive == "listen" || directive == "server_name" || directive == "error_page"
             || directive == "client_max_body_size" || directive == "root" || directive == "methods"
-            || directive == "autoindex" || directive == "index" || directive == "return" || directive == "upload_store" || directive == "cgi");
+            || directive == "autoindex" || directive == "index" || directive == "return" || directive == "upload_store" || directive == "cgi" || directive == "mime_types");
 }
 
 bool ServerFactory::isAcceptedSubBlock(const std::string &directive)
@@ -187,9 +188,13 @@ Server ServerFactory::createServer(const Block &serverBlock) {
                 throw std::logic_error("Invalid server name");
             result.setServerName(ite->begin()[1]);
         }
-
         else if (currentDirective == "return")
             throw std::logic_error("The return directive can not be used in the server block.");
+        else if (currentDirective == "mime_types") {
+            if (ite->size() != 2)
+                throw std::logic_error("Invalid mime_types directive");
+            result.parseMimeTypeFile(ite->begin()[1]);
+        }
         else
             setBlockDirectives(result, *ite);
     }

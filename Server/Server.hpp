@@ -25,8 +25,9 @@ class Server: public ABlock {
         int fdSocket;
         std::string serverName;
         std::vector<Location> locations;
-
-    public:
+        std::map<std::string, std::string> mimeTypes;
+        
+        public:
         Server();
         Server(const Server& other);
         std::string getServerName(void) const;
@@ -35,12 +36,14 @@ class Server: public ABlock {
         int getFdSocket(void) const;
         void setServerName(const std::string &serverName);
         void setHost(const std::string &host);
+        // void addMimeType(const std::string& extension, const std::string& type);
+        void parseMimeTypeFile(const std::string& path);
+        std::string getMimeType(const std::string& extension) const;
         std::string getHost(void) const;
         std::vector<Location>::iterator locationsBegin(void) ;
         std::vector<Location>::iterator locationsEnd(void) ;
         std::vector<Location>::const_iterator locationsCbegin(void) const;
         std::vector<Location>::const_iterator locationsCend(void) const;
-
         void addLocation(const Location& location);
         void startServer(void);
         ~Server();

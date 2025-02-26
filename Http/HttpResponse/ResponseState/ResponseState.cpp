@@ -15,7 +15,7 @@ ResponseState::ResponseState(const std::string &filePath, std::streampos filePos
 
 
 void ResponseState::continueSending(void) { // 
-    std::vector<char> buffer(4096);  // 4KB buffer
+    std::vector<char> buffer(65536);  // 4KB buffer
     while (true) {
         fileToSend.read(buffer.data(), buffer.size());
         std::streamsize bytesRead = fileToSend.gcount();

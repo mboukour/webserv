@@ -16,8 +16,6 @@ class ResponseState {
         ResponseState();
     public:
         ResponseState(const std::string &filePath, std::streampos filePos, int clientFd, int epollFd);
-        // ResponseState(const ResponseState& other);
-        // ResponseState& operator=(const ResponseState& other);
         ~ResponseState();
         void continueSending(void);
 };

@@ -17,8 +17,8 @@ class HttpResponse: public AHttp {
         int statusCode;
         std::string reasonPhrase;
 
-        void sendResponse(void) const;
-
+        void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
+        void sendResponse(void) const;  
     public:
         HttpResponse();
         HttpResponse(const HttpRequest &request, int clientFd, int epollFd);

@@ -2,6 +2,7 @@
 #include "../HttpRequest/HttpRequest.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include <sstream>
+#include <sys/epoll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstdio>
@@ -10,6 +11,8 @@
 
 
 HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1) {}
+
+
 
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd) {
     this->version = request.getVersion();
@@ -28,6 +31,11 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         handleGetRequest(request);
     else if (method == "POST")
         handlePostRequest(request);
+    if (request.getHeader("Connection") == "close")
+    {
+        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->clientFd, NULL);
+        close(clientFd);
+    }
 }
 
 HttpResponse::HttpResponse(const std::string &version, int statusCode,
