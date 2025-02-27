@@ -63,6 +63,7 @@ class ABlock {
         std::map<std::string, std::string>::const_iterator errorPagesCend(void) const;
 
         void addIndex(const std::string &index);
+        std::vector<std::string> getIndexes(void) const;
         // to iterate over the index vector, use these the const iterators
         std::vector<std::string>::const_iterator indexCbegin(void) const;
         std::vector<std::string>::const_iterator indexCend(void) const;
