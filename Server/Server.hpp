@@ -36,7 +36,6 @@ class Server: public ABlock {
         int getFdSocket(void) const;
         void setServerName(const std::string &serverName);
         void setHost(const std::string &host);
-        // void addMimeType(const std::string& extension, const std::string& type);
         void parseMimeTypeFile(const std::string& path);
         std::string getMimeType(const std::string& extension) const;
         std::string getHost(void) const;

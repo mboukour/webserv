@@ -34,7 +34,6 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     if (this->path.length() > URI_MAX_SIZE)
         throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
     // implement better matching? 
-
     this->bodySize = 0;
     while(getline(ss, line) && line != "\r") { // looping through headers
         if (line[line.size() - 1] == '\r')

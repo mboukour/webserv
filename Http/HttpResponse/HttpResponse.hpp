@@ -18,6 +18,8 @@ class HttpResponse: public AHttp {
         std::string reasonPhrase;
 
         void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
+        void handleAutoIndex(const HttpRequest& request) const;
+
         void sendResponse(void) const;  
     public:
         HttpResponse();

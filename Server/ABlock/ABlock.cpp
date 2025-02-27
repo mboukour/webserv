@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages(), index(), cgis() {}
 
@@ -153,6 +154,10 @@ std::map<std::string, std::string>::const_iterator ABlock::errorPagesCend(void) 
 
 void ABlock::addIndex(const std::string &index) {
     this->index.push_back(index);
+}
+
+std::vector<std::string> ABlock::getIndexes(void) const {
+    return this->index;
 }
 
 std::vector<std::string>::const_iterator ABlock::indexCbegin(void) const {
