@@ -28,6 +28,7 @@ class AHttp { // This is an abstract class for stuff that both request and repos
         size_t bodySize;
         std::string body;
         std::map<std::string, std::string> headers;
+        
 
     public:
         AHttp();

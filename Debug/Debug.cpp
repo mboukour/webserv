@@ -88,6 +88,7 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     outputStream << "Query string: " << request.getQueryString() << "\n";
     outputStream << "Headers:\n";
 
+
     // change this by funcs that returns const iterators
     // std::map<std::string, std::string>::const_iterator it;
     // for (it = request.headers.begin(); it != request.headers.end(); ++it) {
@@ -96,6 +97,11 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     request.printHeaders();
     outputStream << "Body Size: " << request.getBodySize() << "\n";
     outputStream << "Body: " << request.getBody() << "\n";
+    std::cout << "Cookies: \n";
+    // std::map<std::string, std::string> cookies = request.getCookie();
+    // for (std::map<std::string, std::string>::const_iterator it = cookies.begin(); it != cookies.end(); it++) {
+    //     std::cout << it->first << ": " << it->second << '\n';
+    // }
     return outputStream;
 }
 

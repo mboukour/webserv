@@ -3,6 +3,7 @@
 
 
 #include <cstddef>
+#include <cstdio>
 #include <exception>
 #include <iterator>
 #include <sstream>
@@ -18,8 +19,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     this->isCgi = false;
     std::stringstream ss(request);
     std::string line;
-    bool hostFound = false;
-    bool contentLengthFound = false;
+
     if (!std::getline(ss, line))
         throw HttpErrorException("HTTP/1.1", BAD_REQUEST, "Bad Request", "empty request", ""); // we assume the version?
     std::stringstream requestLine(line);
@@ -37,15 +37,66 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
     // implement better matching? 
     this->bodySize = 0;
+    parseHeaders(ss, servers, serverPort);
+// if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
+
+    // if (static_cast<size_t>(ss.rdbuf()->in_avail()) != this->bodySize) throw std::logic_error("Content-Length header and actual length don't match");
+
+    if (this->bodySize > 0)
+    {
+        this->body.resize(this->bodySize);
+        ss.read(&this->body[0], this->bodySize);
+    }
+    setIsCgi();
+    parseCookies();
+}
+
+
+std::string HttpRequest::getMethod() const {
+    return this->method;
+}
+
+std::string HttpRequest::getPath() const {
+    return this->path;
+}
+
+std::string HttpRequest::toString() const {
+    return this->primalRequest;
+}
+
+const ABlock *HttpRequest::getRequestBlock(void) const {
+    return this->requestBlock;
+}
+
+const Server *HttpRequest::getServer(void) const {
+    return this->server;
+}
+
+std::string HttpRequest::getQueryString(void) const {
+    return this->queryString;
+}
+
+std::string HttpRequest::getCookie(const std::string &cookie) const {
+    return this->cookies.at(cookie);
+}
+void HttpRequest::removeLeadingSpaces(std::string &str) {
+    size_t firstNonSpace = str.find_first_not_of(" \t");
+    if (firstNonSpace != std::string::npos) {
+        str.erase(0, firstNonSpace);
+    }
+}
+void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort) {
+    std::string line;
+    bool hostFound = false;
+    bool contentLengthFound = false;
     while(getline(ss, line) && line != "\r") { // looping through headers
         if (line[line.size() - 1] == '\r')
             line[line.size() - 1] = '\0';
-        std::stringstream lineSs(line);
+        // std::stringstream lineSs(line);
         std::string key;
         std::string value;
 
-        lineSs >> key;
-        size_t pos =  key.find(":");
+        size_t pos =  line.find(":");
         if (pos == std::string::npos)
         {
             if (hostFound)
@@ -54,12 +105,10 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
                 throw HttpErrorException(BAD_REQUEST, ": not found in header");
         }
 
-        // if (lineSs.fail() || lineSs.eof() || key[key.size() - 1] != ':') throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid header", requestBlock->getErrorPageHtml(BAD_REQUEST));
-        key = key.substr(0, key.size() - 1);
-        // else if (key == "Content-Type")
-        //     contentTypeFound = true;
-        lineSs >> value;
-        // if (lineSs.fail()) throw HttpErrorException(this->version, BAD_REQUEST, "Bad Request", "invalid header", requestBlock->getErrorPageHtml(BAD_REQUEST));
+        key = line.substr(0, pos);
+        value = line.substr(pos + 1);
+        removeLeadingSpaces(value);
+
         if (key == "Content-Length")
         {
             std::stringstream l(value);
@@ -118,55 +167,38 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
                 }
             }
         }
-        // this->isCgi = true;
-        setIsCgi();
     }
 
-    // if (line != "\r") throw std::logic_error("Invalid headers terminator");
     if (!hostFound)
         throw HttpErrorException(BAD_REQUEST,  "Host header not found");
-    // if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
-    if (!this->requestBlock->isMethodAllowed(this->method))
-        throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
 
+    if (!this->requestBlock->isMethodAllowed(this->method))
+         throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
 
     if (this->method == "POST")
     {
         if (!contentLengthFound) // or no Transfer-Encoding??
             throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found");
     }
-    // if (static_cast<size_t>(ss.rdbuf()->in_avail()) != this->bodySize) throw std::logic_error("Content-Length header and actual length don't match");
+}
 
-    if (this->bodySize > 0)
-    {
-        this->body.resize(this->bodySize);
-        ss.read(&this->body[0], this->bodySize);
+void HttpRequest::parseCookies(void) {
+    std::string cookieString = getHeader("Cookie");
+    if (cookieString.empty())
+        return ;
+    std::stringstream ss(cookieString);
+    std::string singleCookie;
+    while(getline(ss, singleCookie, ';')) {
+        removeLeadingSpaces(singleCookie);
+        // std::cout << singleCookie << '\n';
+        std::stringstream sc(singleCookie);
+        std::string key;
+        std::string value;
+        if (getline(sc, key, '=')) {
+            getline(sc, value);
+            this->cookies[key] = value;
+        }
     }
-}
-
-
-std::string HttpRequest::getMethod() const {
-    return this->method;
-}
-
-std::string HttpRequest::getPath() const {
-    return this->path;
-}
-
-std::string HttpRequest::toString() const {
-    return this->primalRequest;
-}
-
-const ABlock *HttpRequest::getRequestBlock(void) const {
-    return this->requestBlock;
-}
-
-const Server *HttpRequest::getServer(void) const {
-    return this->server;
-}
-
-std::string HttpRequest::getQueryString(void) const {
-    return this->queryString;
 }
 
 void HttpRequest::setIsCgi(void) {

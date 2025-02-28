@@ -173,8 +173,13 @@ void ABlock::setCgiInfo(const std::string &language, const std::string &path) {
 }
 
 
-const std::string &ABlock::getCgiPath(const std::string &language) const { // will throw out_of_range if not found
-    return this->cgis.at(language);
+const std::string &ABlock::getCgiPath(const std::string &language) const {
+    std::map<std::string, std::string>::const_iterator it = this->cgis.find(language);  // Use find() instead of at()
+    if (it != this->cgis.end()) {
+        std::cout << "SEC: " << it->second << '\n';
+        return it->second;  // Return the value associated with the key
+    }
+    throw std::out_of_range("Key not found in cgis map");  // Or handle it differently
 }
 
 std::map<std::string, std::string>::const_iterator ABlock::cgisCbegin(void) const {

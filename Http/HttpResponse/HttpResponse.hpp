@@ -16,6 +16,7 @@ class HttpResponse: public AHttp {
         const int epollFd;
         int statusCode;
         std::string reasonPhrase;
+        std::vector<std::string> cookies;
 
         void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
         void handleAutoIndex(const HttpRequest& request) const;
@@ -25,6 +26,8 @@ class HttpResponse: public AHttp {
         HttpResponse();
         HttpResponse(const HttpRequest &request, int clientFd, int epollFd);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
+        void addCookie(const std::string& name, const std::string& value, const std::string& attributes);
+        void setBody(const std::string &body);
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);
         void handlePostRequest(const HttpRequest &request);

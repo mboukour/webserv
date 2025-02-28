@@ -13,7 +13,7 @@
 #include "../../Http/HttpRequest/HttpRequest.hpp"
 #include "../../Http/HttpResponse/HttpResponse.hpp"
 #include "../../Http/HttpResponse/ResponseState/ResponseState.hpp"
-
+#include "../../Session/Login/Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
 
@@ -42,6 +42,7 @@ const Server &ServerManager::getServer(int port) {
 
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 void ServerManager::handleClient(int clientFd) {
+    static std::map<std::string, std::string> userCreds;
     char buffer[1024] = {0};
     ssize_t bytesReceived = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
     if (bytesReceived == 0)
@@ -67,7 +68,10 @@ void ServerManager::handleClient(int clientFd) {
         try  {
             HttpRequest request(buffer, this->servers, port);
             DEBUG && std::cout << "New request: " << request << std::endl;
-            HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
+            if (request.getPath() == "/session-test")
+                Login::respondToLogin(request, userCreds, clientFd);
+            else 
+                HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
         } catch (const HttpErrorException &exec) {
             DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
             std::string respStr = exec.getResponseString();

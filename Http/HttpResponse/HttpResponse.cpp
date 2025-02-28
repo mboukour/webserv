@@ -46,7 +46,20 @@ HttpResponse::HttpResponse(const std::string &version, int statusCode,
     this->body = body;
 }
 
+void HttpResponse::addCookie(const std::string& name, const std::string& value, const std::string& attributes) {
+    std::string cookie = "Set-Cookie: " + name + "=" + value;
+    if (!attributes.empty())
+        cookie += "; " + attributes;
+    cookies.push_back(cookie);
+}
 
+void HttpResponse::setBody(const std::string &body) {
+    this->body = body; 
+    this->bodySize = body.size();
+    std::stringstream ss;
+    ss << this->bodySize;
+    this->headers["Content-Length"] = ss.str();
+}
 
 std::string HttpResponse::toString(void) const {
     std::stringstream ss;
@@ -55,6 +68,8 @@ std::string HttpResponse::toString(void) const {
         it != this->headers.end(); it++) {
             ss << it->first << ": " << it->second << "\r\n";
         }
+    for (std::vector<std::string>::const_iterator ite = cookies.begin(); ite != cookies.end(); ++ite)
+        ss  << *ite << "\r\n";
     ss << "\r\n" << this->body;
     return (ss.str());
 }
