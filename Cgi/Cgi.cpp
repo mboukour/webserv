@@ -1,4 +1,5 @@
 #include "Cgi.hpp"
+#include <cstddef>
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -8,21 +9,18 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <sstream>
+#include <utility>
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 
-std::string Cgi::getCgiResponse(const HttpRequest &request) {
-    // Validate CGI extension
-    std::string extension = request.getPath().substr(request.getPath().find_last_of('.') + 1);
-    if (!isValidCgiExtension(extension)) {
-        throw std::logic_error("Invalid CGI extension");
-    }
-    std::string interpreterPath = getInterpreterPath(extension, request);
-    std::string scriptName = getScriptName(request);
-    if (access(scriptName.c_str(), F_OK) == -1)
-        throw HttpErrorException(NOT_FOUND, request, "The requested script was not found");
 
-    std::map<std::string, std::string> env = createCgiEnv(request);
+std::string Cgi::getCgiResponse(const HttpRequest &request) {
+    std::pair<std::string, std::string> namePair = getNamePair(request); // first = scriptName // second = pathInfo
+    std::string extension = namePair.first.substr(namePair.first.find_last_of('.') + 1);
+    std::string interpreterPath = getInterpreterPath(extension, request);
+    std::string toExecute = request.getRequestBlock()->getRoot() + namePair.first;
+    std::map<std::string, std::string> env = createCgiEnv(request, namePair.first, namePair.second);
     char **envp = convertEnvToDoublePointer(env);
+
 
     int socket[2];
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket) == -1) {
@@ -44,7 +42,7 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
         close(socket[1]);
         char *argv[3];
         argv[0] = const_cast<char*>(interpreterPath.c_str());
-        argv[1] = const_cast<char*>(scriptName.c_str());
+        argv[1] = const_cast<char*>(toExecute.c_str());
         argv[2] = NULL;
         execve(interpreterPath.c_str(), argv, envp);
         cleanupEnv(envp);
@@ -81,42 +79,119 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
     return cgiResponse;
 }
 
-bool Cgi::isValidCgiExtension(const std::string &extension) {
-    return (extension == "php" || extension == "py" || extension == "pl");
+bool Cgi::isValidCgiExtension(const std::string &extension, const HttpRequest &request) {
+    try {
+        request.getRequestBlock()->getCgiPath(extension);
+        return true;
+    } catch (const std::out_of_range &) {
+        if (extension == "py" || extension == "pl" || extension == "js" || extension == "sh" || extension == "rb" || 
+            extension == "java" || extension == "go" || extension == "bash" || 
+            extension == "lua" || extension == "php" || extension == "php7" || extension == "php8") {
+                std::string interpreterPath = getInterpreterPath(extension, request);
+                if (access(interpreterPath.c_str(), X_OK) == 0)
+                    return true;
+                else 
+                    return false;
+            }
+        return false;
+    }
 }
+
+
 
 std::string Cgi::getInterpreterPath(const std::string &extension, const HttpRequest &request) {
     try {
         return request.getRequestBlock()->getCgiPath(extension);
     } catch (const std::out_of_range &) {
-        if (extension == "php") return "/usr/bin/php-cgi";
-        if (extension == "py") return "/usr/bin/python3";
-        if (extension == "pl") return "/usr/bin/perl";
-        throw std::logic_error("No interpreter found for this extension");
+        std::string lookFor;
+        if (extension == "py") lookFor = "/usr/bin/python3";
+        else if (extension == "pl") lookFor = "/usr/bin/perl";
+        else if (extension == "js") lookFor = "/usr/bin/node";
+        else if (extension == "sh") lookFor = "/bin/bash";
+        else if (extension == "rb") lookFor = "/usr/bin/ruby";
+        else if (extension == "java") lookFor = "/usr/bin/java";
+        else if (extension == "go") lookFor = "/usr/bin/go";
+        else if (extension == "bash") lookFor = "/bin/bash";
+        else if (extension == "lua") lookFor = "/usr/bin/lua";
+        else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php-cgi"; 
+        else throw HttpErrorException(NOT_IMPLEMENTED, request , "The requested CGI extension is not supported");
+        return lookFor;
     }
 }
 
-std::string Cgi::getScriptName(const HttpRequest &request) {
-    std::string path = request.getPath();
-    size_t slashPos = path.find_last_of('/');
-    if (slashPos == std::string::npos) {
-        throw std::logic_error("Invalid script path");
+// fix this shit later
+std::pair<std::string, std::string> Cgi::getNamePair(const HttpRequest &request) {
+    std::stringstream ss(request.getPath());
+    std::string scriptName;
+    std::string pathInfo;
+    std::string word;
+    const std::string &root = request.getRequestBlock()->getRoot();
+    while(getline(ss, word, '/')) {
+        word += "/";
+        scriptName += word;
+        if (word.find('.') == std::string::npos) {
+            continue;
+        }
+
+        std::string toCheck = (root + scriptName);
+        toCheck = toCheck.substr(0, toCheck.size() - 1);
+        if (access(toCheck.c_str(), F_OK) != -1) {
+            scriptName = scriptName.substr(0, scriptName.size() - 1);
+            pathInfo = request.getPath().substr(scriptName.size());
+            break;
+        }
     }
-    return request.getRequestBlock()->getRoot() + path.substr(slashPos + 1);
+    std::pair<std::string, std::string> res(scriptName, pathInfo);
+    return res;
 }
 
-std::map<std::string, std::string> Cgi::createCgiEnv(const HttpRequest &request) {
+std::map<std::string, std::string> Cgi::createCgiEnv(const HttpRequest &request, const std::string &scriptName, const std::string &pathInfo) {
     std::map<std::string, std::string> env;
+    env["SERVER_SOFTWARE"] = "Webserv/1.0";
+
+    std::string serverName(request.getServer()->getServerName());
+    if (serverName.empty())
+    {
+        serverName = request.getHeader("Host");
+        size_t pos = serverName.find(':');
+        if (pos != std::string::npos) {
+            serverName = serverName.substr(0, pos);
+        }
+    }
+    if (!serverName.empty())
+        env["SERVER_NAME"] = serverName;
+
+    env["GATEWAY_INTERFACE"] = "CGI/1.1";
+    env["SERVER_PROTOCOL"] = request.getVersion();
     env["REQUEST_METHOD"] = request.getMethod();
+    env["PATH_INFO"] = pathInfo;
+
+    std::string rootSlash = request.getRequestBlock()->getRoot();
+    if (rootSlash[rootSlash.size() - 1] == '/')
+        rootSlash = rootSlash.substr(0, rootSlash.size() - 2);
+    env["PATH_TRANSLATED"] =  rootSlash + scriptName; // realpath
+    env["SCRIPT_NAME"] = scriptName;
+
+    env["QUERY_STRING"] = request.getQueryString();
+    const std::string &contentType = request.getHeader("Content-Type");
+    if (!contentType.empty())
+        env["CONTENT_TYPE"] = request.getHeader("Content-Type");
     std::stringstream ss;
     ss << request.getBodySize();
     env["CONTENT_LENGTH"] = ss.str();
-    env["CONTENT_TYPE"] = request.getHeader("Content-Type");
-    env["QUERY_STRING"] = request.getQueryString();
-    env["SERVER_PROTOCOL"] = request.getVersion();
-    env["GATEWAY_INTERFACE"] = "CGI/1.1";
-    env["SERVER_NAME"] = request.getServer()->getServerName();
+
+    env["HTTP_HOST"] = request.getHeader("Host");
+    env["HTTP_USER_AGENT"] = request.getHeader("User-Agent");
+    env["HTTP_ACCEPT"] = request.getHeader("Accept");
+    env["HTTP_ACCEPT_LANGUAGE"] = request.getHeader("Accept-Language");
+    env["HTTP_ACCEPT_ENCODING"] = request.getHeader("Accept-Encoding");
+    env["HTTP_CONNECTION"] = request.getHeader("Connection");
+    env["HTTP_REFERER"] = request.getHeader("Referer");
+    env["HTTP_COOKIE"] = request.getHeader("Cookie");
+
+
     ss.clear();
+    ss.str("");
     ss << request.getServer()->getPort();
     env["SERVER_PORT"] = ss.str();
     return env;

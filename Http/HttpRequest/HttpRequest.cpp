@@ -10,10 +10,12 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "../../Cgi/Cgi.hpp"
 
 HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL) {
 
     this->primalRequest = request;
+    this->isCgi = false;
     std::stringstream ss(request);
     std::string line;
     bool hostFound = false;
@@ -115,9 +117,8 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
                     }
                 }
             }
-
-
         }
+        // this->isCgi = true;
         setIsCgi();
     }
 
@@ -169,14 +170,21 @@ std::string HttpRequest::getQueryString(void) const {
 }
 
 void HttpRequest::setIsCgi(void) {
-    size_t pos = this->path.find_last_of('.');
-    if (pos == std::string::npos)
-    {
-        this->isCgi = false;
-        return ;
+
+    std::string scriptName;
+    std::string word;
+    std::stringstream ss(this->path);
+
+    while(getline(ss, word, '/')) {
+
+        size_t pos = word.find_last_of('.');
+        if (pos != std::string::npos)
+        {
+            std::string extension = word.substr(pos + 1);
+            this->isCgi = Cgi::isValidCgiExtension(extension, *this);
+            return;
+        }
     }
-    std::string extension = this->path.substr(pos + 1);
-    this->isCgi =  (extension == "php" || extension == "py" || extension == "pl"); // add more if we need to
 }
 
 bool HttpRequest::isCgiRequest(void) const {

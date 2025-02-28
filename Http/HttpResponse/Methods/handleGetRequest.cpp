@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <fstream>
 #include <ios>
+#include <netinet/in.h>
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
@@ -58,6 +59,7 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
 
     const std::string &path = request.getPath();
     const std::string &fullPath = request.getRequestBlock()->getRoot() + request.getPath();
+    std::cout << YELLOW << fullPath << RESET << '\n';
     DIR *dir = opendir(fullPath.c_str());
     if (!dir) 
         throw HttpErrorException(NOT_FOUND, request, "Can't open directory");
@@ -163,6 +165,5 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         } else {
             throw HttpErrorException(NOT_FOUND, request, "Indexes not found and autoindex is off");
         }
-    }
-    
+    }    
 }
