@@ -29,9 +29,10 @@ std::string Login::generateUniqueSessionID(std::map<std::string, std::string>& u
 }
 
 std::string Login::getLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds) {
+
     std::string sessionId;
     try {
-        std::string sessionId = request.getCookie("sessionId");
+        sessionId = request.getCookie("sessionId");
     } catch(std::out_of_range &) {} // keep it empty
     std::stringstream html;
 
@@ -52,9 +53,17 @@ std::string Login::getLogin(const HttpRequest &request, std::map<std::string, st
     if (!sessionId.empty() && userCreds.find(sessionId) != userCreds.end()) {
         html << "        <h2>Welcome back, " << userCreds[sessionId] << "! :)</h2>\n"
              << "        <p>We remembered your name!</p>\n"
-             << "        <form action='/session-test' method='DELETE'>\n"
-             << "            <button type='submit'>Forget me</button>\n"
-             << "        </form>\n";
+             << "        <button id='forgetBtn' type='button'>Forget me</button>\n"
+             << "        <script>\n"
+             << "            document.getElementById('forgetBtn').addEventListener('click', function() {\n"
+             << "                fetch('/session-test', {\n"
+             << "                    method: 'DELETE',\n"
+             << "                    credentials: 'same-origin'\n"
+             << "                }).then(function() {\n"
+             << "                    window.location.reload();\n"
+             << "                });\n"
+             << "            });\n"
+             << "        </script>\n";
     } else {
         html << "        <h2>Hi there! What's your name?</h2>\n"
              << "        <p>We'll remember it for you :)</p>\n"
@@ -73,9 +82,38 @@ std::string Login::getLogin(const HttpRequest &request, std::map<std::string, st
 }
 
 std::string Login::deleteLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds) {
-    (void)request;
-    (void)userCreds;
-    return "OK";
+    std::string sessionId;
+    try {
+        sessionId = request.getCookie("sessionId");
+    } catch(std::out_of_range &) {
+        throw HttpErrorException(BAD_REQUEST, request, "No session ID to remove");
+    }
+    userCreds.erase(sessionId);
+    std::stringstream html;
+    html << "<!DOCTYPE html>\n"
+        << "<html>\n"
+        << "<head>\n"
+        << "    <title>Session Test</title>\n"
+        << "    <style>\n"
+        << "        body { font-family: Arial, sans-serif; margin: 40px auto; max-width: 600px; text-align: center; }\n"
+        << "        .container { padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }\n"
+        << "        input { padding: 8px; margin: 10px 0; width: 200px; }\n"
+        << "        button { background: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }\n"
+        << "    </style>\n"
+        << "</head>\n"
+        << "<body>\n"
+        << "    <div class='container'>\n"
+        << "        <h2>Hi there! What's your name?</h2>\n"
+        << "        <p>We'll remember it for you :)</p>\n"
+        << "        <form action='/session-test' method='POST'>\n"
+        << "            <input type='text' name='username' placeholder='Enter your name' required>\n"
+        << "            <br>\n"
+        << "            <button type='submit'>Remember me</button>\n"
+        << "        </form>\n"
+        << "    </div>\n"
+        << "</body>\n"
+        << "</html>\n";
+    return html.str();
 }
 
 std::string Login::postLogin(const HttpRequest &request, HttpResponse &response ,std::map<std::string, std::string> &userCreds) {
@@ -108,15 +146,13 @@ std::string Login::postLogin(const HttpRequest &request, HttpResponse &response 
          << "<body>\n"
          << "    <div class='container'>\n"
          << "       <h2>Welcome, " << userName << "! :)</h2>\n"
-         << "        <p>Refresh to see if we will rememeber your name!</p>\n"
-         << "        <form action='/session-test' method='DELETE'>\n"
-         << "            <button type='submit'>Forget me</button>\n"
-         << "        </form>\n"
+         << "        <p>Refresh to see if we will remember your name!</p>\n"
          << "    </div>\n"
          << "</body>\n"
          << "</html>\n";
     return html.str();
 }
+
 
 void Login::respondToLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds, int clientFd) {
     const std::string &method = request.getMethod();
@@ -126,8 +162,10 @@ void Login::respondToLogin(const HttpRequest &request, std::map<std::string, std
         html =  getLogin(request, userCreds);
     else if (method == "POST")
         html = postLogin(request, response, userCreds);
-    else // delete
+    else {
+        std::cout << "REM\n";
         html = deleteLogin(request, userCreds);
+    } // delete 
     response.setBody(html);
     std::string responseStr = response.toString();
     send(clientFd,  responseStr.c_str(), responseStr.size(), 0);

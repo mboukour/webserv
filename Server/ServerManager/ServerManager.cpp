@@ -67,6 +67,7 @@ void ServerManager::handleClient(int clientFd) {
         std::string responseStr;
         try  {
             HttpRequest request(buffer, this->servers, port);
+            std::cout << "METHOD: " << request.getMethod() << '\n';
             DEBUG && std::cout << "New request: " << request << std::endl;
             if (request.getPath() == "/session-test")
                 Login::respondToLogin(request, userCreds, clientFd);

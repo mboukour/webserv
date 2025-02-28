@@ -196,6 +196,8 @@ void HttpRequest::parseCookies(void) {
         std::string value;
         if (getline(sc, key, '=')) {
             getline(sc, value);
+            if (value[value.size() - 1] == '\0')
+                value = value.substr(0, value.size() - 1);
             this->cookies[key] = value;
         }
     }

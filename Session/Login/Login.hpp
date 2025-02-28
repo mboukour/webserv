@@ -16,7 +16,6 @@ class Login {
         static std::string postLogin(const HttpRequest& request, HttpResponse &response,  std::map<std::string, std::string> &userCreds);
         static std::string deleteLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds);
         static std::string generateUniqueSessionID(std::map<std::string, std::string> &userCreds);
-        
     public:
         static void respondToLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds, int clientFd);
 };
