@@ -14,12 +14,11 @@ ServerFactory::ServerFactory() {}
 
 
 bool ServerFactory::isValidSucccessCode(const std::string &code) {
-    return (code == "200"); // add more later ig
+    return (code == "200" || code == "301"); // add more later ig
 }
 
 bool ServerFactory::isValidErrorCode(const std::string &code) // TO IMPROVE
 {
-
     return (code == "400" || code == "403" || code == "404" || code == "405" || code == "409" || code == "413" || code == "414" || code == "500"  || code == "501" || code == "502" || code == "503" || code == "504" || code == "505");
 }
 

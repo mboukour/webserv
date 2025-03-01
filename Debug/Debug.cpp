@@ -69,6 +69,9 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
     for (ite = other.errorPagesCbegin(); ite != other.errorPagesCend(); ++ite) {
         outputStream << "  " << ite->first << ": " << ite->second << "\n";
     }
+
+    // outputStream << "Redirect:\n";
+    // outputStream << other.get
     outputStream << "Locations:\n";
     std::vector<Location>::const_iterator it;
     // for (it = other.locationsBegin(); it != other.locationsEnd(); ++it) {

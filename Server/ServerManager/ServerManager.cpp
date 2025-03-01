@@ -1,6 +1,8 @@
+#include <cstdlib>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <typeinfo>
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
@@ -71,8 +73,20 @@ void ServerManager::handleClient(int clientFd) {
             DEBUG && std::cout << "New request: " << request << std::endl;
             if (request.getPath() == "/session-test")
                 Login::respondToLogin(request, userCreds, clientFd);
-            else 
+            else {
+                try{
+                    const Location &loc = dynamic_cast<const Location &>(*request.getRequestBlock());
+                    if (loc.getIsReturnLocation()) {
+                        HttpResponse response(request.getVersion(), loc.getReturnCode(), "Moved Permanently", "");
+                        response.setHeader("Location", loc.getReturnPath());
+                        std::string respStr = response.toString();
+                        std::cout << respStr << '\n';
+                        send(clientFd, respStr.c_str(), respStr.size(), 0);
+                        return ;
+                    }
+                } catch (std::bad_cast &) {}
                 HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
+            }
         } catch (const HttpErrorException &exec) {
             DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
             std::string respStr = exec.getResponseString();

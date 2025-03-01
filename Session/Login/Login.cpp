@@ -162,10 +162,8 @@ void Login::respondToLogin(const HttpRequest &request, std::map<std::string, std
         html =  getLogin(request, userCreds);
     else if (method == "POST")
         html = postLogin(request, response, userCreds);
-    else {
-        std::cout << "REM\n";
+    else 
         html = deleteLogin(request, userCreds);
-    } // delete 
     response.setBody(html);
     std::string responseStr = response.toString();
     send(clientFd,  responseStr.c_str(), responseStr.size(), 0);

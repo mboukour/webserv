@@ -12,6 +12,7 @@ class Location: public ABlock
 {
     private:
         std::string locationName;
+        bool isReturnLocation;
         struct returnDirective {
             int code;
             std::string path;
@@ -24,6 +25,9 @@ class Location: public ABlock
         void startServer(void);
         void setLocationName(const std::string &locationName);
         void setReturnDirective(const std::string &returnCode, const std::string &path);
+        bool getIsReturnLocation(void) const;
+        int getReturnCode(void) const;
+        std::string getReturnPath(void) const;
         std::string getLocationName(void) const;
         ~Location();
 };
