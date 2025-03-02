@@ -1,4 +1,9 @@
+#include <cstddef>
+#include <cstdio>
 #include <cstdlib>
+#include <sstream>
+#include <stdexcept>
+#include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -9,6 +14,8 @@
 #include <csignal>
 #include <fcntl.h>
 #include <string>
+#include <vector>
+#include <map>
 
 #include "../../Debug/Debug.hpp"
 #include "ServerManager.hpp"
@@ -17,7 +24,14 @@
 #include "../../Http/HttpResponse/ResponseState/ResponseState.hpp"
 #include "../../Session/Login/Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include "../../Utils/Logger/Logger.hpp"
+ClientState::ClientState(): state(PARSING_HEADERS), toIgnore(false) {}
 
+void ClientState::reset() {
+    this->state = PARSING_HEADERS;
+    this->toIgnore = false;
+    this->request = HttpRequest();
+}
 
 ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
 
@@ -40,62 +54,110 @@ const Server &ServerManager::getServer(int port) {
     throw std::logic_error("Server not found"); // throw ServerNotFound(serverFd);
 }
 
+// Remove getClientState method as it's no longer needed - map provides direct access
 
+void ServerManager::removeClient(int clientFd) {
+    this->clientStates.erase(clientFd);
+}
 
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
-void ServerManager::handleClient(int clientFd) {
+
+void ServerManager::sendResponse(const HttpRequest& request, int clientFd) {
     static std::map<std::string, std::string> userCreds;
+
+    try  {
+
+        // std::cout << "METHOD: " << request.getMethod() << '\n';
+        DEBUG && std::cout << request << '\n';
+        // DEBUG && std::cout << "New request: " << request << std::endl;
+        if (request.getPath() == "/session-test")
+            Login::respondToLogin(request, userCreds, clientFd);
+        else {
+            try{
+                const Location &loc = dynamic_cast<const Location &>(*request.getRequestBlock());
+                if (loc.getIsReturnLocation()) {
+                    HttpResponse response(request.getVersion(), loc.getReturnCode(), HttpErrorException::getReasonPhrase(loc.getReturnCode()), "");
+                    response.setHeader("Location", loc.getReturnPath());
+                    std::string respStr = response.toString();
+                    std::cout << respStr << '\n';
+                    send(clientFd, respStr.c_str(), respStr.size(), 0);
+                    return ;
+                }
+            } catch (std::bad_cast &) {}
+            HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
+        }
+    } catch (const HttpErrorException &exec) {
+        DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+        std::string respStr = exec.getResponseString();
+        send(clientFd, respStr.c_str(), respStr.size(), 0);
+        std::cout << "clientFd: " << clientFd <<std::endl;
+        close(clientFd);
+        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+        DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
+    }
+}
+
+
+void ServerManager::handleClientRead(int clientFd, char *buffer) {
+
+    // Wtf is this shit?
+    struct sockaddr_in addr;
+    socklen_t addrLen = sizeof(addr);
+    if (getsockname(clientFd, (struct sockaddr*)&addr, &addrLen) == -1) {
+        std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
+        close(clientFd);
+        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+        return;
+    }
+    int port = ntohs(addr.sin_port);
+    std::string bufferStr(buffer);
+    ClientState &state = clientStates[clientFd];
+
+    if (state.state == PARSING_HEADERS) {
+        state.receivedBuffer += bufferStr;
+        if (bufferStr.find("\r\n\r\n") != std::string::npos) {
+            state.state = PARSING_BODY;
+            HttpRequest request(state.receivedBuffer, servers, port);
+            state.request = request;
+            state.receivedBuffer = "";
+            if (request.getMethod() != "POST") {
+                sendResponse(request, clientFd);
+                state.toIgnore = true;
+                return ;
+            }
+        }
+    }
+    else if (state.state == PARSING_BODY) {
+        if (state.toIgnore) {
+            return ;
+        }
+        state.request.appendToBody(buffer);
+        const std::string &contentLength = state.request.getHeader("Content-Length");
+        std::stringstream ss(contentLength);
+        size_t size;
+        ss >> size;
+        if (state.request.getBodySize() >= size) {
+            state.reset();
+            sendResponse(state.request, clientFd);
+        }
+
+    }
+}
+
+void ServerManager::handleClient(int clientFd) {
     char buffer[1024] = {0};
     ssize_t bytesReceived = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
     if (bytesReceived == 0)
     {
         DEBUG && std::cout << "Client disconnected" << std::endl;
+        removeClient(clientFd);
         close(clientFd);
         epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
     }
     else if (bytesReceived > 0)
     {
         buffer[bytesReceived] = '\0';
-        // Wtf is this shit?
-        struct sockaddr_in addr;
-        socklen_t addrLen = sizeof(addr);
-        if (getsockname(clientFd, (struct sockaddr*)&addr, &addrLen) == -1) {
-            std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
-            close(clientFd);
-            epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-            return;
-        }
-        int port = ntohs(addr.sin_port);
-        std::string responseStr;
-        try  {
-            HttpRequest request(buffer, this->servers, port);
-            std::cout << "METHOD: " << request.getMethod() << '\n';
-            DEBUG && std::cout << "New request: " << request << std::endl;
-            if (request.getPath() == "/session-test")
-                Login::respondToLogin(request, userCreds, clientFd);
-            else {
-                try{
-                    const Location &loc = dynamic_cast<const Location &>(*request.getRequestBlock());
-                    if (loc.getIsReturnLocation()) {
-                        HttpResponse response(request.getVersion(), loc.getReturnCode(), "Moved Permanently", "");
-                        response.setHeader("Location", loc.getReturnPath());
-                        std::string respStr = response.toString();
-                        std::cout << respStr << '\n';
-                        send(clientFd, respStr.c_str(), respStr.size(), 0);
-                        return ;
-                    }
-                } catch (std::bad_cast &) {}
-                HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
-            }
-        } catch (const HttpErrorException &exec) {
-            DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
-            std::string respStr = exec.getResponseString();
-            send(clientFd, respStr.c_str(), respStr.size(), 0);
-            std::cout << "clientFd: " << clientFd <<std::endl;
-            close(clientFd);
-            epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-            DEBUG && std::cout << "Connection closed after error: " << buffer << std::endl;
-        }
+        handleClientRead(clientFd, buffer);
     }
     else
     {
@@ -127,6 +189,7 @@ void ServerManager::acceptConnections(int fdSocket) {
         std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
         close(clientFd);
     }
+    this->clientStates[clientFd] = ClientState();
 }
 
 void ServerManager::handleConnections(void) {
@@ -135,8 +198,6 @@ void ServerManager::handleConnections(void) {
 
     while (true)
     {
-        // -1 means wait indefinitely
-
         int event_count = epoll_wait(this->epollFd, events, MAX_EVENTS, -1);
         if (event_count == -1)
         {
@@ -188,4 +249,3 @@ void ServerManager::startServerManager(void) {
     }
     handleConnections();
 }
-

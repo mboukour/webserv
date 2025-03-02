@@ -53,6 +53,18 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     parseCookies();
 }
 
+HttpRequest& HttpRequest::operator=(const HttpRequest& other) {
+    this->method = other.method;
+    this->path = other.path;
+    this->queryString = other.queryString;
+    this->primalRequest = other.primalRequest;\
+    this->isCgi = other.isCgi;
+    this->server = other.server;
+    this->requestBlock = other.requestBlock;
+    this->cookies = other.cookies;
+    return (*this);
+}
+
 void HttpRequest::appendToBody(const std::string &body) {
     this->body += body;
     this->bodySize = this->body.size();

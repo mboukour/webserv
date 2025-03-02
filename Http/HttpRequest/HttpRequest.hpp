@@ -29,6 +29,7 @@ class HttpRequest: public AHttp {
         static void removeLeadingSpaces(std::string &str);
     public:
         HttpRequest();
+        HttpRequest &operator=(const HttpRequest &other);
         HttpRequest(const std::string &request, const std::vector<Server>& servers, int serverPort); // throws exceptions that should never terminate execution of the program
         std::string getMethod() const;
         std::string getPath() const;
