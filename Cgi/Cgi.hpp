@@ -11,7 +11,7 @@ class Cgi {
     private:
         Cgi();
 
-        static std::string getInterpreterPath(const std::string &extension, const HttpRequest &request);
+        static std::string getInterpreterPath(std::string extension, const HttpRequest &request);
         static std::pair<std::string, std::string> getNamePair(const HttpRequest &request);
         static std::map<std::string, std::string> createCgiEnv(const HttpRequest &request, const std::string &scriptName, const std::string &pathInfo);
         static char **convertEnvToDoublePointer(const std::map<std::string, std::string> &env);

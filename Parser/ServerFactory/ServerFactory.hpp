@@ -17,7 +17,18 @@ class ServerFactory {
         static bool isValidErrorCode(const std::string &code);
         static bool isValidDirective(const std::string &directive);
         static bool isAcceptedSubBlock(const std::string &directive);
+
+        static void parseMethods(ABlock &result, const stringVec &directives);
+        static void parseClientMaxBodySize(ABlock &result, const stringVec &directives);
         static void setBlockDirectives(ABlock &result, const stringVec &directives);
+
+        static void validateServerBlock(const Block& serverBlock);
+        static void parseListen(Server &server, const stringVec &directive);
+        static void parseDirectives(Server& server, const std::vector<stringVec>& directives);
+        static void parseReturnDirective(Location &location, const stringVec &directive);
+        static void inheritErrorPages(Server &server);
+        static bool hasErrorPage(const Location &location, const std::string &errorPage);
+        static Location createLocation(const Block& locationBlock, std::vector<std::string>& foundLocations);
         static Server createServer(const Block& serverBlock);
         ServerFactory();
     public:

@@ -9,8 +9,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <algorithm>
-
-
+#include "Utils/Logger/Logger.hpp"
 
 int main(int ac, char **av)
 {
@@ -18,6 +17,7 @@ int main(int ac, char **av)
     signal(SIGPIPE, SIG_DFL);
     signal(SIGPIPE, SIG_IGN);
 
+    Logger::init("webserv.log");
     if (ac != 2)
     {
         std::cerr << "Usage: ./Webserv {config_file}\n";

@@ -55,14 +55,17 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
     close(socket[1]);
 
     clock_t start = clock();
-    while (waitpid(pid, NULL, WNOHANG) != -1) {
+    int status;
+    while (waitpid(pid, &status, WNOHANG) != -1) {
         if ((clock() - start) / CLOCKS_PER_SEC > CGI_TIMEOUT) {
             kill(pid, SIGKILL);
             close(socket[0]);
             throw HttpErrorException(GATEWAY_TIMEOUT, request, "The CGI script took too long to respond");
         }
     }
-
+    if (WIFEXITED(status) && WEXITSTATUS(status)) {
+        throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "CGI script exited with a non-zero code");
+    }
     std::string cgiResponse;
     char buffer[4096];
     ssize_t bytesRead;
@@ -99,7 +102,9 @@ bool Cgi::isValidCgiExtension(const std::string &extension, const HttpRequest &r
 
 
 
-std::string Cgi::getInterpreterPath(const std::string &extension, const HttpRequest &request) {
+std::string Cgi::getInterpreterPath(std::string extension, const HttpRequest &request) {
+    if (extension[extension.size() - 1] == '/') 
+        extension = extension.substr(0, extension.size() - 1);
     try {
         return request.getRequestBlock()->getCgiPath(extension);
     } catch (const std::out_of_range &) {
@@ -114,7 +119,7 @@ std::string Cgi::getInterpreterPath(const std::string &extension, const HttpRequ
         else if (extension == "bash") lookFor = "/bin/bash";
         else if (extension == "lua") lookFor = "/usr/bin/lua";
         else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php-cgi"; 
-        else throw HttpErrorException(NOT_IMPLEMENTED, request , "The requested CGI extension is not supported");
+        else throw HttpErrorException(NOT_IMPLEMENTED, request , "The requested CGI extension is not supported: " + extension);
         return lookFor;
     }
 }

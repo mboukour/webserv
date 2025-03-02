@@ -7,10 +7,10 @@ EXCEPTIONS = Exceptions/HttpErrorException/HttpErrorException.cpp
 HTTP = Http/AHttp/AHttp.cpp Http/HttpRequest/HttpRequest.cpp Http/HttpResponse/HttpResponse.cpp \
        Http/HttpResponse/Methods/handleDeleteRequest.cpp Http/HttpResponse/Methods/handleGetRequest.cpp \
        Http/HttpResponse/Methods/handlePostRequest.cpp Http/HttpResponse/ResponseState/ResponseState.cpp
-	   
 CGI = Cgi/Cgi.cpp
 SESSION = Session/Login/Login.cpp
-SRC += $(EXCEPTIONS) $(HTTP) $(CGI) $(SESSION)
+UTILS = Utils/Logger/Logger.cpp
+SRC += $(EXCEPTIONS) $(HTTP) $(CGI) $(SESSION) $(UTILS)
 OBJ = $(SRC:.cpp=.o)
 FLAGS = -Wall -Wextra -Werror  -std=c++98
 HEADERS = Webserv.hpp Parser/Parser.hpp Parser/ServerFactory/ServerFactory.hpp Debug/Debug.hpp \

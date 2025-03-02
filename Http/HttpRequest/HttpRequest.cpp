@@ -13,6 +13,8 @@
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
 
+HttpRequest::HttpRequest(): AHttp() {}
+
 HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL) {
 
     this->primalRequest = request;
@@ -25,12 +27,12 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", "invalid request line", "");
-    size_t pos = this->path.find("?");
-    if (pos != std::string::npos)
-    {
-        this->queryString = this->path.substr(pos + 1);
-        this->path = this->path.substr(0, pos);
-    }
+    // size_t pos = this->path.find("?");
+    // if (pos != std::string::npos)
+    // {
+    //     this->queryString = this->path.substr(pos + 1);
+    //     this->path = this->path.substr(0, pos);
+    // }
     if (this->version != "HTTP/1.1")
         throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
     if (this->path.length() > URI_MAX_SIZE)
@@ -51,6 +53,10 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     parseCookies();
 }
 
+void HttpRequest::appendToBody(const std::string &body) {
+    this->body += body;
+    this->bodySize = this->body.size();
+}
 
 std::string HttpRequest::getMethod() const {
     return this->method;
