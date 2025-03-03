@@ -89,7 +89,7 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     outputStream << "Method: " << request.getMethod() << " ";
     outputStream << "Path: " << request.getPath() << " ";
     outputStream << "Query string: " << request.getQueryString() << "\n";
-    // outputStream << "Headers:\n";
+    outputStream << "Headers:\n";
 
 
     // change this by funcs that returns const iterators
@@ -97,7 +97,7 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     // for (it = request.headers.begin(); it != request.headers.end(); ++it) {
     //     outputStream << "  " << it->first << ": " << it->second << "\n";
     // }
-    // request.printHeaders();
+    request.printHeaders();
     // outputStream << "Body Size: " << request.getBodySize() << "\n";
     // outputStream << "Body: " << request.getBody() << "\n";
     // std::cout << "Cookies: \n";

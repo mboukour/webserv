@@ -6,7 +6,7 @@
 #define DEBUG 1
 // Cout operator overloads
 std::ostream& operator<<(std::ostream& outputStream, const Server& other);
-
+std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 
 
 // Vector class printers

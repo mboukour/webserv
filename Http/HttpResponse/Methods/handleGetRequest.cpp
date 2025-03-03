@@ -12,7 +12,8 @@
 #include <sys/types.h>
  #include <sys/stat.h>
 #include <vector>
-#include "../ResponseState/ResponseState.hpp"
+// #include "../ResponseState/ResponseState.hpp"
+#include "../../../ConnectionState/ConnectionState.hpp"
 #include <string>
 #include <dirent.h>
 #include <ctime>
@@ -40,8 +41,11 @@ void HttpResponse::sendGetResponse(std::fstream &fileToGet, const std::string &f
                     filePos -= (bytesRead - totalSent);
                     struct epoll_event ev;
                     ev.events = EPOLLIN | EPOLLOUT;
-                    ev.data.fd = this->clientFd;
-                    ev.data.ptr = new ResponseState(filePath, filePos, this->clientFd, this->epollFd);
+                    // ev.data.fd = this->clientFd;
+                    ResponseState *respState = new ResponseState(filePath, filePos, this->clientFd, this->epollFd);
+                    ConnectionState *state = new ConnectionState(clientFd, epollFd);
+                    state->setResponseState(respState);
+                    ev.data.ptr = state;
                     epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->clientFd, &ev);
                     return;
                 } else {

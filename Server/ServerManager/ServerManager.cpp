@@ -17,7 +17,7 @@
 #include "../../Http/HttpResponse/ResponseState/ResponseState.hpp"
 #include "../../Session/Login/Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
-
+#include "../../ConnectionState/ConnectionState.hpp"
 
 ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
 
@@ -41,6 +41,38 @@ const Server &ServerManager::getServer(int port) {
 }
 
 
+void ServerManager::sendResponse(HttpRequest &request, int clientFd) {
+    static std::map<std::string, std::string> userCreds;
+
+    try  {
+        std::cout << "METHOD: " << request.getMethod() << '\n';
+        // DEBUG && std::cout << "New request: " << request << std::endl;
+        if (request.getPath() == "/session-test")
+            Login::respondToLogin(request, userCreds, clientFd);
+        else {
+            try{
+                const Location &loc = dynamic_cast<const Location &>(*request.getRequestBlock());
+                if (loc.getIsReturnLocation()) {
+                    HttpResponse response(request.getVersion(), loc.getReturnCode(), "Moved Permanently", "");
+                    response.setHeader("Location", loc.getReturnPath());
+                    std::string respStr = response.toString();
+                    std::cout << respStr << '\n';
+                    send(clientFd, respStr.c_str(), respStr.size(), 0);
+                    return ;
+                }
+            } catch (std::bad_cast &) {}
+            HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
+        }
+    } catch (const HttpErrorException &exec) {
+        DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+        std::string respStr = exec.getResponseString();
+        send(clientFd, respStr.c_str(), respStr.size(), 0);
+        std::cout << "clientFd: " << clientFd <<std::endl;
+        close(clientFd);
+        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+        DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
+    }
+}
 
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 void ServerManager::handleClient(int clientFd) {
@@ -121,7 +153,8 @@ void ServerManager::acceptConnections(int fdSocket) {
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN;
-    ev.data.fd = clientFd;
+    // ev.data.fd = clientFd;
+    ev.data.ptr = new ConnectionState(clientFd, epollFd);
     if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
     {
         std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
@@ -146,17 +179,29 @@ void ServerManager::handleConnections(void) {
         }
         for (int i = 0; i < event_count; i++)
         {
-            int fd = events[i].data.fd;
-            if (events[i].events == EPOLLIN) {
-                if (isAServerFdSocket(fd))
-                    acceptConnections(fd);
+            ConnectionState *state = static_cast<ConnectionState *>(events[i].data.ptr);
+            int eventFd = state->getEventFd();
+            if (events[i].events & EPOLLIN) {
+                if (isAServerFdSocket(eventFd))
+                    acceptConnections(eventFd);
                 else
-                    handleClient(fd);
-            } else if (events[i].events == EPOLLOUT) {
-                ResponseState* state = reinterpret_cast<ResponseState *>(events[i].data.ptr);
-                state->continueSending();
-                delete state;
+                {
+                    state->handleReadable(this->servers);
+                    if (state->getIsRequestReady())
+                    {
+                        HttpRequest * request = state->getHttpRequest();
+                        sendResponse(*request, eventFd);
+                        if (state->getIsRequestDone())
+                            delete request;
+                    }
+                }
             }
+
+            if (events[i].events == EPOLLOUT) {
+                state->handleWritable();
+            }
+            if (state->getIsDone())
+                delete state;
         }
 
     }
@@ -179,7 +224,8 @@ void ServerManager::startServerManager(void) {
         it->startServer();
         int fdSocket = it->getFdSocket();
         ev.events = EPOLLIN;
-        ev.data.fd = fdSocket;
+        // ev.data.fd = fdSocket;
+        ev.data.ptr = new ConnectionState(fdSocket, epollFd);
         if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
         {
             std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;

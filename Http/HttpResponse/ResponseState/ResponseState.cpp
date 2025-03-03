@@ -2,6 +2,7 @@
 #include <iosfwd>
 #include <sys/socket.h>
  #include <sys/epoll.h>
+#include <sys/types.h>
 ResponseState::ResponseState() {}
 
 ResponseState::ResponseState(const std::string &filePath, std::streampos filePos, int clientFd, int epollFd)
@@ -14,7 +15,7 @@ ResponseState::ResponseState(const std::string &filePath, std::streampos filePos
 }
 
 
-void ResponseState::continueSending(void) { // 
+ResponseState* ResponseState::continueSending(void) { // 
     std::vector<char> buffer(65536);  // 4KB buffer
     while (true) {
         fileToSend.read(buffer.data(), buffer.size());
@@ -30,26 +31,38 @@ void ResponseState::continueSending(void) { //
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     std::streampos filePos = fileToSend.tellg();
                     filePos -= (bytesRead - totalSent);
-                    struct epoll_event ev;
                     ResponseState *state = new ResponseState(this->filePath, filePos, this->clientFd, this->epollFd);
-                    ev.events = EPOLLIN | EPOLLOUT;
-                    ev.data.fd = this->clientFd;
-                    ev.data.ptr = state;
-                    epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->clientFd, &ev);
-                    return;
+                    return state;
                 } else { // implement better error handling later
-                    perror("Error: ");
-                    return ; 
+                    perror("Error: "); // probably should throw exception here
+                    return NULL; 
                 }
             }
             totalSent += bytesSent;
         }
     }
     // restore to monitor for reading only once chunking is done
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = this->clientFd;
-    epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->clientFd, &ev);
+    return NULL; // NULL if done
 }
 
-ResponseState::~ResponseState() {}
+
+// ResponseState &ResponseState::operator=(ResponseState &other) {
+//     if (this == &other)
+//         return *this;
+//     this->filePath = other.filePath;
+//     this->clientFd = other.clientFd;
+//     this->epollFd = other.epollFd;
+//     this->fileToSend.open(filePath.c_str());
+//     if (!this->fileToSend.is_open()) { // DONT FORGET TO HANDLE IF WE CANT OPEN THE FILE
+//         throw std::logic_error("Error opening file");
+//     }
+//     const std::streampos pos = other.fileToSend.tellg();
+//     this->fileToSend.seekg(pos);
+//     return *this;
+// }
+
+ResponseState::~ResponseState() {
+    if (fileToSend.is_open()) {
+        fileToSend.close();
+    }
+}

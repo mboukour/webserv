@@ -6,6 +6,7 @@
 #include <iosfwd>
 #include <sys/types.h>
 #include <vector>
+
 class ResponseState {
     private:
         std::string filePath;
@@ -13,12 +14,14 @@ class ResponseState {
         int clientFd;
         int epollFd;
 
+        public:
         ResponseState();
-    public:
+        // ResponseState(const ResponseState &other);
+        // ResponseState& operator=(ResponseState& other);
+        std::streampos getStreamPos(void) const;
         ResponseState(const std::string &filePath, std::streampos filePos, int clientFd, int epollFd);
         ~ResponseState();
-        void continueSending(void);
+        ResponseState* continueSending(void);
 };
-
 
 #endif
