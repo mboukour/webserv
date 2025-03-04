@@ -58,7 +58,8 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
             this->readState = READING_BODY;
             this->request = new HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
             std::cout << *this->request;
-            this->requestBuffer = "";
+            // this->requestBuffer = "";
+            this->requestBuffer.clear();
             if (this->request->getMethod() != "POST")
                 this->isRequestReady = true;
             // the readState should be reading body in case of post??
@@ -141,5 +142,11 @@ void ConnectionState::updateEpollEvents(void) { // will need to throw an excepti
 }
 
 ConnectionState::~ConnectionState() {
-    
+    if (this->request) {
+        delete this->request;
+    }
+    if (this->responseState) {
+        delete this->responseState;
+    }
+    close(this->eventFd);
 }

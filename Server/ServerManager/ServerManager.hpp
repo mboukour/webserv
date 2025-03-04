@@ -28,13 +28,13 @@ class ServerManager {
         int epollFd;
         std::vector<Server> &servers;
         void handleConnections(void);
-        void handleClientRead(int clientFd, char *buffer);
-        void handleClient(int clientFd);
+        // void handleClientRead(int clientFd, char *buffer);
+        // void handleClient(int clientFd);
         void acceptConnections(int fdSocket);
         bool isAServerFdSocket(int fdSocket) const;
         const Server &getServer(int serverFd);
         
-        public:
+    public:
         ServerManager(std::vector<Server> &servers);
         void startServerManager(void);
         void sendResponse(HttpRequest &request, int clientFd);

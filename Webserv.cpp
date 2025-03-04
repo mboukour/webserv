@@ -14,7 +14,6 @@
 int main(int ac, char **av)
 {
     std::string line;
-    signal(SIGPIPE, SIG_DFL);
     signal(SIGPIPE, SIG_IGN);
 
     Logger::init("webserv.log");

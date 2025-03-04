@@ -13,12 +13,12 @@ SESSION = Session/Login/Login.cpp
 UTILS = Utils/Logger/Logger.cpp
 SRC += $(EXCEPTIONS) $(HTTP) $(CGI) $(SESSION) $(UTILS) $(STATE)
 OBJ = $(SRC:.cpp=.o)
-FLAGS = -Wall -Wextra -Werror  -std=c++98
+FLAGS = -Wall -Wextra -Werror  -std=c++98 -fsanitize=address -fno-omit-frame-pointer
 HEADERS = Webserv.hpp Parser/Parser.hpp Parser/ServerFactory/ServerFactory.hpp Debug/Debug.hpp \
 		  Server/Server.hpp Server/ABlock/ABlock.hpp Server/Location/Location.hpp Server/ServerManager/ServerManager.hpp \
 		  Http/AHttp/AHttp.hpp Http/HttpRequest/HttpRequest.hpp Http/HttpResponse/HttpResponse.hpp \
 		  Exceptions/HttpErrorException/HttpErrorException.hpp \
-		  Cgi/Cgi.hpp
+		  Cgi/Cgi.hppF
 all: $(NAME)
 
 $(NAME): $(OBJ)
