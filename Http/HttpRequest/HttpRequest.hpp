@@ -1,6 +1,7 @@
 #ifndef HTTPREQUEST_HPP
 #define HTTPREQUEST_HPP
 
+#include <cstddef>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@ class HttpRequest: public AHttp {
         const Server *server;
         const ABlock *requestBlock;
         std::map<std::string, std::string> cookies;
+        size_t contentLength;
 
         void parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort);
         void setIsCgi(void) ;
@@ -35,6 +37,7 @@ class HttpRequest: public AHttp {
         std::string getQueryString() const;
         std::string toString() const;
         std::string getCookie(const std::string &cookie) const;
+        size_t getContentLength(void) const;
         void appendToBody(const std::string &toAppend);
         bool isCgiRequest(void) const;
         const Server *getServer(void) const;

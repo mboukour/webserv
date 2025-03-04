@@ -14,32 +14,40 @@
 #include "ServerManager.hpp"
 #include "../../Http/HttpRequest/HttpRequest.hpp"
 #include "../../Http/HttpResponse/HttpResponse.hpp"
-#include "../../Http/HttpResponse/ResponseState/ResponseState.hpp"
 #include "../../Session/Login/Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../ConnectionState/ConnectionState.hpp"
 
-ServerManager::ServerManager(std::vector<Server> &servers): servers(servers) {}
+// Initialize static members
+int ServerManager::epollFd = -1;
+std::vector<Server> ServerManager::servers;
+std::map<int, ConnectionState*> ServerManager::clientStates;
 
-bool ServerManager::isAServerFdSocket(int fdSocket) const {
-    for (std::vector<Server>::const_iterator it = this->servers.begin();
-            it != this->servers.end(); it++) {
+// Private constructor - prevent instantiation
+ServerManager::ServerManager() {}
+
+// Initialize with server list
+void ServerManager::initialize(std::vector<Server> &serversList) {
+    servers = serversList;
+}
+
+bool ServerManager::isAServerFdSocket(int fdSocket) {
+    for (std::vector<Server>::const_iterator it = servers.begin();
+            it != servers.end(); it++) {
         if (it->getFdSocket() == fdSocket)
             return (true);
     }
     return (false);
 }
 
-
 const Server &ServerManager::getServer(int port) {
-    for (std::vector<Server>::const_iterator it = this->servers.begin();
-        it != this->servers.end(); it++) { 
+    for (std::vector<Server>::const_iterator it = servers.begin();
+        it != servers.end(); it++) { 
             if (it->getPort() == port)
                 return (*it);
         }
     throw std::logic_error("Server not found"); // throw ServerNotFound(serverFd);
 }
-
 
 void ServerManager::sendResponse(HttpRequest &request, int clientFd) {
     static std::map<std::string, std::string> userCreds;
@@ -68,7 +76,7 @@ void ServerManager::sendResponse(HttpRequest &request, int clientFd) {
         std::string respStr = exec.getResponseString();
         send(clientFd, respStr.c_str(), respStr.size(), 0);
         std::cout << "clientFd: " << clientFd <<std::endl;
-        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, clientFd, NULL);
+        epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
         close(clientFd);
         DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
     }
@@ -91,25 +99,30 @@ void ServerManager::acceptConnections(int fdSocket) {
     
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
-    ev.events = EPOLLIN;
+    ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
     // ev.data.fd = clientFd;
-    ev.data.ptr = new ConnectionState(clientFd, epollFd);
-    if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
+    ConnectionState *state = new ConnectionState(clientFd, epollFd);
+    clientStates[clientFd] = state;
+    ev.data.ptr = state;
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
     {
         std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
         close(clientFd);
     }
 }
 
+ConnectionState *ServerManager::getConnectionState(int clientFd) {
+    return clientStates.at(clientFd);
+}
+
 void ServerManager::handleConnections(void) {
-     struct epoll_event events[MAX_EVENTS];
+    struct epoll_event events[MAX_EVENTS];
     std::string errorStr;
 
     while (true)
     {
         // -1 means wait indefinitely
-
-        int event_count = epoll_wait(this->epollFd, events, MAX_EVENTS, -1);
+        int event_count = epoll_wait(epollFd, events, MAX_EVENTS, -1);
         if (event_count == -1)
         {
             errorStr = "epoll_wait() failed. Errno: ";
@@ -125,7 +138,7 @@ void ServerManager::handleConnections(void) {
                     acceptConnections(eventFd);
                 else
                 {
-                    state->handleReadable(this->servers);
+                    state->handleReadable(servers);
                     if (state->getIsRequestReady())
                     {
                         HttpRequest * request = state->getHttpRequest();
@@ -142,21 +155,19 @@ void ServerManager::handleConnections(void) {
             if (state->getIsDone())
                 delete state;
         }
-
     }
 }
 
-
-void ServerManager::startServerManager(void) {
-    this->epollFd = epoll_create(1);
-    if (this->epollFd == -1)
+void ServerManager::start(void) {
+    epollFd = epoll_create(1);
+    if (epollFd == -1)
     {
         std::string errorStr = "epoll_create() failed";
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
-    for (std::vector<Server>::iterator it = this->servers.begin();
-        it != this->servers.end(); it++)
+    for (std::vector<Server>::iterator it = servers.begin();
+        it != servers.end(); it++)
     {
         struct epoll_event ev;
 
@@ -164,7 +175,7 @@ void ServerManager::startServerManager(void) {
         int fdSocket = it->getFdSocket();
         ev.events = EPOLLIN;
         ev.data.ptr = new ConnectionState(fdSocket, epollFd);
-        if (epoll_ctl(this->epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
+        if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
         {
             std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(fdSocket);

@@ -41,8 +41,8 @@ int main(int ac, char **av)
     try
     {
         printServers(servers);
-        ServerManager manager(servers);
-        manager.startServerManager();
+        ServerManager::initialize(servers);
+        ServerManager::start();
     }
     catch(const std::exception& e)
     {
