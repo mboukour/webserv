@@ -38,17 +38,11 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     if (this->path.length() > URI_MAX_SIZE)
         throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
     // implement better matching? 
-    this->bodySize = 0;
     parseHeaders(ss, servers, serverPort);
-// if (!contentTypeFound) throw std::logic_error("Content-Type header not found");
-
-    // if (static_cast<size_t>(ss.rdbuf()->in_avail()) != this->bodySize) throw std::logic_error("Content-Length header and actual length don't match");
-
-    if (this->bodySize > 0)
-    {
-        this->body.resize(this->bodySize);
-        ss.read(&this->body[0], this->bodySize);
-    }
+    this->bodySize = 0;
+    size_t pos = request.find("\r\n\r\n");
+    this->body = request.substr(pos + 4);
+    this->bodySize = this->body.size();
     setIsCgi();
     parseCookies();
 }
@@ -117,8 +111,9 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
         if (key == "Content-Length")
         {
+
             std::stringstream l(value);
-            l >> this->bodySize;
+            l >> this->contentLength;
             if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
             std::string dummy;
             l >> dummy;
@@ -126,6 +121,8 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
                 throw HttpErrorException(PAYLOAD_TOO_LARGE, *this, "payload too large");
             contentLengthFound = true;
+             this->headers[key] = value;
+
             continue;
         }
         this->headers[key] = value;
@@ -207,6 +204,10 @@ void HttpRequest::parseCookies(void) {
             this->cookies[key] = value;
         }
     }
+}
+
+size_t HttpRequest::getContentLength(void) const {
+    return this->contentLength;
 }
 
 void HttpRequest::setIsCgi(void) {

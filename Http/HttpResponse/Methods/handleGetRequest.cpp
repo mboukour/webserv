@@ -19,12 +19,13 @@
 #include <ctime>
 #include <sys/socket.h>
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include "../../../Server/ServerManager/ServerManager.hpp"
 
 const std::string YELLOW = "\033[33m";
 const std::string RESET = "\033[0m";
 void HttpResponse::sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const {
     std::vector<char> buffer(65536);  // 64KB buffer
-
+    std::cout << "CALLED\n";
     while (true) {
         fileToGet.read(buffer.data(), buffer.size());
         std::streamsize bytesRead = fileToGet.gcount();
@@ -36,22 +37,11 @@ void HttpResponse::sendGetResponse(std::fstream &fileToGet, const std::string &f
         while (totalSent < bytesRead) {
             ssize_t bytesSent = send(clientFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
             if (bytesSent == -1) {
-                if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                    std::streampos filePos = fileToGet.tellg();
-                    filePos -= (bytesRead - totalSent);
-                    struct epoll_event ev;
-                    ev.events = EPOLLIN | EPOLLOUT;
-                    // ev.data.fd = this->clientFd;
-                    ResponseState *respState = new ResponseState(filePath, filePos, this->clientFd, this->epollFd);
-                    ConnectionState *state = new ConnectionState(clientFd, epollFd);
-                    state->setResponseState(respState);
-                    ev.data.ptr = state;
-                    epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->clientFd, &ev);
-                    return;
-                } else {
-                    perror("Error: ");
-                    return ;
-                }
+                std::streampos filePos = fileToGet.tellg();
+                filePos -= (bytesRead - totalSent);
+                ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+                state->activateWriteState(filePath, filePos);
+                return;
             }
             totalSent += bytesSent;
         }

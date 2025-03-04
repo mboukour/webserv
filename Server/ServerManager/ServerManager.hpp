@@ -1,44 +1,36 @@
 #ifndef SERVERMANAGER_HPP
 #define SERVERMANAGER_HPP
 
-#include "../../Debug/Debug.hpp"
-#include "../Server.hpp"
 #include <vector>
 #include <map>
+#include "../Server.hpp"
 
-enum State {
-    PARSING_HEADERS,
-    PARSING_BODY,
-};
+#define MAX_EVENTS 10
 
-class ClientState {
-    private:
-    public:
-        ClientState();
-        int state;
-        bool toIgnore;
-        std::string receivedBuffer;
-        HttpRequest request;
-
-        void reset();
-};
+class HttpRequest;
+class ConnectionState;
 
 class ServerManager {
     private:
-        int epollFd;
-        std::vector<Server> &servers;
-        void handleConnections(void);
-        // void handleClientRead(int clientFd, char *buffer);
-        // void handleClient(int clientFd);
-        void acceptConnections(int fdSocket);
-        bool isAServerFdSocket(int fdSocket) const;
-        const Server &getServer(int serverFd);
+        static int epollFd;
+        static std::vector<Server> servers;
+        static std::map<int, ConnectionState*> clientStates;
         
-    public:
-        ServerManager(std::vector<Server> &servers);
-        void startServerManager(void);
-        void sendResponse(HttpRequest &request, int clientFd);
+        // Private constructor to prevent instantiation
+        ServerManager();
 
+        static bool isAServerFdSocket(int fdSocket);
+        static const Server &getServer(int port);
+        static void handleConnections(void);
+        static void acceptConnections(int fdSocket);
+        static void sendResponse(HttpRequest &request, int clientFd);
+        
+        public:
+        // Initialize with server list
+        static void initialize(std::vector<Server> &serversList);
+        // Start the server manager (previously startServerManager)
+        static void start(void);
+        static ConnectionState *getConnectionState(int clientFd);
 };
 
-#endif
+#endif // SERVERMANAGER_HPP

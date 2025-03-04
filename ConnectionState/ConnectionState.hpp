@@ -7,7 +7,8 @@
 #include <sys/types.h>
 #include <vector>
 #include "../Http/HttpRequest/HttpRequest.hpp"
-#include "../Http/HttpResponse/ResponseState/ResponseState.hpp"
+
+#define READ_SIZE 65536
 
 class ConnectionState {
     private:    
@@ -23,13 +24,14 @@ class ConnectionState {
 
         enum WriteState {NO_RESPONSE, SENDING_RESPONSE};
         WriteState writeState;
-        ResponseState *responseState;
+        enum SendMode {NONE, STRING, FILE};
+        SendMode sendMode;
+        std::string filePath;
+        std::streampos currentPos;
+        std::string stringToSend;
         
         bool isDone;
-        uint32_t lastEvent;
 
-
-        void updateEpollEvents(void);
     public:
         ConnectionState(int clientFd, int epollFd);
         HttpRequest *getHttpRequest(void) const;
@@ -38,7 +40,8 @@ class ConnectionState {
         bool getIsRequestReady(void) const;
         bool getIsRequestDone(void) const;
         void handleReadable(std::vector<Server> &servers);
-        void setResponseState(ResponseState *responseState);
+        void activateWriteState(const std::string &filePath, const std::streampos &currentPos);
+        void activateWriteState(const std::string &stringToSend);
         void handleWritable(void);
         ~ConnectionState();
 };

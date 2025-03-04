@@ -3,99 +3,163 @@
 #include <cerrno>
 #include <cstddef>
 #include <cstring>
+#include <ios>
+#include <iosfwd>
 #include <sstream>
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include <sys/types.h>
 #include "../Debug/Debug.hpp"
+#include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(NULL), isRequestReady(false), isRequestDone(false),
-  writeState(NO_RESPONSE), responseState(NULL),
-  isDone(false), lastEvent(0) {}
+  writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(),
+  isDone(false) {}
 
 
 void ConnectionState::handleWritable(void) {
-    if (!this->responseState)
-        throw std::logic_error("NULL responseState");
     if (this->writeState == NO_RESPONSE)
-        this->writeState = SENDING_RESPONSE;
-    ResponseState *nextRespState = this->responseState->continueSending();
-    delete this->responseState;
-    if (!nextRespState) {
+        return;
+    if (this->sendMode == FILE) {
+        std::fstream fileToSend(this->filePath.c_str());
+        if (!fileToSend.is_open())
+        throw std::runtime_error("Could'nt open file");
+    
+    fileToSend.seekg(this->currentPos);
+    
+    // Read one chunk
+        std::vector<char> buffer(READ_SIZE);
+        while(true) {
+            fileToSend.read(buffer.data(), buffer.size());
+            std::streamsize bytesRead = fileToSend.gcount();
+        
+            if (bytesRead == 0) {
+                this->sendMode = NONE;
+                this->writeState = NO_RESPONSE;
+                return;
+            }
+                
+            ssize_t totalSent = 0;
+            while (totalSent < bytesRead) {
+                ssize_t bytesSent = send(this->eventFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
+                if (bytesSent == -1) {
+                    std::streampos filePos = fileToSend.tellg();
+                    filePos -= (bytesRead - totalSent);
+                    this->currentPos = filePos;
+                    return;
+                }
+                totalSent += bytesSent;
+            }
+        }
+    } else if (this->sendMode == STRING) {
+        size_t totalSent = 0;
+        while(totalSent < this->stringToSend.size()) {
+            ssize_t bytesSent = send(this->eventFd, this->stringToSend.data() + totalSent, this->stringToSend.size() - totalSent, 0);
+            if (bytesSent == -1) {
+                this->stringToSend = this->stringToSend.substr(totalSent);
+                return ;
+            }
+            totalSent += bytesSent;
+        }
+        this->sendMode = NONE;
         this->writeState = NO_RESPONSE;
+        this->stringToSend.clear();
     }
-    this->responseState = nextRespState;
-    updateEpollEvents();
-    return ;
 }
+
 
 void ConnectionState::handleReadable(std::vector<Server> &servers) {
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
 
-    char buffer[1024];
-    ssize_t bytesReceived = recv(this->eventFd, buffer, sizeof(buffer) - 1, 0);
-    if (bytesReceived == 0) {
-        DEBUG && std::cout << "Client reading side closed" << std::endl;
-        this->readState = DONE_READING;
-        std::cout << "WRITE: " << this->writeState << '\n';
-        
-    } else if (bytesReceived > 0) {
-        buffer[bytesReceived] = '\0';
-        std::string bufferStr(buffer);
-        this->requestBuffer+= bufferStr;
-        if (this->readState == READING_HEADERS && bufferStr.find("\r\n\r\n") != std::string::npos) {
-            struct sockaddr_in addr;
-            socklen_t addrLen = sizeof(addr);
-            if (getsockname(this->eventFd, (struct sockaddr*)&addr, &addrLen) == -1) {
-                std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
-                close(this->eventFd);
-                epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
-                throw std::logic_error("getsockname error");
-            }
-            int port = ntohs(addr.sin_port);
-            // std::cout << "Found Headers: " <<  bufferStr << '\n';
-            this->readState = READING_BODY;
-            this->request = new HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
-            std::cout << *this->request;
-            // this->requestBuffer = "";
-            this->requestBuffer.clear();
-            if (this->request->getMethod() != "POST")
-                this->isRequestReady = true;
-            // the readState should be reading body in case of post??
-        } else if (this->readState == READING_BODY) {
-            // if (this->request->getMethod() != "POST") { // consuming the not needed bodies
-            //     return ; 
-            // }
-            this->request->appendToBody(bufferStr);
-            const std::string &contentLength = this->request->getHeader("Content-Length");
-            if (contentLength == "") {
-                this->readState = NO_REQUEST;
-                this->isRequestDone = true;
-                updateEpollEvents();
-            }
-            std::stringstream ss(contentLength);
-            size_t size;
-            ss >> size;
-            if (this->request->getBodySize() >= size) { // by here the request is fully consumed and should be freed
-                this->readState = NO_REQUEST;
-                this->isRequestReady = true;
-                this->isRequestDone = true;
-                updateEpollEvents();
+    while (true) {
+        std::vector<char> buffer(READ_SIZE);
+        ssize_t bytesReceived = recv(this->eventFd, buffer.data(), buffer.size()- 1, 0);
+        if (bytesReceived == 0) {
+            DEBUG && std::cout << "Client reading side closed" << std::endl;
+            this->readState = DONE_READING;
 
+            std::cout << "WRITE: " << this->writeState << '\n';
+            break;
+        } else if (bytesReceived > 0) {
+            buffer[bytesReceived] = '\0';
+            std::string bufferStr(buffer.data(), bytesReceived);
+            this->requestBuffer+= bufferStr;
+            if (this->readState == READING_HEADERS && bufferStr.find("\r\n\r\n") != std::string::npos) {
+                struct sockaddr_in addr;
+                socklen_t addrLen = sizeof(addr);
+                if (getsockname(this->eventFd, (struct sockaddr*)&addr, &addrLen) == -1) {
+                    std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
+                    close(this->eventFd);
+                    epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
+                    throw std::logic_error("getsockname error");
+                }
+                int port = ntohs(addr.sin_port);
+                this->readState = READING_BODY;
+                try {
+                    this->request = new HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
+                } catch (const HttpErrorException &exec) {
+                    DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+                    std::string respStr = exec.getResponseString();
+                    send(this->eventFd, respStr.c_str(), respStr.size(), 0);
+                    epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
+                    close(this->eventFd);
+                    this->isDone = true;
+                    DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
+                    return ;
+                }
+                this->requestBuffer.clear();
+                if (this->request->getMethod() != "POST")
+                    this->isRequestReady = true;
+                else if (this->request->getBodySize() >= this->request->getContentLength()) {
+                    this->isRequestReady = true;
+                } else {
+                    std::cout << "CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n';
+                }
+            } else if (this->readState == READING_BODY) {
+                this->request->appendToBody(bufferStr);
+                const std::string &contentLength = this->request->getHeader("Content-Length");
+                if (contentLength == "") {
+                    this->readState = NO_REQUEST;
+                    this->isRequestDone = true;
+
+                }
+                
+                if (this->request->getBodySize() == this->request->getContentLength()) { // by here the request is fully consumed and should be freed
+                    this->readState = NO_REQUEST;
+                    this->isRequestReady = true;
+                    this->isRequestDone = true;
+                    std::cout <<  "END RES: CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n';
+                } else if (this->request->getBodySize() >= this->request->getContentLength()) {
+                    throw HttpErrorException(BAD_REQUEST, "BODY ISZE BIGGER THAN CL");
+                    return; 
+                } else {
+                    std::cout << "CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n'; 
+                }
             }
-        }
-    } else {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        } else {
+            //error state
             return ;
-        else
-            std::cerr << "Error: " << strerror(errno) << std::endl;
+        }
     }
-    updateEpollEvents();
 }
 
-void ConnectionState::setResponseState(ResponseState *responseState) {
-    this->responseState = responseState;
+// void ConnectionState::setResponseState(ResponseState *responseState) {
+//     this->responseState = responseState;
+// }
+
+void ConnectionState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
+    this->sendMode = FILE;
+    this->filePath = filePath;
+    this->currentPos = currentPos;
+    this->writeState = SENDING_RESPONSE;
+}
+
+void ConnectionState::activateWriteState(const std::string &stringToSend) {
+    this->sendMode = STRING;
+    this->stringToSend = stringToSend;
+    this->writeState = SENDING_RESPONSE;
 }
 
 int ConnectionState::getEventFd(void) const {
@@ -118,35 +182,9 @@ bool ConnectionState::getIsDone(void) const {
     return this->isDone;
 }
 
-void ConnectionState::updateEpollEvents(void) { // will need to throw an exception of there is no need for this connection state from now on
-    uint32_t events = 0;
-
-    if (this->readState != DONE_READING)
-        events |= EPOLLIN;
-    if (this->writeState != NO_RESPONSE)
-        events |= EPOLLOUT;
-
-    if (events == 0) {
-        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
-        close(this->eventFd);
-        this->isDone = true;
-        std::cout << "NOTHING :D\n";
-        return ;
-    } else if (events == this->lastEvent) // no need to reset
-        return ;
-    this->lastEvent = events;
-    struct epoll_event ev;
-    ev.events = events;
-    ev.data.ptr = this;
-    epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev);
-}
-
 ConnectionState::~ConnectionState() {
     if (this->request) {
         delete this->request;
-    }
-    if (this->responseState) {
-        delete this->responseState;
     }
     close(this->eventFd);
 }
