@@ -26,6 +26,7 @@ class ServerManager {
         
         public:
         static void sendResponse(HttpRequest &request, int clientFd);
+        static void sendString(const std::string &str, int clientFd);
         // Initialize with server list
         static void initialize(std::vector<Server> &serversList);
         // Start the server manager (previously startServerManager)

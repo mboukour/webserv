@@ -78,11 +78,11 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
         std::vector<char> buffer(READ_SIZE);
         ssize_t bytesReceived = recv(this->eventFd, buffer.data(), buffer.size()- 1, 0);
         if (bytesReceived == 0) {
-            DEBUG && std::cout << "Client reading side closed" << std::endl;
-            this->readState = DONE_READING;
-
-            std::cout << "WRITE: " << this->writeState << '\n';
-            break;
+            this->readState = NO_REQUEST;
+            this->writeState = NO_RESPONSE;
+            this->isDone = true;
+            return ;
+            // break;
         } else if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0';
             std::string bufferStr(buffer.data(), bytesReceived);
@@ -103,7 +103,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 } catch (const HttpErrorException &exec) {
                     DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
                     std::string respStr = exec.getResponseString();
-                    send(this->eventFd, respStr.c_str(), respStr.size(), 0);
+                    ServerManager::sendString(respStr, this->eventFd);
                     this->isDone = true;
                     DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
                     return ;

@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdlib>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -29,6 +30,21 @@ ServerManager::ServerManager() {}
 // Initialize with server list
 void ServerManager::initialize(std::vector<Server> &serversList) {
     servers = serversList;
+}
+
+void ServerManager::sendString(const std::string &str, int clientFd) {
+    size_t totalSent = 0;
+    while (totalSent < str.size()) {
+        ssize_t bytesSent = send(clientFd, str.c_str(), str.size(), 0);
+        if (bytesSent == -1) {
+            ConnectionState * state = clientStates.at(clientFd);
+            std::string newStr = str.substr(totalSent);
+            state->activateWriteState(newStr);
+            return ;
+        }
+        totalSent += bytesSent;
+    }
+    
 }
 
 bool ServerManager::isAServerFdSocket(int fdSocket) {
@@ -65,7 +81,7 @@ void ServerManager::sendResponse(HttpRequest &request, int clientFd) {
                     response.setHeader("Location", loc.getReturnPath());
                     std::string respStr = response.toString();
                     std::cout << respStr << '\n';
-                    send(clientFd, respStr.c_str(), respStr.size(), 0);
+                    ServerManager::sendString(respStr, clientFd);
                     return ;
                 }
             } catch (std::bad_cast &) {}
@@ -74,7 +90,7 @@ void ServerManager::sendResponse(HttpRequest &request, int clientFd) {
     } catch (const HttpErrorException &exec) {
         DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
         std::string respStr = exec.getResponseString();
-        send(clientFd, respStr.c_str(), respStr.size(), 0);
+        ServerManager::sendString(respStr, clientFd);
         std::cout << "clientFd: " << clientFd <<std::endl;
         epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
         close(clientFd);
@@ -100,7 +116,6 @@ void ServerManager::acceptConnections(int fdSocket) {
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-    // ev.data.fd = clientFd;
     ConnectionState *state = new ConnectionState(clientFd, epollFd);
     clientStates[clientFd] = state;
     ev.data.ptr = state;

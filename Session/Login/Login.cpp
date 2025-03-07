@@ -1,5 +1,6 @@
 #include "Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include "../../Server/ServerManager/ServerManager.hpp"
 #include <csignal>
 #include <cstddef>
 #include <iostream>
@@ -166,5 +167,5 @@ void Login::respondToLogin(const HttpRequest &request, std::map<std::string, std
         html = deleteLogin(request, userCreds);
     response.setBody(html);
     std::string responseStr = response.toString();
-    send(clientFd,  responseStr.c_str(), responseStr.size(), 0);
+    ServerManager::sendString(responseStr, clientFd);
 }

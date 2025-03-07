@@ -20,9 +20,6 @@ class ConnectionState {
         ssize_t bytesRead;
         std::string requestBuffer;
         HttpRequest request;
-        // bool isRequestReady;
-        // bool isRequestDone;
-
         enum WriteState {NO_RESPONSE, SENDING_RESPONSE};
         WriteState writeState;
         enum SendMode {NONE, STRING, FILE};
@@ -39,8 +36,6 @@ class ConnectionState {
         HttpResponse *getHttpResponse(void) const;
         int getEventFd(void) const;
         bool getIsDone(void) const;
-        bool getIsRequestReady(void) const;
-        bool getIsRequestDone(void) const;
         void handleReadable(std::vector<Server> &servers);
         void activateWriteState(const std::string &filePath, const std::streampos &currentPos);
         void activateWriteState(const std::string &stringToSend);

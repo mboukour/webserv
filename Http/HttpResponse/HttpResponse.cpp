@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <cstdio>
 #include <dirent.h>
-
+#include "../../Server/ServerManager/ServerManager.hpp"
 
 
 HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1) {}
@@ -22,7 +22,7 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         std::string response = Cgi::getCgiResponse(request);
         response.insert(0, "HTTP/1.1 200 OK\r\n");
         // std::cout << "Received cgi's response: \n" << response << '\n';
-        send(clientFd, response.c_str(), response.size(), 0);
+        ServerManager::sendString(response, clientFd);
         return ;
     }
     if (method == "DELETE")
@@ -82,5 +82,5 @@ std::string HttpResponse::toString(void) const {
 
 void HttpResponse::sendResponse(void) const {
     std::string responseStr = this->toString();
-    send(this->clientFd, responseStr.c_str(), responseStr.size(), 0);
+    ServerManager::sendString(responseStr, this->clientFd);
 }
