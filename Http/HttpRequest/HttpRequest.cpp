@@ -47,9 +47,18 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     parseCookies();
 }
 
-void HttpRequest::appendToBody(const std::string &body) {
-    this->body += body;
-    this->bodySize = this->body.size();
+// void HttpRequest::appendToBody(const std::string &body) {
+//     this->body += body;
+//     this->bodySize = this->body.size();
+// }
+
+void HttpRequest::setReqEntry(const std::string &reqEntry) {
+    this->reqEntry = reqEntry;
+    this->bodySize += reqEntry.size();
+}
+
+std::string HttpRequest::getReqEntry(void) const {
+    return this->reqEntry;
 }
 
 std::string HttpRequest::getMethod() const {

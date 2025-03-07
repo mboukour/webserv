@@ -23,9 +23,9 @@ class ServerManager {
         static const Server &getServer(int port);
         static void handleConnections(void);
         static void acceptConnections(int fdSocket);
-        static void sendResponse(HttpRequest &request, int clientFd);
         
         public:
+        static void sendResponse(HttpRequest &request, int clientFd);
         // Initialize with server list
         static void initialize(std::vector<Server> &serversList);
         // Start the server manager (previously startServerManager)

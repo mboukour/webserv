@@ -137,16 +137,7 @@ void ServerManager::handleConnections(void) {
                 if (isAServerFdSocket(eventFd))
                     acceptConnections(eventFd);
                 else
-                {
                     state->handleReadable(servers);
-                    if (state->getIsRequestReady())
-                    {
-                        HttpRequest * request = state->getHttpRequest();
-                        sendResponse(*request, eventFd);
-                        if (state->getIsRequestDone())
-                            delete request;
-                    }
-                }
             }
 
             if (events[i].events & EPOLLOUT) {

@@ -112,6 +112,7 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
 
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
+    std::cout << "PATH: " << path << '\n';
     if (path[path.size() - 1] == '/')
         path = path.substr(0, path.size() - 1);  // Remove last character properly
     
@@ -123,14 +124,13 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         std::fstream fileToGet(path.c_str());
         if (fileToGet.fail() == true)
             throw HttpErrorException(NOT_FOUND, request, "cant find file");
-    
+
         std::stringstream responseSs;
         responseSs << "HTTP/1.1 200 OK\r\n";
         responseSs << "Content-Type: " << request.getServer()->getMimeType(path.substr(path.find_last_of('.') + 1)) << "\r\n";
         responseSs << "Content-Length: " << filestat.st_size << "\r\n";
         responseSs << "\r\n";
         send(this->clientFd, responseSs.str().c_str(), responseSs.str().size(), 0);
-    
         sendGetResponse(fileToGet, path);
     } else if (filestat.st_mode & S_IFDIR) {
         std::vector<std::string> indexes = request.getRequestBlock()->getIndexes();

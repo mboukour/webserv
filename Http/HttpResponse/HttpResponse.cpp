@@ -14,7 +14,7 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1) {}
 
 
 
-HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd) {
+HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST) {
     this->version = request.getVersion();
 
     const std::string &method = request.getMethod();
@@ -36,6 +36,12 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->clientFd, NULL);
         close(clientFd);
     }
+}
+
+void HttpResponse::handleNewReqEntry(const HttpRequest &request) {
+    if (request.getMethod() != "POST")
+        return ;
+    handlePostRequest(request);
 }
 
 HttpResponse::HttpResponse(const std::string &version, int statusCode,

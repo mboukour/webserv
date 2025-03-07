@@ -12,9 +12,10 @@
 #include <sys/types.h>
 #include "../Debug/Debug.hpp"
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include "../Server/ServerManager/ServerManager.hpp"
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
-  readState(NO_REQUEST), bytesRead(0), request(NULL), isRequestReady(false), isRequestDone(false),
-  writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(),
+  readState(NO_REQUEST), bytesRead(0), request(), 
+  writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(), response(NULL),
   isDone(false) {}
 
 
@@ -24,7 +25,7 @@ void ConnectionState::handleWritable(void) {
     if (this->sendMode == FILE) {
         std::fstream fileToSend(this->filePath.c_str());
         if (!fileToSend.is_open())
-        throw std::runtime_error("Could'nt open file");
+            throw std::runtime_error("Could'nt open file");
     
     fileToSend.seekg(this->currentPos);
     
@@ -98,44 +99,52 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 int port = ntohs(addr.sin_port);
                 this->readState = READING_BODY;
                 try {
-                    this->request = new HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
+                    this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
                 } catch (const HttpErrorException &exec) {
                     DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
                     std::string respStr = exec.getResponseString();
                     send(this->eventFd, respStr.c_str(), respStr.size(), 0);
-                    epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
-                    close(this->eventFd);
                     this->isDone = true;
                     DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
                     return ;
                 }
-                this->requestBuffer.clear();
-                if (this->request->getMethod() != "POST")
-                    this->isRequestReady = true;
-                else if (this->request->getBodySize() >= this->request->getContentLength()) {
-                    this->isRequestReady = true;
-                } else {
-                    std::cout << "CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n';
+                if (this->request.getMethod() != "POST")
+                    ServerManager::sendResponse(request, this->eventFd);
+                if (!this->response) {
+                    try {
+                        this->response = new HttpResponse(this->request, this->eventFd, this->epollFd);
+                    } catch (const HttpErrorException& exec) {
+                        std::string respStr = exec.getResponseString();
+                        send(this->eventFd, respStr.c_str(), respStr.size(), 0);
+                        this->isDone = true;
+                        return;
+                    }
                 }
+
+                this->requestBuffer.clear();
+
+                // std::cout << "CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n';
             } else if (this->readState == READING_BODY) {
-                this->request->appendToBody(bufferStr);
-                const std::string &contentLength = this->request->getHeader("Content-Length");
+                this->request.setReqEntry(bufferStr);
+                if (this->response)
+                    this->response->handleNewReqEntry(this->request);
+                // response->
+                const std::string &contentLength = this->request.getHeader("Content-Length");
                 if (contentLength == "") {
                     this->readState = NO_REQUEST;
-                    this->isRequestDone = true;
-
                 }
                 
-                if (this->request->getBodySize() == this->request->getContentLength()) { // by here the request is fully consumed and should be freed
+                if (this->request.getBodySize() == this->request.getContentLength()) { // by here the request is fully consumed and should be freed
+                    std::cout <<  "END RES: CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n';
                     this->readState = NO_REQUEST;
-                    this->isRequestReady = true;
-                    this->isRequestDone = true;
-                    std::cout <<  "END RES: CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n';
-                } else if (this->request->getBodySize() >= this->request->getContentLength()) {
+                    delete this->response;
+                    this->request = HttpRequest();
+                    this->response = NULL;
+                } else if (this->request.getBodySize() >= this->request.getContentLength()) {
                     throw HttpErrorException(BAD_REQUEST, "BODY ISZE BIGGER THAN CL");
                     return; 
                 } else {
-                    std::cout << "CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n'; 
+                    std::cout << "CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n'; 
                 }
             }
         } else {
@@ -166,16 +175,20 @@ int ConnectionState::getEventFd(void) const {
     return this->eventFd; 
 }
 
-bool ConnectionState::getIsRequestReady(void) const {
-    return this->isRequestReady;
-}
+// bool ConnectionState::getIsRequestReady(void) const {
+//     return this->isRequestReady;
+// }
 
-bool ConnectionState::getIsRequestDone(void) const {
-    return this->isRequestDone;
-}
+// bool ConnectionState::getIsRequestDone(void) const {
+//     return this->isRequestDone;
+// }
 
-HttpRequest* ConnectionState::getHttpRequest(void) const {
-    return this->request;
+// HttpRequest* ConnectionState::getHttpRequest(void) const {
+//     return this.request;
+// }
+
+HttpResponse * ConnectionState::getHttpResponse(void) const {
+    return this->response;
 }
 
 bool ConnectionState::getIsDone(void) const {
@@ -183,8 +196,8 @@ bool ConnectionState::getIsDone(void) const {
 }
 
 ConnectionState::~ConnectionState() {
-    if (this->request) {
-        delete this->request;
-    }
+    if (this->response)
+        delete this->response;
+    epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
     close(this->eventFd);
 }
