@@ -10,11 +10,11 @@
 #include "../../Server/ServerManager/ServerManager.hpp"
 
 
-HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1) {}
+HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
 
 
-HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST) {
+HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1){
     this->version = request.getVersion();
 
     const std::string &method = request.getMethod();
@@ -60,7 +60,7 @@ void HttpResponse::addCookie(const std::string& name, const std::string& value, 
 }
 
 void HttpResponse::setBody(const std::string &body) {
-    this->body = body; 
+    this->body = body;
     this->bodySize = body.size();
     std::stringstream ss;
     ss << this->bodySize;
@@ -83,4 +83,8 @@ std::string HttpResponse::toString(void) const {
 void HttpResponse::sendResponse(void) const {
     std::string responseStr = this->toString();
     ServerManager::sendString(responseStr, this->clientFd);
+}
+
+HttpResponse::~HttpResponse(){
+    close(this->fd);
 }

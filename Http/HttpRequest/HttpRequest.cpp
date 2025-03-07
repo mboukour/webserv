@@ -37,7 +37,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
     if (this->path.length() > URI_MAX_SIZE)
         throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
-    // implement better matching? 
+    // implement better matching?
     parseHeaders(ss, servers, serverPort);
     this->bodySize = 0;
     size_t pos = request.find("\r\n\r\n");
@@ -98,6 +98,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
     std::string line;
     bool hostFound = false;
     bool contentLengthFound = false;
+    bool badChunked = false;
     while(getline(ss, line) && line != "\r") { // looping through headers
         if (line[line.size() - 1] == '\r')
             line[line.size() - 1] = '\0';
@@ -134,6 +135,15 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
             continue;
         }
+        if (key == "Transfer-Encoding") {
+            if (value.compare("chunked") == true){
+                this->isChunked = true;
+            }
+            else
+                badChunked = true;
+            this->headers[key] = value;
+            continue;
+        }
         this->headers[key] = value;
         if (key == "Host" || key == "host")
         {
@@ -168,7 +178,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
                     }
                 }
             }
-    
+
             if (!exactMatchFound && !prefixMatchFound) {
                 for (std::vector<Location>::const_iterator it = server.locationsCbegin();
                     it != server.locationsCend(); it++) {
@@ -189,7 +199,9 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
     if (this->method == "POST")
     {
-        if (!contentLengthFound) // or no Transfer-Encoding??
+        if (badChunked == true)
+            throw HttpErrorException(BAD_REQUEST, *this, "Transfer-Encoding must be \"chunked\"");
+        if (!contentLengthFound && this->isChunked == false) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn
             throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found");
     }
 }

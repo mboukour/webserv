@@ -15,11 +15,12 @@ class HttpResponse: public AHttp {
         const int clientFd;
         const int epollFd;
         int statusCode;
+        enum PostState {INIT_POST, NEW_REQ_ENTRY};
+        PostState postState;
+        int fd;
         std::string reasonPhrase;
         std::vector<std::string> cookies;
 
-        enum PostState {INIT_POST, NEW_REQ_ENTRY};
-        PostState postState;
         void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
         void handleAutoIndex(const HttpRequest& request) const;
 
@@ -29,6 +30,7 @@ class HttpResponse: public AHttp {
         void handlePostRequest(const HttpRequest &request);
     public:
         HttpResponse();
+        ~HttpResponse();
         HttpResponse(const HttpRequest &request, int clientFd, int epollFd);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
         void addCookie(const std::string& name, const std::string& value, const std::string& attributes);
