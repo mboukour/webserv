@@ -103,13 +103,13 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
     ret = extToNature(__exten);
     if (ret.empty() == false)
         __folder = ret;
-    std::cout << GREEN << "Headers: -----------------------" << RESET << std::endl;
-    request.printHeaders();
-    std::cout << GREEN << "--------------------------------" << RESET << std::endl;
-    std::cout << YELLOW << "Body: -----------------------" << RESET << std::endl;
-    std::cout << YELLOW << request.getBody() << RESET;
-    std::cout << YELLOW << "--------------------------------" << RESET << std::endl;
-    std::cout << YELLOW << "Extension: <" << __exten << ">" << RESET << std::endl;
+    // std::cout << GREEN << "Headers: -----------------------" << RESET << std::endl;
+    // request.printHeaders();
+    // std::cout << GREEN << "--------------------------------" << RESET << std::endl;
+    // std::cout << YELLOW << "Body: -----------------------" << RESET << std::endl;
+    // std::cout << YELLOW << request.getBody() << RESET;
+    // std::cout << YELLOW << "--------------------------------" << RESET << std::endl;
+    // std::cout << YELLOW << "Extension: <" << __exten << ">" << RESET << std::endl;
     if (request.isChunked == false){
         if (__contentType.compare("multipart/form-data") == true) { // content-type is the thing that decides the file type, since the file name is not provided when we have raw/binary data transfer
             std::cout << YELLOW << "Content-Type: <" << __contentType << ">" << RESET << std::endl;
@@ -118,6 +118,7 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
         else { // chunked might be on/off
             if (this->postState == INIT_POST){ // first read
                 this->postState = NEW_REQ_ENTRY;
+                std::cout << MAGENTA << "[FIRST] uploaded: " << request.getBody().size() << std::endl;
                 std::cout << RED << "Binary Data" << RESET << std::endl;
                 std::string __fileName = randomizeFileName() + __exten;
                 __folder = "uploads/" + __folder;
@@ -133,8 +134,10 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
                 std::cout << RED << "File name: " << __fileName << RESET << std::endl;
             }
             else{
+                std::cout << MAGENTA << "BODY UPLAOD CALLED" << std::endl;
                 std::string buff = request.getReqEntry();
                 write(this->fd, buff.c_str(), buff.size());
+                std::cout << MAGENTA << "uploaded: " << buff.size() << std::endl;
                 // std::string buff = request.getReqEntry(); // get the whole content
             }
         }
@@ -142,5 +145,4 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
     else {
         std::cout << RED << "Chunked is not supported yet" << RESET << std::endl;
     }
-    throw HttpErrorException(NOT_IMPLEMENTED, request, "Not Implemented");
 }
