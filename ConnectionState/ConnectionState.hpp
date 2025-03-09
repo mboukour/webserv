@@ -36,7 +36,7 @@ class ConnectionState {
 
         void resetReadState(void);
         void updateLastActivity(void);
-        public:
+    public:
         ConnectionState(int clientFd, int epollFd);
         // HttpRequest *getHttpRequest(void) const;
         HttpResponse *getHttpResponse(void) const;
