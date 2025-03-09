@@ -13,9 +13,9 @@
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
 
-HttpRequest::HttpRequest(): AHttp() {}
+HttpRequest::HttpRequest(): AHttp(), contentLength(0) {}
 
-HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL) {
+HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0) {
 
     this->primalRequest = request;
     this->isCgi = false;
@@ -26,7 +26,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         throw HttpErrorException("HTTP/1.1", BAD_REQUEST, "Bad Request", "empty request", ""); // we assume the version?
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
-        throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", "invalid request line", "");
+        throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", line, "");
     // size_t pos = this->path.find("?");
     // if (pos != std::string::npos)
     // {
@@ -124,12 +124,12 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
             std::stringstream l(value);
             l >> this->contentLength;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
             std::string dummy;
             l >> dummy;
-            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
-            if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
-                throw HttpErrorException(PAYLOAD_TOO_LARGE, *this, "payload too large");
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, "invalid content length header");
+            // if (this->requestBlock->getIsLimited() && this->contentLength > this->requestBlock->getMaxBodySize())
+            //     throw HttpErrorException(PAYLOAD_TOO_LARGE, "payload too large");
             contentLengthFound = true;
              this->headers[key] = value;
 

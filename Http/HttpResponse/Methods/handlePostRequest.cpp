@@ -138,6 +138,8 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
                 std::string buff = request.getReqEntry();
                 write(this->fd, buff.c_str(), buff.size());
                 std::cout << MAGENTA << "uploaded: " << buff.size() << std::endl;
+                if (this->postState == LAST_ENTRY)
+                    std::cout << "YIPEEEE\n";
                 // std::string buff = request.getReqEntry(); // get the whole content
             }
         }

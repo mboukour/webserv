@@ -13,8 +13,8 @@
 
 class ConnectionState {
     private:    
-        int eventFd;
-        int epollFd;
+        const int eventFd;
+        const int epollFd;
         enum ReadState {NO_REQUEST, READING_HEADERS, READING_BODY, DONE_READING};
         ReadState readState;
         ssize_t bytesRead;
@@ -30,6 +30,7 @@ class ConnectionState {
         HttpResponse *response;
         bool isDone;
 
+        void resetReadState(void);
     public:
         ConnectionState(int clientFd, int epollFd);
         // HttpRequest *getHttpRequest(void) const;

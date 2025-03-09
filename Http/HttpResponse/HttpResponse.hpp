@@ -15,7 +15,7 @@ class HttpResponse: public AHttp {
         const int clientFd;
         const int epollFd;
         int statusCode;
-        enum PostState {INIT_POST, NEW_REQ_ENTRY};
+        enum PostState {INIT_POST, NEW_REQ_ENTRY, LAST_ENTRY};
         PostState postState;
         int fd;
         std::string reasonPhrase;
@@ -37,6 +37,7 @@ class HttpResponse: public AHttp {
         void setBody(const std::string &body);
         bool removeDirectory(const std::string &path);
         void handleNewReqEntry(const HttpRequest &request);
+        void setAsLastEntry(void);
         std::string toString(void) const;
 };
 
