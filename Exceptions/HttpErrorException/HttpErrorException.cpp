@@ -47,6 +47,9 @@ std::string HttpErrorException::getResponseString() const {
     else
         errorPage = body;
     HttpResponse resp(this->version, this->statusCode, this->reasonPhrase, errorPage);
+    std::stringstream ss;
+    ss << errorPage.size();
+    resp.setHeader("Content-Length", ss.str());
     resp.setHeader("Content-Type", "text/html");
     return resp.toString();
 }

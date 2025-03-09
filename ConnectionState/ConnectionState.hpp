@@ -2,6 +2,7 @@
 #define CONNECTIONSTATE_HPP
 
 #include <cstddef>
+#include <ctime>
 #include <fstream>
 #include <iosfwd>
 #include <sys/types.h>
@@ -12,7 +13,8 @@
 #define READ_SIZE 65536
 
 class ConnectionState {
-    private:    
+    private: 
+        static const int keepAliveTimeout;
         const int eventFd;
         const int epollFd;
         enum ReadState {NO_REQUEST, READING_HEADERS, READING_BODY, DONE_READING};
@@ -28,10 +30,13 @@ class ConnectionState {
         std::streampos currentPos;
         std::string stringToSend;
         HttpResponse *response;
+        time_t lastActivityTime;
+        bool isKeepAlive;
         bool isDone;
 
         void resetReadState(void);
-    public:
+        void updateLastActivity(void);
+        public:
         ConnectionState(int clientFd, int epollFd);
         // HttpRequest *getHttpRequest(void) const;
         HttpResponse *getHttpResponse(void) const;
@@ -41,6 +46,8 @@ class ConnectionState {
         void activateWriteState(const std::string &filePath, const std::streampos &currentPos);
         void activateWriteState(const std::string &stringToSend);
         void handleWritable(void);
+        bool hasTimedOut(void) const;
+        bool getIsKeepAlive(void) const;
         ~ConnectionState();
 };
 
