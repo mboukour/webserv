@@ -18,6 +18,9 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1){
     this->version = request.getVersion();
 
+    if (request.getMethod() == "POST" && request.getContentLength() == request.getBodySize()) {
+        this->postState = LAST_ENTRY;
+    }
     const std::string &method = request.getMethod();
     if (request.isCgiRequest()) {
         std::string response = Cgi::getCgiResponse(request);
