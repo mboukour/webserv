@@ -105,13 +105,15 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
              << "Content-Length: " << response.size() << "\r\n"
              << "Connection: close\r\n"
              << "\r\n";
-    send(this->clientFd, headersSS.str().c_str(), headersSS.str().size(), 0);
-    send(this->clientFd, response.c_str(), response.size(), 0); // might need to improve this :D
+
+    ServerManager::sendString(headersSS.str(), this->clientFd);
+    ServerManager::sendString(response, this->clientFd);
     closedir(dir);
 }
 
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
+    std::cout << "PATH: " << path << '\n';
     if (path[path.size() - 1] == '/')
         path = path.substr(0, path.size() - 1);  // Remove last character properly
     
@@ -123,14 +125,13 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         std::fstream fileToGet(path.c_str());
         if (fileToGet.fail() == true)
             throw HttpErrorException(NOT_FOUND, request, "cant find file");
-    
+
         std::stringstream responseSs;
         responseSs << "HTTP/1.1 200 OK\r\n";
         responseSs << "Content-Type: " << request.getServer()->getMimeType(path.substr(path.find_last_of('.') + 1)) << "\r\n";
         responseSs << "Content-Length: " << filestat.st_size << "\r\n";
         responseSs << "\r\n";
-        send(this->clientFd, responseSs.str().c_str(), responseSs.str().size(), 0);
-    
+        ServerManager::sendString(responseSs.str(), this->clientFd);
         sendGetResponse(fileToGet, path);
     } else if (filestat.st_mode & S_IFDIR) {
         std::vector<std::string> indexes = request.getRequestBlock()->getIndexes();
@@ -152,6 +153,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
                      << "Connection: close\r\n"
                      << "\r\n";
             send(this->clientFd, headersSS.str().c_str(), headersSS.str().size(), 0);
+            ServerManager::sendString(headersSS.str(), this->clientFd);
             std::fstream fileToGet(indexFilePath.c_str());
             sendGetResponse(fileToGet, indexFilePath);
         } else if (request.getRequestBlock()->getIsAutoIndexOn()) {

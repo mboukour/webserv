@@ -12,9 +12,10 @@
 #include <sys/types.h>
 #include "../Debug/Debug.hpp"
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include "../Server/ServerManager/ServerManager.hpp"
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
-  readState(NO_REQUEST), bytesRead(0), request(NULL), isRequestReady(false), isRequestDone(false),
-  writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(),
+  readState(NO_REQUEST), bytesRead(0), request(), 
+  writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(), response(NULL),
   isDone(false) {}
 
 
@@ -24,7 +25,7 @@ void ConnectionState::handleWritable(void) {
     if (this->sendMode == FILE) {
         std::fstream fileToSend(this->filePath.c_str());
         if (!fileToSend.is_open())
-        throw std::runtime_error("Could'nt open file");
+            throw std::runtime_error("Could'nt open file");
     
     fileToSend.seekg(this->currentPos);
     
@@ -69,6 +70,14 @@ void ConnectionState::handleWritable(void) {
 }
 
 
+void ConnectionState::resetReadState(void) {
+    this->readState = NO_REQUEST;
+    delete this->response;
+    this->request = HttpRequest();
+    this->response = NULL;
+    this->requestBuffer.clear();
+}
+
 void ConnectionState::handleReadable(std::vector<Server> &servers) {
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
@@ -77,16 +86,20 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
         std::vector<char> buffer(READ_SIZE);
         ssize_t bytesReceived = recv(this->eventFd, buffer.data(), buffer.size()- 1, 0);
         if (bytesReceived == 0) {
-            DEBUG && std::cout << "Client reading side closed" << std::endl;
-            this->readState = DONE_READING;
-
-            std::cout << "WRITE: " << this->writeState << '\n';
-            break;
+            this->readState = NO_REQUEST;
+            this->writeState = NO_RESPONSE;
+            delete this->response;
+            this->request = HttpRequest();
+            this->response = NULL;
+            this->isDone = true;
+            return ;
+            // break;
         } else if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0';
             std::string bufferStr(buffer.data(), bytesReceived);
             this->requestBuffer+= bufferStr;
             if (this->readState == READING_HEADERS && bufferStr.find("\r\n\r\n") != std::string::npos) {
+                std::cout << "GOT HEADERS\n";
                 struct sockaddr_in addr;
                 socklen_t addrLen = sizeof(addr);
                 if (getsockname(this->eventFd, (struct sockaddr*)&addr, &addrLen) == -1) {
@@ -98,44 +111,56 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 int port = ntohs(addr.sin_port);
                 this->readState = READING_BODY;
                 try {
-                    this->request = new HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
+                    this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
+                    std::cout << "New Req: " << this->request;
                 } catch (const HttpErrorException &exec) {
                     DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
                     std::string respStr = exec.getResponseString();
-                    send(this->eventFd, respStr.c_str(), respStr.size(), 0);
-                    epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
-                    close(this->eventFd);
+                    ServerManager::sendString(respStr, this->eventFd);
                     this->isDone = true;
                     DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
                     return ;
                 }
-                this->requestBuffer.clear();
-                if (this->request->getMethod() != "POST")
-                    this->isRequestReady = true;
-                else if (this->request->getBodySize() >= this->request->getContentLength()) {
-                    this->isRequestReady = true;
-                } else {
-                    std::cout << "CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n';
+                if (!this->response) {
+                    try {
+                        std::cout << "New Resp\n";
+                        this->response = new HttpResponse(this->request, this->eventFd, this->epollFd);
+                    } catch (const HttpErrorException& exec) {
+                        std::string respStr = exec.getResponseString();
+                        send(this->eventFd, respStr.c_str(), respStr.size(), 0);
+                        this->isDone = true;
+                        return;
+                    }
                 }
+                if (request.getContentLength() == 0) {
+                    resetReadState();
+                    return ;
+                }
+                this->requestBuffer.clear();
             } else if (this->readState == READING_BODY) {
-                this->request->appendToBody(bufferStr);
-                const std::string &contentLength = this->request->getHeader("Content-Length");
+
+                const std::string &contentLength = this->request.getHeader("Content-Length");
                 if (contentLength == "") {
                     this->readState = NO_REQUEST;
-                    this->isRequestDone = true;
-
+                    delete this->response;
+                    this->request = HttpRequest();
+                    this->response = NULL;
                 }
-                
-                if (this->request->getBodySize() == this->request->getContentLength()) { // by here the request is fully consumed and should be freed
-                    this->readState = NO_REQUEST;
-                    this->isRequestReady = true;
-                    this->isRequestDone = true;
-                    std::cout <<  "END RES: CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n';
-                } else if (this->request->getBodySize() >= this->request->getContentLength()) {
-                    throw HttpErrorException(BAD_REQUEST, "BODY ISZE BIGGER THAN CL");
-                    return; 
+                this->request.setReqEntry(bufferStr);
+                bool isLastEntry = this->request.getBodySize() == this->request.getContentLength();
+                if (this->response) {
+                    if (isLastEntry)
+                        this->response->setAsLastEntry();
+                    this->response->handleNewReqEntry(this->request);
+                }
+                if (isLastEntry) {
+                    std::cout <<  "END RES: CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n';
+                    resetReadState();
+                } else if (this->request.getBodySize() > this->request.getContentLength()) {
+                    std::cout << "BODY: " << this->request.getBodySize() << '\n';
+                    throw HttpErrorException(BAD_REQUEST, "BODY SIZE BIGGER THAN CL");
                 } else {
-                    std::cout << "CL: " << this->request->getContentLength() << " Body Size: " << this->request->getBodySize() << '\n'; 
+                    std::cout << "CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n'; 
                 }
             }
         } else {
@@ -166,16 +191,20 @@ int ConnectionState::getEventFd(void) const {
     return this->eventFd; 
 }
 
-bool ConnectionState::getIsRequestReady(void) const {
-    return this->isRequestReady;
-}
+// bool ConnectionState::getIsRequestReady(void) const {
+//     return this->isRequestReady;
+// }
 
-bool ConnectionState::getIsRequestDone(void) const {
-    return this->isRequestDone;
-}
+// bool ConnectionState::getIsRequestDone(void) const {
+//     return this->isRequestDone;
+// }
 
-HttpRequest* ConnectionState::getHttpRequest(void) const {
-    return this->request;
+// HttpRequest* ConnectionState::getHttpRequest(void) const {
+//     return this.request;
+// }
+
+HttpResponse * ConnectionState::getHttpResponse(void) const {
+    return this->response;
 }
 
 bool ConnectionState::getIsDone(void) const {
@@ -183,8 +212,8 @@ bool ConnectionState::getIsDone(void) const {
 }
 
 ConnectionState::~ConnectionState() {
-    if (this->request) {
-        delete this->request;
-    }
+    if (this->response)
+        delete this->response;
+    epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
     close(this->eventFd);
 }

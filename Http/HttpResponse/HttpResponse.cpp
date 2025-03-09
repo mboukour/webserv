@@ -1,28 +1,47 @@
 #include "HttpResponse.hpp"
 #include "../HttpRequest/HttpRequest.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include <cstddef>
 #include <sstream>
 #include <sys/epoll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstdio>
 #include <dirent.h>
+#include "../../Server/ServerManager/ServerManager.hpp"
+
+
+HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
 
 
-HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1) {}
-
-
-
-HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd) {
+HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1){
     this->version = request.getVersion();
 
     const std::string &method = request.getMethod();
     if (request.isCgiRequest()) {
         std::string response = Cgi::getCgiResponse(request);
+        size_t pos_crlf = response.find("\r\n\r\n");
+        size_t pos_lf = response.find("\n\n");
+        
+        size_t pos;
+        int delimiter_len;
+        
+        if (pos_crlf != std::string::npos) {
+            pos = pos_crlf;
+            delimiter_len = 4;
+        } else if (pos_lf != std::string::npos) {
+            pos = pos_lf;
+            delimiter_len = 2;
+        } else {
+            throw HttpErrorException(500, request, "No headers delimiter in CGI response");
+        }
+        size_t cL = response.size() - pos - delimiter_len;
+        std::stringstream ss;
+        ss << cL;
+        response.insert(0, "Content-Length: " + ss.str() + "\r\n");
         response.insert(0, "HTTP/1.1 200 OK\r\n");
-        // std::cout << "Received cgi's response: \n" << response << '\n';
-        send(clientFd, response.c_str(), response.size(), 0);
+        ServerManager::sendString(response, clientFd);
         return ;
     }
     if (method == "DELETE")
@@ -36,6 +55,16 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->clientFd, NULL);
         close(clientFd);
     }
+}
+
+void HttpResponse::handleNewReqEntry(const HttpRequest &request) {
+    if (request.getMethod() != "POST")
+        return ;
+    handlePostRequest(request);
+}
+
+void HttpResponse::setAsLastEntry(void) {
+    this->postState = LAST_ENTRY;
 }
 
 HttpResponse::HttpResponse(const std::string &version, int statusCode,
@@ -54,7 +83,7 @@ void HttpResponse::addCookie(const std::string& name, const std::string& value, 
 }
 
 void HttpResponse::setBody(const std::string &body) {
-    this->body = body; 
+    this->body = body;
     this->bodySize = body.size();
     std::stringstream ss;
     ss << this->bodySize;
@@ -76,5 +105,9 @@ std::string HttpResponse::toString(void) const {
 
 void HttpResponse::sendResponse(void) const {
     std::string responseStr = this->toString();
-    send(this->clientFd, responseStr.c_str(), responseStr.size(), 0);
+    ServerManager::sendString(responseStr, this->clientFd);
+}
+
+HttpResponse::~HttpResponse(){
+    close(this->fd);
 }

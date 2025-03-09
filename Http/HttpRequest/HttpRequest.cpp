@@ -13,9 +13,9 @@
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
 
-HttpRequest::HttpRequest(): AHttp() {}
+HttpRequest::HttpRequest(): AHttp(), contentLength(0) {}
 
-HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL) {
+HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0) {
 
     this->primalRequest = request;
     this->isCgi = false;
@@ -26,7 +26,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         throw HttpErrorException("HTTP/1.1", BAD_REQUEST, "Bad Request", "empty request", ""); // we assume the version?
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
-        throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", "invalid request line", "");
+        throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", line, "");
     // size_t pos = this->path.find("?");
     // if (pos != std::string::npos)
     // {
@@ -37,7 +37,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
     if (this->path.length() > URI_MAX_SIZE)
         throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
-    // implement better matching? 
+    // implement better matching?
     parseHeaders(ss, servers, serverPort);
     this->bodySize = 0;
     size_t pos = request.find("\r\n\r\n");
@@ -47,9 +47,18 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     parseCookies();
 }
 
-void HttpRequest::appendToBody(const std::string &body) {
-    this->body += body;
-    this->bodySize = this->body.size();
+// void HttpRequest::appendToBody(const std::string &body) {
+//     this->body += body;
+//     this->bodySize = this->body.size();
+// }
+
+void HttpRequest::setReqEntry(const std::string &reqEntry) {
+    this->reqEntry = reqEntry;
+    this->bodySize += reqEntry.size();
+}
+
+std::string HttpRequest::getReqEntry(void) const {
+    return this->reqEntry;
 }
 
 std::string HttpRequest::getMethod() const {
@@ -89,6 +98,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
     std::string line;
     bool hostFound = false;
     bool contentLengthFound = false;
+    bool badChunked = false;
     while(getline(ss, line) && line != "\r") { // looping through headers
         if (line[line.size() - 1] == '\r')
             line[line.size() - 1] = '\0';
@@ -114,15 +124,24 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
             std::stringstream l(value);
             l >> this->contentLength;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
             std::string dummy;
             l >> dummy;
-            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
-            if (this->requestBlock->getIsLimited() && this->bodySize > this->requestBlock->getMaxBodySize())
-                throw HttpErrorException(PAYLOAD_TOO_LARGE, *this, "payload too large");
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, "invalid content length header");
+            // if (this->requestBlock->getIsLimited() && this->contentLength > this->requestBlock->getMaxBodySize())
+            //     throw HttpErrorException(PAYLOAD_TOO_LARGE, "payload too large");
             contentLengthFound = true;
              this->headers[key] = value;
 
+            continue;
+        }
+        if (key == "Transfer-Encoding") {
+            if (value.compare("chunked") == true){
+                this->isChunked = true;
+            }
+            else
+                badChunked = true;
+            this->headers[key] = value;
             continue;
         }
         this->headers[key] = value;
@@ -159,7 +178,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
                     }
                 }
             }
-    
+
             if (!exactMatchFound && !prefixMatchFound) {
                 for (std::vector<Location>::const_iterator it = server.locationsCbegin();
                     it != server.locationsCend(); it++) {
@@ -180,7 +199,9 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
     if (this->method == "POST")
     {
-        if (!contentLengthFound) // or no Transfer-Encoding??
+        if (badChunked == true)
+            throw HttpErrorException(BAD_REQUEST, *this, "Transfer-Encoding must be \"chunked\"");
+        if (!contentLengthFound && this->isChunked == false) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn
             throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found");
     }
 }
