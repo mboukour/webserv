@@ -103,7 +103,6 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
     headersSS << "HTTP/1.1 200 OK\r\n"
              << "Content-Type: text/html\r\n"
              << "Content-Length: " << response.size() << "\r\n"
-             << "Connection: close\r\n"
              << "\r\n";
 
     ServerManager::sendString(headersSS.str(), this->clientFd);
@@ -150,7 +149,6 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             headersSS << "HTTP/1.1 200 OK\r\n"
                      << "Content-Type: text/html\r\n"
                      << "Content-Length: " << indexstat.st_size << "\r\n"
-                     << "Connection: close\r\n"
                      << "\r\n";
             send(this->clientFd, headersSS.str().c_str(), headersSS.str().size(), 0);
             ServerManager::sendString(headersSS.str(), this->clientFd);

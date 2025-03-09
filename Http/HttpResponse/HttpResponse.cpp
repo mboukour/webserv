@@ -50,11 +50,6 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         handleGetRequest(request);
     else if (method == "POST")
         handlePostRequest(request);
-    if (request.getHeader("Connection") == "close")
-    {
-        epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->clientFd, NULL);
-        close(clientFd);
-    }
 }
 
 void HttpResponse::handleNewReqEntry(const HttpRequest &request) {

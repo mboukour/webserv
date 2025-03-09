@@ -13,15 +13,19 @@
 #include "../Debug/Debug.hpp"
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../Server/ServerManager/ServerManager.hpp"
+
+const int ConnectionState::keepAliveTimeout = 10;
+
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), 
   writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(), response(NULL),
-  isDone(false) {}
+  lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
 
 
 void ConnectionState::handleWritable(void) {
     if (this->writeState == NO_RESPONSE)
         return;
+    updateLastActivity();
     if (this->sendMode == FILE) {
         std::fstream fileToSend(this->filePath.c_str());
         if (!fileToSend.is_open())
@@ -70,15 +74,29 @@ void ConnectionState::handleWritable(void) {
 }
 
 
+void ConnectionState::updateLastActivity(void) {
+    this->lastActivityTime = time(NULL);
+}
+
+bool ConnectionState::hasTimedOut(void) const {
+    return time(NULL) - lastActivityTime > keepAliveTimeout;
+}
+
+bool ConnectionState::getIsKeepAlive(void) const {
+    return this->isKeepAlive;
+}
+
 void ConnectionState::resetReadState(void) {
     this->readState = NO_REQUEST;
     delete this->response;
     this->request = HttpRequest();
     this->response = NULL;
     this->requestBuffer.clear();
+    this->isKeepAlive = true;
 }
 
 void ConnectionState::handleReadable(std::vector<Server> &servers) {
+    updateLastActivity();
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
 
@@ -99,14 +117,11 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
             std::string bufferStr(buffer.data(), bytesReceived);
             this->requestBuffer+= bufferStr;
             if (this->readState == READING_HEADERS && bufferStr.find("\r\n\r\n") != std::string::npos) {
-                std::cout << "GOT HEADERS\n";
                 struct sockaddr_in addr;
                 socklen_t addrLen = sizeof(addr);
                 if (getsockname(this->eventFd, (struct sockaddr*)&addr, &addrLen) == -1) {
                     std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
-                    close(this->eventFd);
-                    epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
-                    throw std::logic_error("getsockname error");
+                    throw HttpErrorException(500, "getsockname error");
                 }
                 int port = ntohs(addr.sin_port);
                 this->readState = READING_BODY;
@@ -117,9 +132,12 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                     DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
                     std::string respStr = exec.getResponseString();
                     ServerManager::sendString(respStr, this->eventFd);
-                    this->isDone = true;
+                    resetReadState();
                     DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
                     return ;
+                }
+                if (this->request.getHeader("Connection") == "close") {
+                    this->isKeepAlive = false;
                 }
                 if (!this->response) {
                     try {
@@ -127,8 +145,8 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                         this->response = new HttpResponse(this->request, this->eventFd, this->epollFd);
                     } catch (const HttpErrorException& exec) {
                         std::string respStr = exec.getResponseString();
-                        send(this->eventFd, respStr.c_str(), respStr.size(), 0);
-                        this->isDone = true;
+                        resetReadState();
+                        ServerManager::sendString(respStr, this->eventFd);
                         return;
                     }
                 }

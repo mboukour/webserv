@@ -134,15 +134,16 @@ void ServerManager::handleConnections(void) {
     struct epoll_event events[MAX_EVENTS];
     std::string errorStr;
 
+    const int EPOLL_TIMEOUT_MS = 1000;
     while (true)
     {
         // -1 means wait indefinitely
-        int event_count = epoll_wait(epollFd, events, MAX_EVENTS, -1);
+        int event_count = epoll_wait(epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT_MS);
         if (event_count == -1)
         {
             errorStr = "epoll_wait() failed. Errno: ";
             errorStr += strerror(errno);
-            throw std::runtime_error(errorStr);
+            std::cerr << errorStr << '\n';
         }
         for (int i = 0; i < event_count; i++)
         {
@@ -158,9 +159,28 @@ void ServerManager::handleConnections(void) {
             if (events[i].events & EPOLLOUT) {
                 state->handleWritable();
             }
-            if (state->getIsDone())
+            if (state->getIsDone() || !state->getIsKeepAlive()) {
                 delete state;
+                close(eventFd);
+                std::map<int, ConnectionState *>::iterator it = clientStates.find(eventFd);
+                clientStates.erase(it);
+            }
         }
+
+        for (std::map<int, ConnectionState*>::iterator it = clientStates.begin(); 
+            it != clientStates.end(); ) {
+       
+            if (it->second->hasTimedOut()) {
+                std::map<int, ConnectionState*>::iterator toErase = it;
+                ++it;
+                delete toErase->second;
+                close(toErase->first);
+                clientStates.erase(toErase);
+            } else {
+                ++it;
+            }
+    }
+
     }
 }
 
