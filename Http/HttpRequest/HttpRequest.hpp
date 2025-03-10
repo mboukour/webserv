@@ -25,13 +25,13 @@ class HttpRequest: public AHttp {
         size_t contentLength;
         std::string reqEntry;
 
+        bool isChunked;
         void parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort);
         void setIsCgi(void) ;
         void parseCookies(void);
         static const Server& getServer(const std::string &host, const std::vector<Server> &servers, int serverPort);
         static void removeLeadingSpaces(std::string &str);
     public:
-        bool isChunked;
         HttpRequest();
         HttpRequest(const std::string &request, const std::vector<Server>& servers, int serverPort); // throws exceptions that should never terminate execution of the program
         std::string getMethod() const;
@@ -46,6 +46,7 @@ class HttpRequest: public AHttp {
         bool isCgiRequest(void) const;
         const Server *getServer(void) const;
         const ABlock *getRequestBlock(void) const;
+        bool isChunkedRequest(void) const;
         void printHeaders(void) const;
 };
 

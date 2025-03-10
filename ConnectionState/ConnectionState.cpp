@@ -14,7 +14,7 @@
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../Server/ServerManager/ServerManager.hpp"
 
-const int ConnectionState::keepAliveTimeout = 10;
+const int ConnectionState::keepAliveTimeout = 10; // in seconds
 
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), 
@@ -150,10 +150,12 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                         return;
                     }
                 }
-                if (request.getContentLength() == 0) {
+                if (request.getContentLength() == 0 || request.getContentLength() == request.getBodySize()) {
                     resetReadState();
                     return ;
                 }
+
+                
                 this->requestBuffer.clear();
             } else if (this->readState == READING_BODY) {
 
@@ -209,17 +211,6 @@ int ConnectionState::getEventFd(void) const {
     return this->eventFd; 
 }
 
-// bool ConnectionState::getIsRequestReady(void) const {
-//     return this->isRequestReady;
-// }
-
-// bool ConnectionState::getIsRequestDone(void) const {
-//     return this->isRequestDone;
-// }
-
-// HttpRequest* ConnectionState::getHttpRequest(void) const {
-//     return this.request;
-// }
 
 HttpResponse * ConnectionState::getHttpResponse(void) const {
     return this->response;

@@ -5,6 +5,7 @@
 #include "../../../Debug/Debug.hpp"
 #include "../../../Utils/Logger/Logger.hpp"
 
+#include <time.h>
 
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
@@ -19,6 +20,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "../../../Debug/Debug.hpp"
+#include "../../../ConnectionState/ConnectionState.hpp"
+#include "../../../Server/ServerManager/ServerManager.hpp"
 
 std::string regexReplace(const std::string& filename) {
     std::string result;
@@ -58,29 +61,29 @@ std::string randomizeFileName(){
 // generate response: the randomized file name must be mentioned in the response headers
 // create && fill the file
 
-std::string conTypeExten(std::string &contentType) {// somehow matching by map key is not working, + better space usage
-    if (contentType.compare("text/html") == true) return ".html";
-    else if (contentType.compare("text/plain") == true) return ".txt";
-    else if (contentType.compare("image/jpeg") == true) return ".jpg";
-    else if (contentType.compare("image/png") == true) return ".png";
-    else if (contentType.compare("image/gif") == true) return ".gif";
-    else if (contentType.compare("application/json") == true) return ".json";
-    else if (contentType.compare("application/xml") == true) return ".xml";
-    else if (contentType.compare("application/pdf") == true) return ".pdf";
-    else if (contentType.compare("application/zip") == true) return ".zip";
-    else if (contentType.compare("audio/mpeg") == true) return ".mp3";
-    else if (contentType.compare("audio/mp3") == true) return ".mp3";
-    else if (contentType.compare("video/mp4") == true) return ".mp4";
+std::string HttpResponse::getConTypeExten(const std::string &contentType) {
+    if (contentType == "text/html") return ".html";
+    else if (contentType == "text/plain") return ".txt";
+    else if (contentType == "image/jpeg") return ".jpg";
+    else if (contentType == "image/png") return ".png";
+    else if (contentType == "image/gif") return ".gif";
+    else if (contentType == "application/json") return ".json";
+    else if (contentType == "application/xml") return ".xml";
+    else if (contentType == "application/pdf") return ".pdf";
+    else if (contentType == "application/zip") return ".zip";
+    else if (contentType == "audio/mpeg") return ".mp3";
+    else if (contentType == "audio/mp3") return ".mp3";
+    else if (contentType == "video/mp4") return ".mp4";
     return ""; // Return an empty string if no match is found
 }
 
-std::string extToNature(const std::string &extension) {
-    if (extension.compare(".html") == 0 || extension.compare(".txt") == 0) return "text/";
-    else if (extension.compare(".jpg") == 0 || extension.compare(".png") == 0 || extension.compare(".gif") == 0) return "image/";
-    else if (extension.compare(".json") == 0 || extension.compare(".xml") == 0 || extension.compare(".pdf") == 0) return "document/";
-    else if (extension.compare(".zip") == 0) return "application/";
-    else if (extension.compare(".mp3") == 0) return "audio/";
-    else if (extension.compare(".mp4") == 0) return "video/";
+std::string HttpResponse::extToNature(const std::string &extension) {
+    if (extension == ".html" || extension == ".txt") return "text/";
+    else if (extension == ".jpg" || extension == ".png" || extension == ".gif") return "image/";
+    else if (extension == ".json" || extension == ".xml" || extension == ".pdf") return "document/";
+    else if (extension == ".zip") return "application/";
+    else if (extension == ".mp3") return "audio/";
+    else if (extension == ".mp4") return "video/";
     return "";
 }
 
@@ -97,49 +100,64 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
     std::string __contentType = request.getHeader("Content-Type");
     std::string __exten = ".bin"; // we need to save every content-type with its corresponding extension, ofc in a map
     std::string __folder = "";
-    std::string ret = conTypeExten(__contentType);
-    if (ret.empty() == false)
-        __exten = ret;
-    ret = extToNature(__exten);
-    if (ret.empty() == false)
-        __folder = ret;
-    // std::cout << GREEN << "Headers: -----------------------" << RESET << std::endl;
-    // request.printHeaders();
-    // std::cout << GREEN << "--------------------------------" << RESET << std::endl;
-    // std::cout << YELLOW << "Body: -----------------------" << RESET << std::endl;
-    // std::cout << YELLOW << request.getBody() << RESET;
-    // std::cout << YELLOW << "--------------------------------" << RESET << std::endl;
-    // std::cout << YELLOW << "Extension: <" << __exten << ">" << RESET << std::endl;
-    if (request.isChunked == false){
-        if (__contentType.compare("multipart/form-data") == true) { // content-type is the thing that decides the file type, since the file name is not provided when we have raw/binary data transfer
-            std::cout << YELLOW << "Content-Type: <" << __contentType << ">" << RESET << std::endl;
+    if (request.isChunkedRequest() == false){
+        if (__contentType == "multipart/form-data") { // content-type is the thing that decides the file type, since the file name is not provided when we have raw/binary data transfer
             std::cout << MAGENTA << "Multi Form Data" << RESET << std::endl;
         }
         else { // chunked might be on/off
             if (this->postState == INIT_POST){ // first read
                 this->postState = NEW_REQ_ENTRY;
-                std::cout << MAGENTA << "[FIRST] uploaded: " << request.getBody().size() << std::endl;
+                std::string ret = getConTypeExten(__contentType);
+                std::cout << MAGENTA << "ret: <" << ret << ">" << RESET << std::endl;
+                if (ret.empty() == false)
+                    __exten = ret;
+                ret = extToNature(__exten);
+                if (ret.empty() == false)
+                    __folder = ret;
                 std::cout << RED << "Binary Data" << RESET << std::endl;
-                std::string __fileName = randomizeFileName() + __exten;
+                this->fileName = randomizeFileName() + __exten;
                 __folder = "uploads/" + __folder;
+                std::cout << RED << "File name: " << this->fileName << RESET << std::endl;
+                std::cout << YELLOW << "Content-Type: <" << __contentType << ">" << RESET << std::endl;
                 if (isDir(__folder.c_str()) == true){
-                    __fileName = __folder + __fileName;
-                    this->fd = open(__fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);// check for failure
+                    this->fileName = __folder + this->fileName;
+                    this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);// check for failure
                     write(this->fd, request.getBody().c_str(), request.getBody().size());
                 }
                 else{
                     std::cout << RED << "Folder do not exist!" << RESET << std::endl;
                     // throw an exception with an appropriate error page!!!!!!!!!!!!!
                 }
-                std::cout << RED << "File name: " << __fileName << RESET << std::endl;
+                // !!!!!! what if the body is finished here ?
             }
             else{
-                std::cout << MAGENTA << "BODY UPLAOD CALLED" << std::endl;
                 std::string buff = request.getReqEntry();
                 write(this->fd, buff.c_str(), buff.size());
-                std::cout << MAGENTA << "uploaded: " << buff.size() << std::endl;
-                if (this->postState == LAST_ENTRY)
-                    std::cout << "YIPEEEE\n";
+                if (this->postState == LAST_ENTRY){
+                    std::stringstream headersSS;
+                    // std::string str = request.getHeader("Content-Length");
+                    std::string connectState;
+                    // str = str.substr(0, str.size() - 1);
+                    ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+                    if (state->getIsKeepAlive())
+                        connectState = "keep-alive";
+                    else
+                        connectState = "close";
+                    const Server *server = request.getServer();
+                    std::string serverName = server->getServerName();
+                    int serverPort = server->getPort();
+                    std::stringstream sS;
+                    sS << serverName << ":" << serverPort << "/" << fileName;
+                    this->version = request.getVersion();
+                    this->statusCode = 201;
+                    this->reasonPhrase = "Created";
+                    this->headers["Content-Length"] = "11";
+                    this->headers["Location"] = "/" + fileName;
+                    this->body = "Lay3tik s7a";
+                    std::string toStr = this->toString();
+                    ServerManager::sendString(toStr, this->clientFd);
+                    // ConnectionState::getIsKeepAlive();
+                }
                 // std::string buff = request.getReqEntry(); // get the whole content
             }
         }

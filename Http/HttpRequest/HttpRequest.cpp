@@ -13,9 +13,9 @@
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
 
-HttpRequest::HttpRequest(): AHttp(), contentLength(0) {}
+HttpRequest::HttpRequest(): AHttp(), contentLength(0), isChunked(false) {}
 
-HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0) {
+HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0), isChunked(false) {
 
     this->primalRequest = request;
     this->isCgi = false;
@@ -27,12 +27,12 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", line, "");
-    // size_t pos = this->path.find("?");
-    // if (pos != std::string::npos)
-    // {
-    //     this->queryString = this->path.substr(pos + 1);
-    //     this->path = this->path.substr(0, pos);
-    // }
+    size_t pos = this->path.find("?");
+    if (pos != std::string::npos)
+    {
+        this->queryString = this->path.substr(pos + 1);
+        this->path = this->path.substr(0, pos);
+    }
     if (this->version != "HTTP/1.1")
         throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
     if (this->path.length() > URI_MAX_SIZE)
@@ -40,7 +40,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     // implement better matching?
     parseHeaders(ss, servers, serverPort);
     this->bodySize = 0;
-    size_t pos = request.find("\r\n\r\n");
+    pos = request.find("\r\n\r\n");
     this->body = request.substr(pos + 4);
     this->bodySize = this->body.size();
     setIsCgi();
@@ -98,10 +98,9 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
     std::string line;
     bool hostFound = false;
     bool contentLengthFound = false;
-    bool badChunked = false;
     while(getline(ss, line) && line != "\r") { // looping through headers
         if (line[line.size() - 1] == '\r')
-            line[line.size() - 1] = '\0';
+            line = line.substr(0, line.size() - 1);
         // std::stringstream lineSs(line);
         std::string key;
         std::string value;
@@ -118,7 +117,6 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
         key = line.substr(0, pos);
         value = line.substr(pos + 1);
         removeLeadingSpaces(value);
-
         if (key == "Content-Length")
         {
 
@@ -136,11 +134,10 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             continue;
         }
         if (key == "Transfer-Encoding") {
-            if (value.compare("chunked") == true){
+            if (value == "chunked")
                 this->isChunked = true;
-            }
-            else
-                badChunked = true;
+            else if (this->method == "POST")
+                throw HttpErrorException(NOT_IMPLEMENTED, "Transfer-Encoding must be \"chunked\"");
             this->headers[key] = value;
             continue;
         }
@@ -199,8 +196,6 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
     if (this->method == "POST")
     {
-        if (badChunked == true)
-            throw HttpErrorException(BAD_REQUEST, *this, "Transfer-Encoding must be \"chunked\"");
         if (!contentLengthFound && this->isChunked == false) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn
             throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found");
     }
@@ -251,6 +246,10 @@ void HttpRequest::setIsCgi(void) {
 
 bool HttpRequest::isCgiRequest(void) const {
     return this->isCgi;
+}
+
+bool HttpRequest::isChunkedRequest(void) const {
+    return this->isChunked;
 }
 
 const Server &HttpRequest::getServer(const std::string &host, const std::vector<Server>& servers, int serverPort) {

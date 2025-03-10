@@ -18,8 +18,12 @@ class HttpResponse: public AHttp {
         enum PostState {INIT_POST, NEW_REQ_ENTRY, LAST_ENTRY};
         PostState postState;
         int fd;
+        std::string fileName;
         std::string reasonPhrase;
         std::vector<std::string> cookies;
+
+        static std::string getConTypeExten(const std::string &contentType);
+        static std::string extToNature(const std::string &extension);
 
         void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
         void handleAutoIndex(const HttpRequest& request) const;
@@ -28,6 +32,7 @@ class HttpResponse: public AHttp {
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);
         void handlePostRequest(const HttpRequest &request);
+
     public:
         HttpResponse();
         ~HttpResponse();
