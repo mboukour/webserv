@@ -1,12 +1,8 @@
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
-#include <fstream>
 #include "../../../Debug/Debug.hpp"
-#include "../../../Utils/Logger/Logger.hpp"
-
 #include <time.h>
-
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
@@ -119,25 +115,22 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
                 __folder = "uploads/" + __folder;
                 std::cout << RED << "File name: " << this->fileName << RESET << std::endl;
                 std::cout << YELLOW << "Content-Type: <" << __contentType << ">" << RESET << std::endl;
-                if (isDir(__folder.c_str()) == true){
+                if (isDir(__folder.c_str()) == true) {
                     this->fileName = __folder + this->fileName;
                     this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);// check for failure
                     write(this->fd, request.getBody().c_str(), request.getBody().size());
                 }
-                else{
+                else {
                     std::cout << RED << "Folder do not exist!" << RESET << std::endl;
                     // throw an exception with an appropriate error page!!!!!!!!!!!!!
                 }
                 // !!!!!! what if the body is finished here ?
             }
-            else{
+            else {
                 std::string buff = request.getReqEntry();
                 write(this->fd, buff.c_str(), buff.size());
-                if (this->postState == LAST_ENTRY){
-                    std::stringstream headersSS;
-                    // std::string str = request.getHeader("Content-Length");
+                if (this->postState == LAST_ENTRY) {
                     std::string connectState;
-                    // str = str.substr(0, str.size() - 1);
                     ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
                     if (state->getIsKeepAlive())
                         connectState = "keep-alive";
@@ -156,9 +149,7 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
                     this->body = "Lay3tik s7a";
                     std::string toStr = this->toString();
                     ServerManager::sendString(toStr, this->clientFd);
-                    // ConnectionState::getIsKeepAlive();
                 }
-                // std::string buff = request.getReqEntry(); // get the whole content
             }
         }
     }

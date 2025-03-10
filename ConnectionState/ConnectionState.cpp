@@ -13,6 +13,7 @@
 #include "../Debug/Debug.hpp"
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../Server/ServerManager/ServerManager.hpp"
+#include "../Utils/Logger/Logger.hpp"
 
 const int ConnectionState::keepAliveTimeout = 10; // in seconds
 
@@ -95,6 +96,14 @@ void ConnectionState::resetReadState(void) {
     this->isKeepAlive = true;
 }
 
+
+bool ConnectionState::isChunkedRequestComplete(void) const {
+    size_t posOfChunkEnd = this->requestBuffer.find("0\r\n\r\n");
+    if (posOfChunkEnd == std::string::npos)
+        return false;
+    return true;
+}
+
 void ConnectionState::handleReadable(std::vector<Server> &servers) {
     updateLastActivity();
     if (this->readState == NO_REQUEST)
@@ -111,7 +120,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
             this->response = NULL;
             this->isDone = true;
             return ;
-            // break;
         } else if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0';
             std::string bufferStr(buffer.data(), bytesReceived);
@@ -125,6 +133,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 }
                 int port = ntohs(addr.sin_port);
                 this->readState = READING_BODY;
+                std::cout << MAGENTA << "Changed state\n" << RESET;
                 try {
                     this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
                     std::cout << "New Req: " << this->request;
@@ -150,38 +159,33 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                         return;
                     }
                 }
-                if (request.getContentLength() == 0 || request.getContentLength() == request.getBodySize()) {
+                if (!request.isChunkedRequest() && (request.getContentLength() == 0 || request.getContentLength() == request.getBodySize())) {
                     resetReadState();
                     return ;
                 }
-
-                
                 this->requestBuffer.clear();
             } else if (this->readState == READING_BODY) {
-
-                const std::string &contentLength = this->request.getHeader("Content-Length");
-                if (contentLength == "") {
-                    this->readState = NO_REQUEST;
-                    delete this->response;
-                    this->request = HttpRequest();
-                    this->response = NULL;
-                }
                 this->request.setReqEntry(bufferStr);
-                bool isLastEntry = this->request.getBodySize() == this->request.getContentLength();
+                Logger::log(bufferStr);
+                bool isLastEntry;
+                if (!request.isChunkedRequest())
+                    isLastEntry = this->request.getBodySize() == this->request.getContentLength();
+                else
+                    isLastEntry = isChunkedRequestComplete();
                 if (this->response) {
                     if (isLastEntry)
                         this->response->setAsLastEntry();
                     this->response->handleNewReqEntry(this->request);
                 }
-                if (isLastEntry) {
-                    std::cout <<  "END RES: CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n';
+                if (isLastEntry)
                     resetReadState();
-                } else if (this->request.getBodySize() > this->request.getContentLength()) {
-                    std::cout << "BODY: " << this->request.getBodySize() << '\n';
-                    throw HttpErrorException(BAD_REQUEST, "BODY SIZE BIGGER THAN CL");
-                } else {
-                    std::cout << "CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n'; 
-                }
+
+                // } else if (this->request.getBodySize() > this->request.getContentLength()) {
+                //     std::cout << "BODY: " << this->request.getBodySize() << '\n';
+                //     throw HttpErrorException(BAD_REQUEST, "BODY SIZE BIGGER THAN CL");
+                // } else {
+                //     std::cout << "CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n'; 
+                // }
             }
         } else {
             //error state

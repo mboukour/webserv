@@ -13,7 +13,8 @@
 #define READ_SIZE 65536
 
 class ConnectionState {
-    private: 
+    private:
+
         static const int keepAliveTimeout;
         const int eventFd;
         const int epollFd;
@@ -36,6 +37,7 @@ class ConnectionState {
 
         void resetReadState(void);
         void updateLastActivity(void);
+        bool isChunkedRequestComplete(void) const;
     public:
         ConnectionState(int clientFd, int epollFd);
         // HttpRequest *getHttpRequest(void) const;
