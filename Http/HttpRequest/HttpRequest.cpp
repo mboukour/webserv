@@ -117,7 +117,6 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
         key = line.substr(0, pos);
         value = line.substr(pos + 1);
         removeLeadingSpaces(value);
-
         if (key == "Content-Length")
         {
 

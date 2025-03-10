@@ -150,10 +150,12 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                         return;
                     }
                 }
-                if (request.getContentLength() == 0) {
+                if (request.getContentLength() == 0 || request.getContentLength() == request.getBodySize()) {
                     resetReadState();
                     return ;
                 }
+
+                
                 this->requestBuffer.clear();
             } else if (this->readState == READING_BODY) {
 
