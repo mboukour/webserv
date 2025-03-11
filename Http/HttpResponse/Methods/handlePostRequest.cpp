@@ -146,7 +146,7 @@ void    HttpResponse::postResponse(const HttpRequest& request,
     sS.clear();
     sS << this->body.size();
     this->headers["Content-Length"] = sS.str();
-    this->headers["Content-Type"] = request.getHeader("Content-Type");
+    this->headers["Content-Type"] = "text/html";
     sS.str("");
     sS.clear();
     this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);

@@ -30,7 +30,7 @@ class HttpResponse: public AHttp {
 
         void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
         void handleAutoIndex(const HttpRequest& request) const;
-
+        std::string makeCgiResponse(const HttpRequest &request);
         void sendResponse(void) const;
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);
