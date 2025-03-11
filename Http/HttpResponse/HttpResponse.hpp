@@ -17,8 +17,10 @@ class HttpResponse: public AHttp {
         int statusCode;
         enum PostState {INIT_POST, NEW_REQ_ENTRY, LAST_ENTRY};
         PostState postState;
+        PostState prevPostState;
         int fd;
         std::string fileName;
+        std::string success_create;
         std::string reasonPhrase;
         std::vector<std::string> cookies;
 
@@ -33,9 +35,12 @@ class HttpResponse: public AHttp {
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);
         void handlePostRequest(const HttpRequest &request);
-        static std::string makeCgiResponse(const HttpRequest &request);
-        
-        public:
+        void postResponse(const HttpRequest& request,
+            int statusCode, std::string body, std::string const fileName);
+        void firstPostBin(const HttpRequest& request);
+        std::string setFileName(const HttpRequest& request);
+
+    public:
         HttpResponse();
         ~HttpResponse();
         HttpResponse(const HttpRequest &request, int clientFd, int epollFd);

@@ -3,6 +3,7 @@
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include <cstddef>
 #include <sstream>
+#include <fstream>
 #include <sys/epoll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -15,11 +16,44 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
 
 
-HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1), fileName(){
+HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(){
     this->version = request.getVersion();
+    std::ifstream htmlFile("Http/HttpResponse/upload_pages/success_create.html"); // html page when the upload is successfull, ruined can store in a better place
+    if (!htmlFile.is_open()) {
+        throw HttpErrorException(500, request, "Failed to open HTML file");
+    }
+    std::stringstream sS;
+    sS << htmlFile.rdbuf();
+    this->success_create = sS.str();
+    htmlFile.close() ;
+
+    if (request.getMethod() == "POST" && request.getContentLength() == request.getBodySize()) {
+        this->prevPostState = this->postState;
+        this->postState = LAST_ENTRY;
+    }
     const std::string &method = request.getMethod();
     if (request.isCgiRequest()) {
-        std::string response = makeCgiResponse(request);
+        std::string response = Cgi::getCgiResponse(request);
+        size_t pos_crlf = response.find("\r\n\r\n");
+        size_t pos_lf = response.find("\n\n");
+
+        size_t pos;
+        int delimiter_len;
+
+        if (pos_crlf != std::string::npos) {
+            pos = pos_crlf;
+            delimiter_len = 4;
+        } else if (pos_lf != std::string::npos) {
+            pos = pos_lf;
+            delimiter_len = 2;
+        } else {
+            throw HttpErrorException(500, request, "No headers delimiter in CGI response");
+        }
+        size_t cL = response.size() - pos - delimiter_len;
+        std::stringstream ss;
+        ss << cL;
+        response.insert(0, "Content-Length: " + ss.str() + "\r\n");
+        response.insert(0, "HTTP/1.1 200 OK\r\n");
         ServerManager::sendString(response, clientFd);
         return ;
     }
@@ -65,6 +99,7 @@ void HttpResponse::handleNewReqEntry(const HttpRequest &request) {
 }
 
 void HttpResponse::setAsLastEntry(void) {
+    this->prevPostState = this->postState;
     this->postState = LAST_ENTRY;
 }
 
