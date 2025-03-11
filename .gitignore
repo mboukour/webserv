@@ -35,4 +35,5 @@
 Webserv
 .vscode
 Atest
-uploads
+# ignore what ever is inside
+uploads/**/*
