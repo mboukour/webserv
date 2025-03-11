@@ -13,6 +13,8 @@
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
 
+std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%";
+
 HttpRequest::HttpRequest(): AHttp(), contentLength(0), isChunked(false) {}
 
 HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0), isChunked(false) {
@@ -27,30 +29,35 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", line, "");
+    validateRequestLine();
     size_t pos = this->path.find("?");
     if (pos != std::string::npos)
     {
         this->queryString = this->path.substr(pos + 1);
         this->path = this->path.substr(0, pos);
     }
-    if (this->version != "HTTP/1.1")
-        throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
-    if (this->path.length() > URI_MAX_SIZE)
-        throw HttpErrorException(this->version ,URI_TOO_LONG, "Uri Too Long", "uri too long", "");
-    // implement better matching?
     parseHeaders(ss, servers, serverPort);
     this->bodySize = 0;
     pos = request.find("\r\n\r\n");
     this->body = request.substr(pos + 4);
     this->bodySize = this->body.size();
+    if (this->getRequestBlock()->getIsLimited() && this->bodySize > this->getRequestBlock()->getMaxBodySize()) // if initial part of body bigger than max
+        throw HttpErrorException(PAYLOAD_TOO_LARGE, "Payload too large");
     setIsCgi();
     parseCookies();
 }
 
-// void HttpRequest::appendToBody(const std::string &body) {
-//     this->body += body;
-//     this->bodySize = this->body.size();
-// }
+
+void HttpRequest::validateRequestLine(void) const {
+    if (this->version != "HTTP/1.1")
+        throw HttpErrorException(this->version, HTTP_VERSION_NOT_SUPPORTED, "Http Version Not Supported", "version not supported: " + this->version, "");
+    for (std::string::const_iterator it = this->path.begin(); it != this->path.end(); it++) {
+        if (this->uriAllowedChars.find(*it) == std::string::npos)
+            throw HttpErrorException(BAD_REQUEST, "Invalid uri");
+    }
+    if (this->path.size() > URI_MAX_SIZE)
+        throw HttpErrorException(URI_TOO_LONG, "Uri too long");
+}
 
 void HttpRequest::setReqEntry(const std::string &reqEntry) {
     this->reqEntry = reqEntry;
@@ -194,11 +201,8 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
     if (!this->requestBlock->isMethodAllowed(this->method))
          throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
 
-    if (this->method == "POST")
-    {
-        if (!contentLengthFound && this->isChunked == false) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn
-            throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found");
-    }
+    if (this->method == "POST" && (!contentLengthFound && this->isChunked == false)) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn
+        throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found and request is not chunked");
 }
 
 void HttpRequest::parseCookies(void) {

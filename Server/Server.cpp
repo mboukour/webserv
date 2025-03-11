@@ -6,12 +6,13 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "../Debug/Debug.hpp"
+#include "ServerManager/ServerManager.hpp"
 #include <sstream>
 #include <fstream>
 
-Server::Server(): ABlock(), port(-1), host(""),  fdSocket(-1), serverName("") {}
+Server::Server(): ABlock(), port(-1), host(""),  fdSocket(-1), serverName(""), isUp(false) {}
 
-Server::Server(const Server &other): ABlock(other), port(other.port), host(other.host) ,fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations), mimeTypes(other.mimeTypes) {}
+Server::Server(const Server &other): ABlock(other), port(other.port), host(other.host) ,fdSocket(other.fdSocket), serverName(other.serverName), locations(other.locations), mimeTypes(other.mimeTypes), isUp(other.isUp) {}
 
 void Server::setPort(int port) {this->port = port;}
 
@@ -77,6 +78,7 @@ void Server::startServer(void) {
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
+    this->isUp = true;
     fcntl(this->fdSocket, F_SETFL, O_NONBLOCK);
     int opt = 1;
     if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
@@ -119,6 +121,10 @@ std::vector<Location>::const_iterator Server::locationsCbegin(void) const {
 
 std::vector<Location>::const_iterator Server::locationsCend(void) const {
     return (this->locations.end());
+}
+
+bool Server::isServerUp(void) const {
+    return this->isUp;
 }
 
 void Server::addLocation(const Location &location) {

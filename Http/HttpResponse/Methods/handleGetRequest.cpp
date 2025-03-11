@@ -113,8 +113,8 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
     std::cout << "PATH: " << path << '\n';
-    if (path[path.size() - 1] == '/')
-        path = path.substr(0, path.size() - 1);  // Remove last character properly
+    // if (path[path.size() - 1] == '/')
+    //     path = path.substr(0, path.size() - 1);  // Remove last character properly
     
 
     struct stat filestat;
@@ -133,6 +133,12 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         ServerManager::sendString(responseSs.str(), this->clientFd);
         sendGetResponse(fileToGet, path);
     } else if (filestat.st_mode & S_IFDIR) {
+        if (path[path.size() - 1] != '/') {
+            HttpResponse redirectResponse(request.getVersion(), 301, HttpErrorException::getReasonPhrase(301), "");
+            redirectResponse.setHeader("Location", request.getPath() + "/");
+            ServerManager::sendString(redirectResponse.toString(), this->clientFd);
+            return ;
+        }
         std::vector<std::string> indexes = request.getRequestBlock()->getIndexes();
         struct stat indexstat;
         bool foundIndex = false;
@@ -145,19 +151,25 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             }
         }
         if (foundIndex) {
-            std::stringstream headersSS;
-            headersSS << "HTTP/1.1 200 OK\r\n"
-                     << "Content-Type: text/html\r\n"
-                     << "Content-Length: " << indexstat.st_size << "\r\n"
-                     << "\r\n";
-            send(this->clientFd, headersSS.str().c_str(), headersSS.str().size(), 0);
-            ServerManager::sendString(headersSS.str(), this->clientFd);
+            if (isCgiFile(indexFilePath, request)) {
+                ServerManager::sendString(makeCgiResponse(request), this->clientFd);
+                return ;
+            }
+            std::stringstream cl;
+            cl << indexstat.st_size;
+            this->version = request.getVersion();
+            this->statusCode = 200;
+            this->reasonPhrase = "OK";
+            this->headers["Content-Type"] = "text/html";
+            this->headers["Content-Length"] = cl.str();
+            this->body.clear();
+            ServerManager::sendString(toString(), this->clientFd);
             std::fstream fileToGet(indexFilePath.c_str());
             sendGetResponse(fileToGet, indexFilePath);
         } else if (request.getRequestBlock()->getIsAutoIndexOn()) {
             handleAutoIndex(request);
         } else {
-            throw HttpErrorException(NOT_FOUND, request, "Indexes not found and autoindex is off");
+            throw HttpErrorException(FORBIDDEN, request, "Indexes not found and autoindex is off");
         }
     }    
 }

@@ -46,6 +46,7 @@ int main(int ac, char **av)
     }
     catch(const std::exception& e)
     {
+        ServerManager::cleanUp();
         std::cerr << "Fatal Runtime error: " << e.what() << '\n';
         return (1);
     }

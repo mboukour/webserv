@@ -1,13 +1,11 @@
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
-#include <fstream>
 #include "../../../Debug/Debug.hpp"
 #include "../../../Utils/Logger/Logger.hpp"
 
 #include <iostream>
 #include <time.h>
-
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
@@ -148,7 +146,7 @@ void    HttpResponse::postResponse(const HttpRequest& request,
     sS.clear();
     sS << this->body.size();
     this->headers["Content-Length"] = sS.str();
-    this->headers["Content-Type"] = request.getHeader("Content-Type");
+    this->headers["Content-Type"] = "text/html";
     sS.str("");
     sS.clear();
     this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);
@@ -203,7 +201,7 @@ void HttpResponse::handlePostRequest(const HttpRequest& request) {
                     postResponse(request, 201, this->success_create, this->fileName);
                 this->postState = NEW_REQ_ENTRY;
             }
-            else{
+            else {
                 std::string buff = request.getReqEntry();
                 write(this->fd, buff.c_str(), buff.size());
                 if (this->postState == LAST_ENTRY)

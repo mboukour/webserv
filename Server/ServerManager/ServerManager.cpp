@@ -10,6 +10,7 @@
 #include <csignal>
 #include <fcntl.h>
 #include <string>
+#include <vector>
 
 #include "../../Debug/Debug.hpp"
 #include "ServerManager.hpp"
@@ -19,15 +20,12 @@
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../ConnectionState/ConnectionState.hpp"
 
-// Initialize static members
 int ServerManager::epollFd = -1;
 std::vector<Server> ServerManager::servers;
 std::map<int, ConnectionState*> ServerManager::clientStates;
 
-// Private constructor - prevent instantiation
 ServerManager::ServerManager() {}
 
-// Initialize with server list
 void ServerManager::initialize(std::vector<Server> &serversList) {
     servers = serversList;
 }
@@ -137,7 +135,6 @@ void ServerManager::handleConnections(void) {
     const int EPOLL_TIMEOUT_MS = 1000;
     while (true)
     {
-        // -1 means wait indefinitely
         int event_count = epoll_wait(epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT_MS);
         if (event_count == -1)
         {
@@ -161,7 +158,6 @@ void ServerManager::handleConnections(void) {
             }
             if (state->getIsDone() || !state->getIsKeepAlive()) {
                 delete state;
-                close(eventFd);
                 std::map<int, ConnectionState *>::iterator it = clientStates.find(eventFd);
                 clientStates.erase(it);
             }
@@ -174,13 +170,11 @@ void ServerManager::handleConnections(void) {
                 std::map<int, ConnectionState*>::iterator toErase = it;
                 ++it;
                 delete toErase->second;
-                close(toErase->first);
                 clientStates.erase(toErase);
             } else {
                 ++it;
             }
-    }
-
+        }
     }
 }
 
@@ -210,3 +204,16 @@ void ServerManager::start(void) {
     handleConnections();
 }
 
+void ServerManager::cleanUp() {
+    for (std::vector<Server>::iterator it = servers.begin(); 
+        it != servers.end(); it++) {
+            if (!it->isServerUp())
+                break;
+            close(it->getFdSocket());
+    }
+
+    for (std::map<int, ConnectionState *>::iterator ite = clientStates.begin();
+        ite != clientStates.end(); ite++) {
+            delete ite->second;
+        }
+}
