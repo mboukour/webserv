@@ -14,6 +14,7 @@
 
 class HttpRequest: public AHttp {
     private:
+        static std::string uriAllowedChars;
         std::string method;
         std::string path;
         std::string queryString;
@@ -24,13 +25,14 @@ class HttpRequest: public AHttp {
         std::map<std::string, std::string> cookies;
         size_t contentLength;
         std::string reqEntry;
-
         bool isChunked;
+
         void parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort);
-        void setIsCgi(void) ;
         void parseCookies(void);
+        void validateRequestLine(void) const;
         static const Server& getServer(const std::string &host, const std::vector<Server> &servers, int serverPort);
         static void removeLeadingSpaces(std::string &str);
+        void setIsCgi(void) ;
     public:
         HttpRequest();
         HttpRequest(const std::string &request, const std::vector<Server>& servers, int serverPort); // throws exceptions that should never terminate execution of the program

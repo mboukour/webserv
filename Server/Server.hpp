@@ -26,8 +26,8 @@ class Server: public ABlock {
         std::string serverName;
         std::vector<Location> locations;
         std::map<std::string, std::string> mimeTypes;
-        
-        public:
+        bool isUp;
+    public:
         Server();
         Server(const Server& other);
         std::string getServerName(void) const;
@@ -45,6 +45,7 @@ class Server: public ABlock {
         std::vector<Location>::const_iterator locationsCend(void) const;
         void addLocation(const Location& location);
         void startServer(void);
+        bool isServerUp(void) const;
         ~Server();
 };
 

@@ -24,6 +24,7 @@ class HttpResponse: public AHttp {
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);
+        static bool isCgiFile(const std::string &filePath, const HttpRequest &request);
 
         void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
         void handleAutoIndex(const HttpRequest& request) const;
@@ -32,12 +33,14 @@ class HttpResponse: public AHttp {
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);
         void handlePostRequest(const HttpRequest &request);
-
-    public:
+        static std::string makeCgiResponse(const HttpRequest &request);
+        
+        public:
         HttpResponse();
         ~HttpResponse();
         HttpResponse(const HttpRequest &request, int clientFd, int epollFd);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
+        void addNeededHeaders(void);
         void addCookie(const std::string& name, const std::string& value, const std::string& attributes);
         void setBody(const std::string &body);
         bool removeDirectory(const std::string &path);

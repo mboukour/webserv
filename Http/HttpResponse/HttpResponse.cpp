@@ -17,33 +17,9 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1), fileName(){
     this->version = request.getVersion();
-
-    if (request.getMethod() == "POST" && request.getContentLength() == request.getBodySize()) {
-        this->postState = LAST_ENTRY;
-    }
     const std::string &method = request.getMethod();
     if (request.isCgiRequest()) {
-        std::string response = Cgi::getCgiResponse(request);
-        size_t pos_crlf = response.find("\r\n\r\n");
-        size_t pos_lf = response.find("\n\n");
-        
-        size_t pos;
-        int delimiter_len;
-        
-        if (pos_crlf != std::string::npos) {
-            pos = pos_crlf;
-            delimiter_len = 4;
-        } else if (pos_lf != std::string::npos) {
-            pos = pos_lf;
-            delimiter_len = 2;
-        } else {
-            throw HttpErrorException(500, request, "No headers delimiter in CGI response");
-        }
-        size_t cL = response.size() - pos - delimiter_len;
-        std::stringstream ss;
-        ss << cL;
-        response.insert(0, "Content-Length: " + ss.str() + "\r\n");
-        response.insert(0, "HTTP/1.1 200 OK\r\n");
+        std::string response = makeCgiResponse(request);
         ServerManager::sendString(response, clientFd);
         return ;
     }
@@ -53,6 +29,33 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         handleGetRequest(request);
     else if (method == "POST")
         handlePostRequest(request);
+}
+
+
+std::string HttpResponse::makeCgiResponse(const HttpRequest &request) {
+    std::string response = Cgi::getCgiResponse(request);
+    std::cout << response;
+    size_t pos_crlf = response.find("\r\n\r\n");
+    size_t pos_lf = response.find("\n\n");
+    
+    size_t pos;
+    int delimiter_len;
+    
+    if (pos_crlf != std::string::npos) {
+        pos = pos_crlf;
+        delimiter_len = 4;
+    } else if (pos_lf != std::string::npos) {
+        pos = pos_lf;
+        delimiter_len = 2;
+    } else {
+        throw HttpErrorException(500, request, "No headers delimiter in CGI response");
+    }
+    size_t cL = response.size() - pos - delimiter_len;
+    std::stringstream ss;
+    ss << cL;
+    response.insert(0, "Content-Length: " + ss.str() + "\r\n");
+    response.insert(0, "HTTP/1.1 200 OK\r\n");
+    return response;
 }
 
 void HttpResponse::handleNewReqEntry(const HttpRequest &request) {
@@ -86,6 +89,36 @@ void HttpResponse::setBody(const std::string &body) {
     std::stringstream ss;
     ss << this->bodySize;
     this->headers["Content-Length"] = ss.str();
+}
+
+void HttpResponse::addNeededHeaders(void) {
+    if (this->headers.find("Server") == this->headers.end())
+        this->headers["Server"] = "Webserv 1.0";
+    if (this->headers.find("Date") == this->headers.end()) {
+        time_t now = time(0);
+        struct tm *gmt = gmtime(&now);
+        char date_buffer[100];
+        strftime(date_buffer, sizeof(date_buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt);
+        this->headers["Date"] = date_buffer;
+    }
+    
+}
+
+bool HttpResponse::isCgiFile(const std::string &filePath, const HttpRequest &request) {
+    std::string scriptName;
+    std::string word;
+    std::stringstream ss(filePath);
+
+    while(getline(ss, word, '/')) {
+
+        size_t pos = word.find_last_of('.');
+        if (pos != std::string::npos)
+        {
+            std::string extension = word.substr(pos + 1);
+            return  Cgi::isValidCgiExtension(extension, request);
+        }
+    }
+    return false;
 }
 
 std::string HttpResponse::toString(void) const {
