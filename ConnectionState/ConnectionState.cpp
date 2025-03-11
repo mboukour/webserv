@@ -166,7 +166,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 this->requestBuffer.clear();
             } else if (this->readState == READING_BODY) {
                 this->request.setReqEntry(bufferStr);
-                Logger::log(bufferStr);
                 bool isLastEntry;
                 if (!request.isChunkedRequest())
                     isLastEntry = this->request.getBodySize() == this->request.getContentLength();
