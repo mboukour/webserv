@@ -20,6 +20,7 @@ class HttpResponse: public AHttp {
         PostState prevPostState;
         int fd;
         std::string fileName;
+        long size;
         std::string success_create;
         std::string reasonPhrase;
         std::vector<std::string> cookies;

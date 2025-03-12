@@ -18,7 +18,7 @@
 const int ConnectionState::keepAliveTimeout = 10; // in seconds
 
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
-  readState(NO_REQUEST), bytesRead(0), request(), 
+  readState(NO_REQUEST), bytesRead(0), request(),
   writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(), response(NULL),
   lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
 
@@ -31,21 +31,21 @@ void ConnectionState::handleWritable(void) {
         std::fstream fileToSend(this->filePath.c_str());
         if (!fileToSend.is_open())
             throw std::runtime_error("Could'nt open file");
-    
+
     fileToSend.seekg(this->currentPos);
-    
+
     // Read one chunk
         std::vector<char> buffer(READ_SIZE);
         while(true) {
             fileToSend.read(buffer.data(), buffer.size());
             std::streamsize bytesRead = fileToSend.gcount();
-        
+
             if (bytesRead == 0) {
                 this->sendMode = NONE;
                 this->writeState = NO_RESPONSE;
                 return;
             }
-                
+
             ssize_t totalSent = 0;
             while (totalSent < bytesRead) {
                 ssize_t bytesSent = send(this->eventFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
@@ -183,7 +183,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 //     std::cout << "BODY: " << this->request.getBodySize() << '\n';
                 //     throw HttpErrorException(BAD_REQUEST, "BODY SIZE BIGGER THAN CL");
                 // } else {
-                //     std::cout << "CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n'; 
+                //     std::cout << "CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n';
                 // }
             }
         } else {
@@ -211,7 +211,7 @@ void ConnectionState::activateWriteState(const std::string &stringToSend) {
 }
 
 int ConnectionState::getEventFd(void) const {
-    return this->eventFd; 
+    return this->eventFd;
 }
 
 
