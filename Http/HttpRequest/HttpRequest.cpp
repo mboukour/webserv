@@ -13,7 +13,7 @@
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
 
-std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%";
+std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
 
 HttpRequest::HttpRequest(): AHttp(), contentLength(0), isChunked(false) {}
 

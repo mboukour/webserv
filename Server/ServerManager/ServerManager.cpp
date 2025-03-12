@@ -31,18 +31,20 @@ void ServerManager::initialize(std::vector<Server> &serversList) {
 }
 
 void ServerManager::sendString(const std::string &str, int clientFd) {
-    size_t totalSent = 0;
-    while (totalSent < str.size()) {
-        ssize_t bytesSent = send(clientFd, str.c_str(), str.size(), 0);
-        if (bytesSent == -1) {
-            ConnectionState * state = clientStates.at(clientFd);
-            std::string newStr = str.substr(totalSent);
-            state->activateWriteState(newStr);
-            return ;
-        }
-        totalSent += bytesSent;
-    }
-    
+    // size_t totalSent = 0;
+    // while (totalSent < str.size()) {
+    //     ssize_t bytesSent = send(clientFd, str.c_str(), str.size(), 0);
+    //     if (bytesSent == -1) {
+    //         ConnectionState * state = clientStates.at(clientFd);
+    //         std::string newStr = str.substr(totalSent);
+    //         state->activateWriteState(newStr);
+    //         return ;
+    //     }
+    //     totalSent += bytesSent;
+    // }
+    // std::cout << "SENDING :)" << std::endl;
+    ConnectionState *state = getConnectionState(clientFd);
+    state->activateWriteState(str);
 }
 
 bool ServerManager::isAServerFdSocket(int fdSocket) {
@@ -113,7 +115,7 @@ void ServerManager::acceptConnections(int fdSocket) {
     
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+    ev.events = EPOLLIN | EPOLLOUT;
     ConnectionState *state = new ConnectionState(clientFd, epollFd);
     clientStates[clientFd] = state;
     ev.data.ptr = state;
@@ -154,6 +156,7 @@ void ServerManager::handleConnections(void) {
             }
 
             if (events[i].events & EPOLLOUT) {
+                // std::cout << eventFd << " is writable" << std::endl;
                 state->handleWritable();
             }
             if (state->getIsDone() || !state->getIsKeepAlive()) {

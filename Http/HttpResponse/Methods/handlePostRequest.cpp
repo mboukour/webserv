@@ -142,12 +142,10 @@ void    HttpResponse::postResponse(const HttpRequest& request,
         body.replace(pos, find.length(), this->reasonPhrase);
     }
     this->body = body;
-    sS.str("");
     sS.clear();
     sS << this->body.size();
     this->headers["Content-Length"] = sS.str();
     this->headers["Content-Type"] = "text/html";
-    sS.str("");
     sS.clear();
     this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);
     this->headers["Location"] = location;

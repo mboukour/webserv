@@ -31,6 +31,7 @@ class ABlock {
         std::map<std::string, std::string> errorPages;
         std::vector<std::string> index;
         std::map<std::string, std::string> cgis;
+        std::string uploadPath;
     public:
         ABlock &operator=(const ABlock &other);
 
@@ -67,6 +68,9 @@ class ABlock {
         // to iterate over the index vector, use these the const iterators
         std::vector<std::string>::const_iterator indexCbegin(void) const;
         std::vector<std::string>::const_iterator indexCend(void) const;
+
+        void setUploadPath(const std::string &uploadPath);
+        std::string getUploadPath(void) const;
 
         virtual void startServer(void) = 0;
         virtual ~ABlock();

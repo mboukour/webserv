@@ -14,7 +14,6 @@
 
 class ConnectionState {
     private:
-
         static const int keepAliveTimeout;
         const int eventFd;
         const int epollFd;
@@ -23,13 +22,25 @@ class ConnectionState {
         ssize_t bytesRead;
         std::string requestBuffer;
         HttpRequest request;
-        enum WriteState {NO_RESPONSE, SENDING_RESPONSE};
+        enum WriteState {NOT_REGISTERED, REGISTERED};
         WriteState writeState;
         enum SendMode {NONE, STRING, FILE};
-        SendMode sendMode;
-        std::string filePath;
-        std::streampos currentPos;
-        std::string stringToSend;
+        class SendMe {
+            private:
+                SendMe();
+            public:
+                SendMode sendMode;
+                std::string filePath;
+                std::streampos currentPos;
+                std::string stringToSend;
+
+                SendMe(const std::string &filePath, const std::streampos &currentPos);
+                SendMe(const std::string &stringToSend);
+        };
+        std::vector<SendMe> sendQueue;
+        // std::string filePath;
+        // std::streampos currentPos;
+        // std::string stringToSend;
         HttpResponse *response;
         time_t lastActivityTime;
         bool isKeepAlive;

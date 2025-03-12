@@ -62,7 +62,8 @@ bool ServerFactory::isValidDirective(const std::string &directive) // TO IMPROVE
 {
     return (directive == "listen" || directive == "server_name" || directive == "error_page"
             || directive == "client_max_body_size" || directive == "root" || directive == "methods"
-            || directive == "autoindex" || directive == "index" || directive == "return" || directive == "upload_store" || directive == "cgi" || directive == "mime_types");
+            || directive == "autoindex" || directive == "index" || directive == "return" 
+            || directive == "upload_path" || directive == "cgi" || directive == "mime_types");
 }
 
 bool ServerFactory::isAcceptedSubBlock(const std::string &directive)
@@ -164,9 +165,13 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
             }
     }
     else if (currentDirective == "cgi") {
-        if (directives.size() < 3)
+        if (directives.size() != 3)
             throw std::logic_error("Invalid cgi directive");
         result.setCgiInfo(directives.begin()[1], directives.begin()[2]);
+    } else if (currentDirective == "upload_path") {
+        if (directives.size() != 2)
+            throw std::logic_error("Invalid upload path directive");
+        result.setUploadPath(directives.begin()[1]);
     }
 }
 
@@ -214,6 +219,7 @@ void ServerFactory::parseListen(Server& server, const stringVec& directive) {
 }
 
 void ServerFactory::parseDirectives(Server& server, const std::vector<stringVec>& directives) {
+    bool serverNameFound = false;
     for (std::vector<stringVec>::const_iterator ite = directives.begin(); ite != directives.end(); ite++) {
         std::string currentDirective = ite->begin()[0];
 
@@ -225,6 +231,7 @@ void ServerFactory::parseDirectives(Server& server, const std::vector<stringVec>
         else if (currentDirective == "server_name") {
             if (ite->size() != 2)
                 throw std::logic_error("Invalid server name");
+            serverNameFound = true;
             server.setServerName(ite->begin()[1]);
         }
         else if (currentDirective == "return")
@@ -237,6 +244,8 @@ void ServerFactory::parseDirectives(Server& server, const std::vector<stringVec>
         else
             setBlockDirectives(server, *ite);
     }
+    if (!serverNameFound)
+        throw std::logic_error("Server name directive not found in one or more servers");
 }
 
 Location ServerFactory::createLocation(const Block& locationBlock, std::vector<std::string>& foundLocations) {

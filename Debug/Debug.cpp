@@ -31,7 +31,7 @@ std::ostream& operator<<(std::ostream& outputStream, const Location& location) {
     for (it = location.errorPagesCbegin(); it != location.errorPagesCend(); ++it) {
         outputStream << indent << "        " << it->first << ": " << it->second << "\n";
     }
-
+    outputStream << "Upload Path: " << location.getUploadPath() << '\n';
     return outputStream;
 }
 
@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
     for (ite = other.errorPagesCbegin(); ite != other.errorPagesCend(); ++ite) {
         outputStream << "  " << ite->first << ": " << ite->second << "\n";
     }
-
+    outputStream << "Upload Path: " << other.getUploadPath() << '\n';
     // outputStream << "Redirect:\n";
     // outputStream << other.get
     outputStream << "Locations:\n";

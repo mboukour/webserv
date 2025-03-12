@@ -29,10 +29,12 @@ class HttpErrorException : public std::exception {
         std::string version;
         int statusCode;
         std::string reasonPhrase;
+        std::string allowedHeader;
         std::string body;
         
         HttpErrorException();
 
+        void setAllowedHeader(const HttpRequest &request);
         std::string getErrorPageHtml(void) const;
 
         static const std::string defaultErrorHtml;

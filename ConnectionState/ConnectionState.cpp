@@ -19,30 +19,29 @@ const int ConnectionState::keepAliveTimeout = 10; // in seconds
 
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), 
-  writeState(NO_RESPONSE), sendMode(NONE), filePath(), currentPos(), stringToSend(), response(NULL),
+   sendQueue(), response(NULL),
   lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
 
 
 void ConnectionState::handleWritable(void) {
-    if (this->writeState == NO_RESPONSE)
+    if (this->sendQueue.empty())
         return;
     updateLastActivity();
-    if (this->sendMode == FILE) {
-        std::fstream fileToSend(this->filePath.c_str());
+    SendMe &toSend = *this->sendQueue.begin();
+    if (toSend.sendMode == FILE) {
+        std::fstream fileToSend(toSend.filePath.c_str());
         if (!fileToSend.is_open())
             throw std::runtime_error("Could'nt open file");
     
-    fileToSend.seekg(this->currentPos);
+    fileToSend.seekg(toSend.currentPos);
     
     // Read one chunk
         std::vector<char> buffer(READ_SIZE);
         while(true) {
             fileToSend.read(buffer.data(), buffer.size());
             std::streamsize bytesRead = fileToSend.gcount();
-        
             if (bytesRead == 0) {
-                this->sendMode = NONE;
-                this->writeState = NO_RESPONSE;
+                this->sendQueue.erase(this->sendQueue.begin());
                 return;
             }
                 
@@ -52,26 +51,26 @@ void ConnectionState::handleWritable(void) {
                 if (bytesSent == -1) {
                     std::streampos filePos = fileToSend.tellg();
                     filePos -= (bytesRead - totalSent);
-                    this->currentPos = filePos;
+                    this->sendQueue.push_back(SendMe(toSend.filePath, filePos));
+                    this->sendQueue.erase(this->sendQueue.begin());
                     return;
                 }
                 totalSent += bytesSent;
             }
         }
-    } else if (this->sendMode == STRING) {
+    } else if (toSend.sendMode == STRING) {
         size_t totalSent = 0;
-        while(totalSent < this->stringToSend.size()) {
-            ssize_t bytesSent = send(this->eventFd, this->stringToSend.data() + totalSent, this->stringToSend.size() - totalSent, 0);
+        while(totalSent < toSend.stringToSend.size()) {
+            ssize_t bytesSent = send(this->eventFd, toSend.stringToSend.data() + totalSent, toSend.stringToSend.size() - totalSent, 0);
             if (bytesSent == -1) {
-                this->stringToSend = this->stringToSend.substr(totalSent);
+                this->sendQueue.push_back(SendMe(toSend.stringToSend.substr(totalSent)));
+                this->sendQueue.erase(this->sendQueue.begin());
                 return ;
             }
             totalSent += bytesSent;
         }
-        this->sendMode = NONE;
-        this->writeState = NO_RESPONSE;
-        this->stringToSend.clear();
     }
+    this->sendQueue.erase(this->sendQueue.begin());
 }
 
 
@@ -114,7 +113,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
         ssize_t bytesReceived = recv(this->eventFd, buffer.data(), buffer.size()- 1, 0);
         if (bytesReceived == 0) {
             this->readState = NO_REQUEST;
-            this->writeState = NO_RESPONSE;
             delete this->response;
             this->request = HttpRequest();
             this->response = NULL;
@@ -150,7 +148,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 }
                 if (!this->response) {
                     try {
-                        std::cout << "New Resp\n";
                         this->response = new HttpResponse(this->request, this->eventFd, this->epollFd);
                     } catch (const HttpErrorException& exec) {
                         std::string respStr = exec.getResponseString();
@@ -197,17 +194,29 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
 //     this->responseState = responseState;
 // }
 
-void ConnectionState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
+ConnectionState::SendMe::SendMe(const std::string &filePath, const std::streampos &currentPos) {
     this->sendMode = FILE;
     this->filePath = filePath;
     this->currentPos = currentPos;
-    this->writeState = SENDING_RESPONSE;
+}
+
+ConnectionState::SendMe::SendMe(const std::string &stringToSend) {
+    this->sendMode = STRING;
+    this->stringToSend = stringToSend;
+}
+
+
+void ConnectionState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
+    this->sendQueue.push_back(SendMe(filePath, currentPos));
+    // this->sendMode = FILE;
+    // this->filePath = filePath;
+    // this->currentPos = currentPos;
 }
 
 void ConnectionState::activateWriteState(const std::string &stringToSend) {
-    this->sendMode = STRING;
-    this->stringToSend = stringToSend;
-    this->writeState = SENDING_RESPONSE;
+    this->sendQueue.push_back(SendMe(stringToSend));
+    // this->sendMode = STRING;
+    // this->stringToSend = stringToSend;
 }
 
 int ConnectionState::getEventFd(void) const {

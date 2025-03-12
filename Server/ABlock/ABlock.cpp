@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages(), index(), cgis() {}
+ABlock::ABlock(): isGetAccepted(true), isPostAccepted(true), isDeleteAccepted(true), isAutoIndexOn(false), isLimited(false), maxBodySize(0), root(""), uploadStore(""), errorPages(), index(), cgis(), uploadPath() {}
 
 ABlock::ABlock(const ABlock &other)
     : isGetAccepted(other.isGetAccepted),
@@ -21,7 +21,8 @@ ABlock::ABlock(const ABlock &other)
       uploadStore(other.uploadStore),
       errorPages(other.errorPages),
       index(other.index),
-        cgis(other.cgis)
+      cgis(other.cgis),
+      uploadPath(other.uploadPath)
       {}  
 
 ABlock &ABlock::operator=(const ABlock &other) {
@@ -38,7 +39,7 @@ ABlock &ABlock::operator=(const ABlock &other) {
     this->errorPages = other.errorPages;
     this->index = other.index;
     this->cgis = other.cgis;
-    
+    this->uploadPath = other.uploadPath;
     return *this;
 }
 
@@ -190,6 +191,12 @@ std::map<std::string, std::string>::const_iterator ABlock::cgisCend(void) const 
     return this->cgis.end();
 }
 
+void ABlock::setUploadPath(const std::string &uploadPath) {
+    this->uploadPath = uploadPath;
+}
 
+std::string ABlock::getUploadPath(void) const {
+    return this->uploadPath;
+}
 
 ABlock::~ABlock() {}

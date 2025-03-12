@@ -24,28 +24,29 @@
 const std::string YELLOW = "\033[33m";
 const std::string RESET = "\033[0m";
 void HttpResponse::sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const {
-    std::vector<char> buffer(65536);  // 64KB buffer
-    std::cout << "CALLED\n";
-    while (true) {
-        fileToGet.read(buffer.data(), buffer.size());
-        std::streamsize bytesRead = fileToGet.gcount();
+    // std::vector<char> buffer(65536);  // 64KB buffer
+    // std::cout << "CALLED\n";
+    // while (true) {
+    //     fileToGet.read(buffer.data(), buffer.size());
+    //     std::streamsize bytesRead = fileToGet.gcount();
     
-        if (bytesRead == 0)
-            break;
+    //     if (bytesRead == 0)
+    //         break;
     
-        ssize_t totalSent = 0;
-        while (totalSent < bytesRead) {
-            ssize_t bytesSent = send(clientFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
-            if (bytesSent == -1) {
-                std::streampos filePos = fileToGet.tellg();
-                filePos -= (bytesRead - totalSent);
-                ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
-                state->activateWriteState(filePath, filePos);
-                return;
-            }
-            totalSent += bytesSent;
-        }
-    }
+    //     ssize_t totalSent = 0;
+    //     while (totalSent < bytesRead) {
+    //         ssize_t bytesSent = send(clientFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
+    //         if (bytesSent == -1) {
+    //             std::streampos filePos = fileToGet.tellg();
+    //             filePos -= (bytesRead - totalSent);
+    //             return;
+    //         }
+    //         totalSent += bytesSent;
+    //     }
+    // }
+    (void)fileToGet;
+    ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+    state->activateWriteState(filePath, 0);
 }
 
 
@@ -112,10 +113,6 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
 
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
-    std::cout << "PATH: " << path << '\n';
-    // if (path[path.size() - 1] == '/')
-    //     path = path.substr(0, path.size() - 1);  // Remove last character properly
-    
 
     struct stat filestat;
     if (stat(path.c_str(), &filestat) == -1)
@@ -124,13 +121,12 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         std::fstream fileToGet(path.c_str());
         if (fileToGet.fail() == true)
             throw HttpErrorException(NOT_FOUND, request, "cant find file");
-
-        std::stringstream responseSs;
-        responseSs << "HTTP/1.1 200 OK\r\n";
-        responseSs << "Content-Type: " << request.getServer()->getMimeType(path.substr(path.find_last_of('.') + 1)) << "\r\n";
-        responseSs << "Content-Length: " << filestat.st_size << "\r\n";
-        responseSs << "\r\n";
-        ServerManager::sendString(responseSs.str(), this->clientFd);
+        HttpResponse response("HTTP/1.1", 200, "OK", "");
+        response.setHeader("Content-Type", request.getServer()->getMimeType(path.substr(path.find_last_of('.') + 1)));
+        std::stringstream ss;
+        ss << filestat.st_size;
+        response.setHeader("Content-Length", ss.str());
+        ServerManager::sendString(response.toString(), this->clientFd);
         sendGetResponse(fileToGet, path);
     } else if (filestat.st_mode & S_IFDIR) {
         if (path[path.size() - 1] != '/') {
