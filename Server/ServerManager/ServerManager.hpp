@@ -16,7 +16,7 @@ class ServerManager {
         static std::vector<Server> servers;
         static std::map<int, ConnectionState*> clientStates;
         
-        // Private constructor to prevent instantiation
+
         ServerManager();
 
         static bool isAServerFdSocket(int fdSocket);
@@ -24,14 +24,14 @@ class ServerManager {
         static void handleConnections(void);
         static void acceptConnections(int fdSocket);
         
-        public:
+    public:
         static void sendResponse(HttpRequest &request, int clientFd);
         static void sendString(const std::string &str, int clientFd);
-        // Initialize with server list
-        static void initialize(std::vector<Server> &serversList);
-        // Start the server manager (previously startServerManager)
-        static void start(void);
         static ConnectionState *getConnectionState(int clientFd);
+
+        static void initialize(std::vector<Server> &serversList);
+        static void start(void);
+        static void cleanUp(void);
 };
 
-#endif // SERVERMANAGER_HPP
+#endif
