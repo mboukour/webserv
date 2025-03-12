@@ -272,7 +272,7 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
             this->postState = NEW_REQ_ENTRY;
             std::string tmp = request.getBody();
             tmp.insert(tmp.begin(), '\r');
-            tmp.insert(tmp.begin() + 1, '\n');
+            tmp.insert(tmp.begin() + 1, '\n'); // because they are missing from the content ?
             this->size += get_Lchuncked(tmp); // What is the first half of the chunk size is in one buffer and the other half is in the other buffer
         }
         else{
