@@ -90,7 +90,7 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
             if (path[path.size() - 1 ] != '/')
                 response += "<a href='" + path + '/' + dName  + "/'>" + entry->d_name + "</a>";
             else
-                response += "<a href='" + path  + dName  + "/'>" + entry->d_name + "</a>";
+                response += "<a href='" + path  + dName  + "'>" + entry->d_name + "</a>";
             response += "<span class='size'>";
             std::stringstream ss;
             ss << statbuf.st_size;

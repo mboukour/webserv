@@ -115,7 +115,7 @@ void ServerManager::acceptConnections(int fdSocket) {
     
     DEBUG && std::cout << "New connection accepted!" << std::endl;
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLOUT;
+    ev.events = EPOLLIN | EPOLLET;
     ConnectionState *state = new ConnectionState(clientFd, epollFd);
     clientStates[clientFd] = state;
     ev.data.ptr = state;

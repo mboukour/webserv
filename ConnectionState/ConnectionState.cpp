@@ -19,58 +19,73 @@ const int ConnectionState::keepAliveTimeout = 10; // in seconds
 
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), 
-   sendQueue(), response(NULL),
+  writeState(NOT_REGISTERED), sendQueue(), response(NULL), 
   lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
 
 
 void ConnectionState::handleWritable(void) {
-    if (this->sendQueue.empty())
+    if (this->sendQueue.empty()) {
+        Logger::getLogStream() << "Nope, nothing to send for " << this->eventFd << std::endl;
         return;
+    }
+    Logger::getLogStream() << "Handling writable for " << this->eventFd << std::endl;
     updateLastActivity();
-    SendMe &toSend = *this->sendQueue.begin();
-    if (toSend.sendMode == FILE) {
-        std::fstream fileToSend(toSend.filePath.c_str());
-        if (!fileToSend.is_open())
-            throw std::runtime_error("Could'nt open file");
-    
-    fileToSend.seekg(toSend.currentPos);
-    
-    // Read one chunk
-        std::vector<char> buffer(READ_SIZE);
-        while(true) {
-            fileToSend.read(buffer.data(), buffer.size());
-            std::streamsize bytesRead = fileToSend.gcount();
-            if (bytesRead == 0) {
-                this->sendQueue.erase(this->sendQueue.begin());
-                return;
+    for (std::vector<SendMe>::iterator it = this->sendQueue.begin(); it != this->sendQueue.end();)
+    {
+        SendMe &toSend = *it;
+        if (toSend.sendMode == FILE) {
+            std::fstream fileToSend(toSend.filePath.c_str());
+            if (!fileToSend.is_open())
+                throw std::runtime_error("Could'nt open file");
+        
+        fileToSend.seekg(toSend.currentPos);
+        
+        // Read one chunk
+            std::vector<char> buffer(READ_SIZE);
+            while(true) {
+                fileToSend.read(buffer.data(), buffer.size());
+                std::streamsize bytesRead = fileToSend.gcount();
+                if (bytesRead == 0) {
+                    break;
+                }
+                    
+                ssize_t totalSent = 0;
+                while (totalSent < bytesRead) {
+                    ssize_t bytesSent = send(this->eventFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
+                    if (bytesSent == -1) {
+                        std::streampos filePos = fileToSend.tellg();
+                        filePos -= (bytesRead - totalSent);
+                        it->changeSend(toSend.filePath, filePos);
+                        return;
+                    }
+                    totalSent += bytesSent;
+                }
             }
-                
-            ssize_t totalSent = 0;
-            while (totalSent < bytesRead) {
-                ssize_t bytesSent = send(this->eventFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
+        } else if (toSend.sendMode == STRING) {
+            size_t totalSent = 0;
+            while(totalSent < toSend.stringToSend.size()) {
+                ssize_t bytesSent = send(this->eventFd, toSend.stringToSend.data() + totalSent, toSend.stringToSend.size() - totalSent, 0);
                 if (bytesSent == -1) {
-                    std::streampos filePos = fileToSend.tellg();
-                    filePos -= (bytesRead - totalSent);
-                    this->sendQueue.push_back(SendMe(toSend.filePath, filePos));
-                    this->sendQueue.erase(this->sendQueue.begin());
-                    return;
+                    it->changeSend(toSend.stringToSend.substr(totalSent));
+                    return ;
                 }
                 totalSent += bytesSent;
             }
         }
-    } else if (toSend.sendMode == STRING) {
-        size_t totalSent = 0;
-        while(totalSent < toSend.stringToSend.size()) {
-            ssize_t bytesSent = send(this->eventFd, toSend.stringToSend.data() + totalSent, toSend.stringToSend.size() - totalSent, 0);
-            if (bytesSent == -1) {
-                this->sendQueue.push_back(SendMe(toSend.stringToSend.substr(totalSent)));
-                this->sendQueue.erase(this->sendQueue.begin());
-                return ;
-            }
-            totalSent += bytesSent;
-        }
+        it = this->sendQueue.erase(it);
     }
-    this->sendQueue.erase(this->sendQueue.begin());
+    if (this->sendQueue.empty()) {
+        Logger::getLogStream() << "Send queue is empty for " << this->eventFd << std::endl;
+        struct epoll_event ev;
+        ev.events = EPOLLIN | EPOLLET;
+        ev.data.ptr = this;
+        if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
+            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            close(this->eventFd);
+        }
+        this->writeState = NOT_REGISTERED;
+    }
+
 }
 
 
@@ -207,14 +222,37 @@ ConnectionState::SendMe::SendMe(const std::string &stringToSend) {
 
 
 void ConnectionState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
+    Logger::getLogStream() << "Activating write state for " << this->eventFd << std::endl;
     this->sendQueue.push_back(SendMe(filePath, currentPos));
+    if (this->writeState == NOT_REGISTERED) {
+        struct epoll_event ev;
+        ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+        ev.data.ptr = this;
+        if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
+            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            close(this->eventFd);
+        }
+        this->writeState = REGISTERED;
+    }
     // this->sendMode = FILE;
     // this->filePath = filePath;
     // this->currentPos = currentPos;
 }
 
 void ConnectionState::activateWriteState(const std::string &stringToSend) {
+    Logger::getLogStream() << "Activating write state for " << this->eventFd << std::endl;
+
     this->sendQueue.push_back(SendMe(stringToSend));
+    if (this->writeState == NOT_REGISTERED) {
+        struct epoll_event ev;
+        ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+        ev.data.ptr = this;
+        if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
+            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            close(this->eventFd);
+        }
+        this->writeState = REGISTERED;
+    }
     // this->sendMode = STRING;
     // this->stringToSend = stringToSend;
 }

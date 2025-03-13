@@ -36,6 +36,15 @@ class ConnectionState {
 
                 SendMe(const std::string &filePath, const std::streampos &currentPos);
                 SendMe(const std::string &stringToSend);
+                void changeSend(const std::string &filePath, const std::streampos &currentPos) {
+                    this->sendMode = FILE;
+                    this->filePath = filePath;
+                    this->currentPos = currentPos;
+                }
+                void changeSend(const std::string &stringToSend) {
+                    this->sendMode = STRING;
+                    this->stringToSend = stringToSend;
+                }
         };
         std::vector<SendMe> sendQueue;
         // std::string filePath;
