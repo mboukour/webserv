@@ -23,31 +23,6 @@
 
 const std::string YELLOW = "\033[33m";
 const std::string RESET = "\033[0m";
-void HttpResponse::sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const {
-    // std::vector<char> buffer(65536);  // 64KB buffer
-    // std::cout << "CALLED\n";
-    // while (true) {
-    //     fileToGet.read(buffer.data(), buffer.size());
-    //     std::streamsize bytesRead = fileToGet.gcount();
-    
-    //     if (bytesRead == 0)
-    //         break;
-    
-    //     ssize_t totalSent = 0;
-    //     while (totalSent < bytesRead) {
-    //         ssize_t bytesSent = send(clientFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
-    //         if (bytesSent == -1) {
-    //             std::streampos filePos = fileToGet.tellg();
-    //             filePos -= (bytesRead - totalSent);
-    //             return;
-    //         }
-    //         totalSent += bytesSent;
-    //     }
-    // }
-    (void)fileToGet;
-    ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
-    state->activateWriteState(filePath, 0);
-}
 
 
 void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
@@ -127,7 +102,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         ss << filestat.st_size;
         response.setHeader("Content-Length", ss.str());
         ServerManager::sendString(response.toString(), this->clientFd);
-        sendGetResponse(fileToGet, path);
+        ServerManager::sendFile(path, this->clientFd);
     } else if (filestat.st_mode & S_IFDIR) {
         if (path[path.size() - 1] != '/') {
             HttpResponse redirectResponse(request.getVersion(), 301, HttpErrorException::getReasonPhrase(301), "");
@@ -160,8 +135,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             this->headers["Content-Length"] = cl.str();
             this->body.clear();
             ServerManager::sendString(toString(), this->clientFd);
-            std::fstream fileToGet(indexFilePath.c_str());
-            sendGetResponse(fileToGet, indexFilePath);
+            ServerManager::sendFile(indexFilePath, this->clientFd);
         } else if (request.getRequestBlock()->getIsAutoIndexOn()) {
             handleAutoIndex(request);
         } else {

@@ -104,7 +104,7 @@ void HttpResponse::setAsLastEntry(void) {
 }
 
 HttpResponse::HttpResponse(const std::string &version, int statusCode,
-    const std::string &reasonPhrase, const std::string &body): clientFd(-1), epollFd(-1) { // no client fd needed in case of error
+    const std::string &reasonPhrase, const std::string &body): clientFd(-1), epollFd(-1), fd(-1) { // no client fd needed in case of error
     this->version = version;
     this->statusCode = statusCode;
     this->reasonPhrase = reasonPhrase;
@@ -175,5 +175,6 @@ void HttpResponse::sendResponse(void) const {
 }
 
 HttpResponse::~HttpResponse(){
-    close(this->fd);
+    if (this->fd != -1)
+        close(this->fd);
 }

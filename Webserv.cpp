@@ -27,8 +27,8 @@ int main(int ac, char **av)
         std::ifstream file(av[1]);
         if (!file.is_open())
             throw std::logic_error("Unable to open file");
-        Parser parser(file);
-        Block res = parser.parseConfigFile();
+        Parser::initializeTokens(file);
+        Block res = Parser::parseConfigFile();
         std::vector<Block> parseBlocks = res.subBlocks;
         servers = ServerFactory::createServers(parseBlocks);
 

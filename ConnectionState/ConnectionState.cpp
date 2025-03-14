@@ -48,7 +48,7 @@ void ConnectionState::handleWritable(void) {
                 if (bytesRead == 0) {
                     break;
                 }
-                    
+
                 ssize_t totalSent = 0;
                 while (totalSent < bytesRead) {
                     ssize_t bytesSent = send(this->eventFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
@@ -62,6 +62,7 @@ void ConnectionState::handleWritable(void) {
                 }
             }
         } else if (toSend.sendMode == STRING) {
+            Logger::getLogStream() << "Sedning: " << toSend.stringToSend << std::endl;
             size_t totalSent = 0;
             while(totalSent < toSend.stringToSend.size()) {
                 ssize_t bytesSent = send(this->eventFd, toSend.stringToSend.data() + totalSent, toSend.stringToSend.size() - totalSent, 0);
@@ -151,11 +152,13 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                     this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
                     std::cout << "New Req: " << this->request;
                 } catch (const HttpErrorException &exec) {
+                    if (exec.getStatusCode() == PAYLOAD_TOO_LARGE) {
+                        this->isDone = true;
+                    }
                     DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
                     std::string respStr = exec.getResponseString();
                     ServerManager::sendString(respStr, this->eventFd);
                     resetReadState();
-                    DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
                     return ;
                 }
                 if (this->request.getHeader("Connection") == "close") {
@@ -179,6 +182,13 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
             } else if (this->readState == READING_BODY) {
                 this->request.setReqEntry(bufferStr);
                 bool isLastEntry;
+                if (request.getRequestBlock()->getIsLimited() && request.getBodySize() > request.getRequestBlock()->getMaxBodySize()) {
+                    HttpErrorException exc(PAYLOAD_TOO_LARGE, request, "Payload too large");
+                    resetReadState();
+                    ServerManager::sendString(exc.getResponseString(), this->eventFd);
+                    this->isDone = true;
+                    return;
+                }
                 if (!request.isChunkedRequest())
                     isLastEntry = this->request.getBodySize() == this->request.getContentLength();
                 else
@@ -190,13 +200,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 }
                 if (isLastEntry)
                     resetReadState();
-
-                // } else if (this->request.getBodySize() > this->request.getContentLength()) {
-                //     std::cout << "BODY: " << this->request.getBodySize() << '\n';
-                //     throw HttpErrorException(BAD_REQUEST, "BODY SIZE BIGGER THAN CL");
-                // } else {
-                //     std::cout << "CL: " << this->request.getContentLength() << " Body Size: " << this->request.getBodySize() << '\n'; 
-                // }
             }
         } else {
             //error state
@@ -220,6 +223,10 @@ ConnectionState::SendMe::SendMe(const std::string &stringToSend) {
     this->stringToSend = stringToSend;
 }
 
+
+bool ConnectionState::isSendingDone(void) const {
+    return this->sendQueue.empty();
+}
 
 void ConnectionState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
     Logger::getLogStream() << "Activating write state for " << this->eventFd << std::endl;
@@ -275,4 +282,6 @@ ConnectionState::~ConnectionState() {
         delete this->response;
     epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
     close(this->eventFd);
+    // if (!this->eventFd)
+    //     std::cout << "ZERO" << std::endl;
 }

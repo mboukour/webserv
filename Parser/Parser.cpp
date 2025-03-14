@@ -12,7 +12,9 @@
 
 Token::Token(std::string &word, int type): word(word), type(type) {}
 
-Parser::Parser(std::ifstream &configFile)
+tokenVec Parser::tokens;
+
+void Parser::initializeTokens(std::ifstream &configFile)
 {
     std::string configString;
     std::stringstream ss;
@@ -26,7 +28,7 @@ Parser::Parser(std::ifstream &configFile)
         {
             std::string push(1, configString[i]); 
             Token newToken(push, configString[i]);
-            this->tokens.push_back(newToken);
+            tokens.push_back(newToken);
         }
         else if (configString[i] == '#')
             for (; configString[i] && configString[i] != '\n'; i++);
@@ -43,19 +45,18 @@ Parser::Parser(std::ifstream &configFile)
             i--;
             std::string str = wordStream.str();
             Token newToken(str, WORD);
-            this->tokens.push_back(newToken);
+            tokens.push_back(newToken);
         }
     }
-    checkSyntaxError();
+    checkSyntaxError(tokens);
 }
 
-
-void Parser::checkSyntaxError(void)
+void Parser::checkSyntaxError(const tokenVec &tokens)
 {
     int braceCount = 0;
     bool foundBraces = false;
     int lastType = 0;
-    for (tokenVec::iterator it = this->tokens.begin(); it != this->tokens.end(); it++)
+    for (tokenVec::const_iterator it = tokens.begin(); it != tokens.end(); it++)
     {
         if (it->type == OPEN_BRACE)
         {
@@ -71,7 +72,7 @@ void Parser::checkSyntaxError(void)
             
         else if (it->type == SEMICOLON)
         {
-            if (it != this->tokens.begin() && (it - 1)->type != WORD)
+            if (it != tokens.begin() && (it - 1)->type != WORD)
                 throw std::logic_error("Empty directive not accepted");
         }
         lastType = it->type;
@@ -92,24 +93,22 @@ bool Parser::isOwnChar(char c)
     return (c == '{' || c == '}' || c == ';');
 }
 
-
-Block Parser::parseConfigFile(void)
+Block Parser::parseConfigFile()
 {
-    tokenVec::iterator it = this->tokens.begin();
+    tokenVec::iterator it = const_cast<tokenVec&>(tokens).begin();
     Block globalBlock;
     globalBlock.blockName.push_back("Global Block");
-    globalBlock.subBlocks.push_back(parseBlock(it, true));
-    while (it != this->tokens.end())
+    globalBlock.subBlocks.push_back(parseBlock(it, tokens, true));
+    while (it != tokens.end())
     {
         while(it->type != CLOSE_BRACE)
             it--;
         it++;
-        globalBlock.subBlocks.push_back(parseBlock(it, true));
+        globalBlock.subBlocks.push_back(parseBlock(it, tokens, true));
     }
     setLocationsDirectives(globalBlock.subBlocks);
     return globalBlock;
 }
-
 
 // Need to figure out a way to inherit error pages.
 void Parser::setLocationsDirectives(std::vector<Block> &servers) {
@@ -137,7 +136,7 @@ void Parser::setLocationsDirectives(std::vector<Block> &servers) {
     }
 }
 
-Block Parser::parseBlock(tokenVec::iterator &it, bool getName)
+Block Parser::parseBlock(tokenVec::iterator &it, const tokenVec &tokens, bool getName)
 {
     Block result;
 
@@ -148,14 +147,14 @@ Block Parser::parseBlock(tokenVec::iterator &it, bool getName)
         it++; // Skip open brace
     }
 
-    for (; it != this->tokens.end() && it->type != CLOSE_BRACE; )
+    for (; it != tokens.end() && it->type != CLOSE_BRACE; )
     {
         stringVec vec;
         for(; it->type == WORD; it++) vec.push_back(it->word);
         if (it->type == SEMICOLON) {it++; result.directives.push_back(vec) ; continue;} // skip semicolon for next directive
         if (it->type == OPEN_BRACE) {
             it++; // skip open brace
-            Block subBlock = parseBlock(it, false);
+            Block subBlock = parseBlock(it, tokens, false);
             subBlock.blockName = vec;
             result.subBlocks.push_back(subBlock);
         }
@@ -164,13 +163,11 @@ Block Parser::parseBlock(tokenVec::iterator &it, bool getName)
     return result;
 }
 
-
-
 // DEBUG
 void Parser::printTokens(void)
 {
     std::string type;
-    for(std::vector<Token>::iterator it = this->tokens.begin(); it !=  this->tokens.end(); it++)
+    for(std::vector<Token>::const_iterator it = tokens.begin(); it != tokens.end(); it++)
     {
         if (it->type == WORD)
             type = "WORD";

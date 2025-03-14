@@ -265,7 +265,6 @@ const Server &HttpRequest::getServer(const std::string &host, const std::vector<
     // std::cout << "server port: " << serverPort << '\n';
     const Server *firstServerPort = NULL;
     for (std::vector<Server>::const_iterator it = servers.begin(); it != servers.end(); it++) {
-        std::cout << "S port: " << it->getPort() << '\n';
         if (actualHost == it->getServerName() && serverPort == it->getPort()) {
             // std::cout << "Found exact match for host: " << actualHost << " and port: " << serverPort << '\n';
             return *it;

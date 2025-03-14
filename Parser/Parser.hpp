@@ -32,19 +32,16 @@ typedef std::vector<Token> tokenVec;
 
 class Parser {
     private:
-        tokenVec tokens;
-        std::vector<Block> blocks;
-        void checkSyntaxError(void);
+        static tokenVec tokens;
+        static void checkSyntaxError(const tokenVec &tokens);
         static bool isSkipChar(char c);
         static bool isOwnChar(char c);
         static void setLocationsDirectives(std::vector<Block> &servers);
-        Block parseBlock(tokenVec::iterator &it, bool getName);
+        static Block parseBlock(tokenVec::iterator &it, const tokenVec &tokens, bool getName);
     public:
-        Parser(std::ifstream &configFile);
-        Block parseConfigFile(void);
-        void printTokens(void);
-        // static Block parseBlock(std::ifstream &configFile);
-
+        static void initializeTokens(std::ifstream &configFile);
+        static Block parseConfigFile(void);
+        static void printTokens(void);
 };
 
 

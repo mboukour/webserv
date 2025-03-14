@@ -25,8 +25,9 @@ class ServerManager {
         static void acceptConnections(int fdSocket);
         
     public:
-        static void sendResponse(HttpRequest &request, int clientFd);
+        // static void sendResponse(HttpRequest &request, int clientFd);
         static void sendString(const std::string &str, int clientFd);
+        static void sendFile(const std::string &filePath, int clientFd);
         static ConnectionState *getConnectionState(int clientFd);
 
         static void initialize(std::vector<Server> &serversList);

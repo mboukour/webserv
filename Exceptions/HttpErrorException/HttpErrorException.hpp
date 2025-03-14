@@ -30,6 +30,7 @@ class HttpErrorException : public std::exception {
         int statusCode;
         std::string reasonPhrase;
         std::string allowedHeader;
+        bool closeConnection;
         std::string body;
         
         HttpErrorException();

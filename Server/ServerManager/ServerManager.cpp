@@ -19,7 +19,7 @@
 #include "../../Session/Login/Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../ConnectionState/ConnectionState.hpp"
-
+#include "../../Utils/Logger/Logger.hpp"
 int ServerManager::epollFd = -1;
 std::vector<Server> ServerManager::servers;
 std::map<int, ConnectionState*> ServerManager::clientStates;
@@ -31,20 +31,13 @@ void ServerManager::initialize(std::vector<Server> &serversList) {
 }
 
 void ServerManager::sendString(const std::string &str, int clientFd) {
-    // size_t totalSent = 0;
-    // while (totalSent < str.size()) {
-    //     ssize_t bytesSent = send(clientFd, str.c_str(), str.size(), 0);
-    //     if (bytesSent == -1) {
-    //         ConnectionState * state = clientStates.at(clientFd);
-    //         std::string newStr = str.substr(totalSent);
-    //         state->activateWriteState(newStr);
-    //         return ;
-    //     }
-    //     totalSent += bytesSent;
-    // }
-    // std::cout << "SENDING :)" << std::endl;
     ConnectionState *state = getConnectionState(clientFd);
     state->activateWriteState(str);
+}
+
+void ServerManager::sendFile(const std::string &filePath, int clientFd) {
+    ConnectionState *state = getConnectionState(clientFd);
+    state->activateWriteState(filePath, 0);
 }
 
 bool ServerManager::isAServerFdSocket(int fdSocket) {
@@ -65,38 +58,7 @@ const Server &ServerManager::getServer(int port) {
     throw std::logic_error("Server not found"); // throw ServerNotFound(serverFd);
 }
 
-void ServerManager::sendResponse(HttpRequest &request, int clientFd) {
-    static std::map<std::string, std::string> userCreds;
 
-    try  {
-        std::cout << "METHOD: " << request.getMethod() << '\n';
-        // DEBUG && std::cout << "New request: " << request << std::endl;
-        if (request.getPath() == "/session-test")
-            Login::respondToLogin(request, userCreds, clientFd);
-        else {
-            try{
-                const Location &loc = dynamic_cast<const Location &>(*request.getRequestBlock());
-                if (loc.getIsReturnLocation()) {
-                    HttpResponse response(request.getVersion(), loc.getReturnCode(), "Moved Permanently", "");
-                    response.setHeader("Location", loc.getReturnPath());
-                    std::string respStr = response.toString();
-                    std::cout << respStr << '\n';
-                    ServerManager::sendString(respStr, clientFd);
-                    return ;
-                }
-            } catch (std::bad_cast &) {}
-            HttpResponse response(request, clientFd, epollFd); // this needs more work-> matching is done via port + server name, we need a server choosing algorithm, send not found if we cant find it!!!
-        }
-    } catch (const HttpErrorException &exec) {
-        DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
-        std::string respStr = exec.getResponseString();
-        ServerManager::sendString(respStr, clientFd);
-        std::cout << "clientFd: " << clientFd <<std::endl;
-        epoll_ctl(epollFd, EPOLL_CTL_DEL, clientFd, NULL);
-        close(clientFd);
-        DEBUG && std::cout << "Connection closed after error: " << strerror(errno) << std::endl;
-    }
-}
 
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 
@@ -113,7 +75,7 @@ void ServerManager::acceptConnections(int fdSocket) {
     }
     fcntl(clientFd, F_SETFL, O_NONBLOCK);
     
-    DEBUG && std::cout << "New connection accepted!" << std::endl;
+    DEBUG && std::cout << "New connection accepted: " << clientFd << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ConnectionState *state = new ConnectionState(clientFd, epollFd);
@@ -156,10 +118,10 @@ void ServerManager::handleConnections(void) {
             }
 
             if (events[i].events & EPOLLOUT) {
-                // std::cout << eventFd << " is writable" << std::endl;
                 state->handleWritable();
             }
-            if (state->getIsDone() || !state->getIsKeepAlive()) {
+            if ((state->getIsDone() && state->isSendingDone()) || !state->getIsKeepAlive()) {
+                Logger::getLogStream() << "Deleteting state: " << eventFd << std::endl;
                 delete state;
                 std::map<int, ConnectionState *>::iterator it = clientStates.find(eventFd);
                 clientStates.erase(it);
@@ -169,7 +131,7 @@ void ServerManager::handleConnections(void) {
         for (std::map<int, ConnectionState*>::iterator it = clientStates.begin(); 
             it != clientStates.end(); ) {
        
-            if (it->second->hasTimedOut()) {
+            if (it->second->hasTimedOut() || (it->second->getIsDone() && it->second->isSendingDone())) {
                 std::map<int, ConnectionState*>::iterator toErase = it;
                 ++it;
                 delete toErase->second;

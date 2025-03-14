@@ -69,6 +69,7 @@ class ConnectionState {
         void activateWriteState(const std::string &stringToSend);
         void handleWritable(void);
         bool hasTimedOut(void) const;
+        bool isSendingDone(void) const;
         bool getIsKeepAlive(void) const;
         ~ConnectionState();
 };

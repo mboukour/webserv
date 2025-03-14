@@ -100,19 +100,34 @@ void ServerFactory::parseClientMaxBodySize(ABlock &result, const stringVec &dire
     if (directives.size() != 2)
         throw std::logic_error("Invalid client max body size directive");
     std::stringstream ss(directives.begin()[1]);
-    size_t integerPart;
+    ssize_t integerPart;
     ss >> integerPart;
     if (ss.fail())
         throw std::logic_error("Invalid client max body size directive");
     if (!ss.eof()) {
-        char unit;
-        ss >> unit;
+        std::string remaining;
+        ss >> remaining;
         if (ss.fail())
             throw std::logic_error("Invalid client max body size directive");
         std::string dummyString;
         ss >> dummyString;
         if (!ss.eof())
             throw std::logic_error("Invalid client max body size directive");
+        if (remaining.size() > 1)
+            throw std::logic_error("Invalid unit in max body size directive");
+
+        char unit;
+        if (remaining.size() == 1) {
+            unit = remaining[0];
+            if (unit != 'k' && unit != 'K' && unit != 'm' && unit != 'M' && unit != 'g' && unit != 'G')
+                throw std::logic_error("Invalid unit found on max body size directive");
+        }
+        else {
+            unit = -1;
+        }
+        std::cout << "REM: " << remaining << std::endl;
+        if (integerPart < 0)
+            throw std::logic_error("Can't have negative max body size");
         // OVERFLOW RISK: BE CAREFUL!!
         if (unit == 'k' || unit == 'K')
             integerPart *= KB;
@@ -120,10 +135,9 @@ void ServerFactory::parseClientMaxBodySize(ABlock &result, const stringVec &dire
             integerPart *= MB;
         else if (unit == 'g' || unit == 'G')
             integerPart *= GB;
-        else
-            throw std::logic_error("Inva0lid unit found on max body size directive 3");
         result.setMaxBodySize(integerPart);
-    }
+    } else 
+        result.setMaxBodySize(integerPart);
 }
 
 void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directives) {

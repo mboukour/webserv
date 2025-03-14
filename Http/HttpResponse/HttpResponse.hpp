@@ -28,7 +28,6 @@ class HttpResponse: public AHttp {
         static std::string extToNature(const std::string &extension);
         static bool isCgiFile(const std::string &filePath, const HttpRequest &request);
 
-        void sendGetResponse(std::fstream &fileToGet, const std::string &filePath) const;
         void handleAutoIndex(const HttpRequest& request) const;
         std::string makeCgiResponse(const HttpRequest &request);
         void sendResponse(void) const;
