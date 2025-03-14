@@ -6,6 +6,8 @@
 #include "../../Server/Server.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../Cgi/Cgi.hpp"
+#include <cstddef>
+#include <string>
 
 class HttpRequest;
 
@@ -16,13 +18,20 @@ class HttpResponse: public AHttp {
         const int epollFd;
         int statusCode;
         enum PostState {INIT_POST, NEW_REQ_ENTRY, LAST_ENTRY};
+        enum ChunkState {GET_SIZE, GET_DATA};
         PostState postState;
         PostState prevPostState;
         int fd;
         std::string fileName;
+        ChunkState chunkState;
+        size_t totalChunkSize;
+        size_t currentChunkSize;
+        std::string chunkBody;
+        size_t left;
         std::string success_create;
         std::string reasonPhrase;
         std::vector<std::string> cookies;
+        std::string packet;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);

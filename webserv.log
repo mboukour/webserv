@@ -1,0 +1,160 @@
+Activating write state for 6
+Handling writable for 6
+Sedning: HTTP/1.1 403 Forbidden
+Content-Length: 812
+Content-Type: text/html
+
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>403 Forbidden</title><style>body {font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: #555;} .container {text-align: center;} h1 {font-size: 50px; margin-bottom: 20px;} p {font-size: 18px; margin: 0;} .error-code {font-weight: bold; color: #d9534f;} hr {margin: 20px auto; border: none; border-top: 1px solid #ddd; width: 80%;}</style></head><body><div class="container"><h1><span class="error-code">403</span> Forbidden</h1><hr><p>The server encountered a temporary error and could not complete your request.</p><p>Please try again later.</p></div></body></html>
+Send queue is empty for 6
+Activating write state for 7
+Handling writable for 7
+Sedning: HTTP/1.1 201 Created
+Connection: keep-alive
+Content-Length: 1856
+Content-Type: text/html
+Last-Modified: Fri, 14 Mar 2025 22:01:54 GMT
+Location: example.com:8080/uploads/video/1705189695.mp4
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Successful</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 80%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #4CAF50;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .sc-rp-title {
+            font-size: 72px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6f61, #ffcc00);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .message {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .location {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- SC_RP title with bigger font and gradient -->
+        <h2 class="sc-rp-title">Created</h2>
+        <h1>File Uploaded Successfully</h1>
+        <p class="message">Your file has been uploaded and is now available!</p>
+        <p class="location">
+            <strong>File Location:</strong><br>
+            example.com:8080/uploads/video/1705189695.mp4
+        </p>
+    </div>
+</body>
+</html>
+
+Send queue is empty for 7
+Activating write state for 6
+Handling writable for 6
+Sedning: HTTP/1.1 201 Created
+Connection: keep-alive
+Content-Length: 1856
+Content-Type: text/html
+Last-Modified: Fri, 14 Mar 2025 22:02:21 GMT
+Location: example.com:8080/uploads/video/1588911931.mp4
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Successful</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 80%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #4CAF50;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .sc-rp-title {
+            font-size: 72px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6f61, #ffcc00);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .message {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .location {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- SC_RP title with bigger font and gradient -->
+        <h2 class="sc-rp-title">Created</h2>
+        <h1>File Uploaded Successfully</h1>
+        <p class="message">Your file has been uploaded and is now available!</p>
+        <p class="location">
+            <strong>File Location:</strong><br>
+            example.com:8080/uploads/video/1588911931.mp4
+        </p>
+    </div>
+</body>
+</html>
+
+Send queue is empty for 6

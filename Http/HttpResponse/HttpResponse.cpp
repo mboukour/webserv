@@ -16,7 +16,9 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
 
 
-HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd): clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(){
+HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd):
+    clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(),
+    chunkState(GET_SIZE), totalChunkSize(0), currentChunkSize(0), chunkBody(""), left(0), packet(""){
     this->version = request.getVersion();
     std::ifstream htmlFile("Http/HttpResponse/upload_pages/success_create.html"); // html page when the upload is successfull, ruined can store in a better place
     if (!htmlFile.is_open()) {
@@ -71,10 +73,10 @@ std::string HttpResponse::makeCgiResponse(const HttpRequest &request) {
     std::cout << response;
     size_t pos_crlf = response.find("\r\n\r\n");
     size_t pos_lf = response.find("\n\n");
-    
+
     size_t pos;
     int delimiter_len;
-    
+
     if (pos_crlf != std::string::npos) {
         pos = pos_crlf;
         delimiter_len = 4;
@@ -136,7 +138,7 @@ void HttpResponse::addNeededHeaders(void) {
         strftime(date_buffer, sizeof(date_buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt);
         this->headers["Date"] = date_buffer;
     }
-    
+
 }
 
 bool HttpResponse::isCgiFile(const std::string &filePath, const HttpRequest &request) {
