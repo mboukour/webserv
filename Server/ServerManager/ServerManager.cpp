@@ -27,6 +27,7 @@ std::map<int, ConnectionState*> ServerManager::clientStates;
 ServerManager::ServerManager() {}
 
 void ServerManager::initialize(std::vector<Server> &serversList) {
+    epollFd = -1;
     servers = serversList;
 }
 
@@ -158,7 +159,7 @@ void ServerManager::start(void) {
 
         it->startServer();
         int fdSocket = it->getFdSocket();
-        ev.events = EPOLLIN;
+        ev.events = EPOLLIN | EPOLLET;
         ev.data.ptr = new ConnectionState(fdSocket, epollFd);
         if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
         {
@@ -170,6 +171,8 @@ void ServerManager::start(void) {
 }
 
 void ServerManager::cleanUp() {
+    if (epollFd != -1)
+        close(epollFd);
     for (std::vector<Server>::iterator it = servers.begin(); 
         it != servers.end(); it++) {
             if (!it->isServerUp())
@@ -181,4 +184,5 @@ void ServerManager::cleanUp() {
         ite != clientStates.end(); ite++) {
             delete ite->second;
         }
+    
 }

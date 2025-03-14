@@ -202,15 +202,11 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                     resetReadState();
             }
         } else {
-            //error state
+            // recv returned -1 (probably would block)
             return ;
         }
     }
 }
-
-// void ConnectionState::setResponseState(ResponseState *responseState) {
-//     this->responseState = responseState;
-// }
 
 ConnectionState::SendMe::SendMe(const std::string &filePath, const std::streampos &currentPos) {
     this->sendMode = FILE;
@@ -241,9 +237,6 @@ void ConnectionState::activateWriteState(const std::string &filePath, const std:
         }
         this->writeState = REGISTERED;
     }
-    // this->sendMode = FILE;
-    // this->filePath = filePath;
-    // this->currentPos = currentPos;
 }
 
 void ConnectionState::activateWriteState(const std::string &stringToSend) {
@@ -260,8 +253,6 @@ void ConnectionState::activateWriteState(const std::string &stringToSend) {
         }
         this->writeState = REGISTERED;
     }
-    // this->sendMode = STRING;
-    // this->stringToSend = stringToSend;
 }
 
 int ConnectionState::getEventFd(void) const {
@@ -282,6 +273,4 @@ ConnectionState::~ConnectionState() {
         delete this->response;
     epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
     close(this->eventFd);
-    // if (!this->eventFd)
-    //     std::cout << "ZERO" << std::endl;
 }
