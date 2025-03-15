@@ -264,8 +264,8 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 			else{
 				this->left = this->totalChunkSize - this->currentChunkSize;
 				if ((this->left < this->packet.length())){// enough to finish the chunk, and we have remaining (which is the start of the next this->packet) // dkchi li ba9i rah included fl packet, ye3ni kina chi 7aja khra mn ghir dkchi li ba9i lina mn packet
-					this->chunkBody = this->packet.substr(0, this->left);
-					this->bodySize = this->chunkBody.length();
+					this->chunkBody += this->packet.substr(0, this->left);
+					// this->bodySize = this->chunkBody.length();
 					if (this->left + 2 < this->packet.length())
 						this->packet = this->packet.substr(this->left + 2);
 					else
@@ -274,11 +274,11 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 					this->chunkState = GET_SIZE;
 				}
 				else{ // the whole this->packet is a part of the current chunk
-					this->chunkBody = this->packet;
+					this->chunkBody += this->packet;
 					this->currentChunkSize += this->packet.length();
-					write(fd, this->chunkBody.c_str(), this->chunkBody.length());
+					// write(fd, this->chunkBody.c_str(), this->chunkBody.length());
 					this->packet.clear();// the this->packet is empty now and we are ready to receive another one
-					this->chunkBody.clear(); // otherwise the chunk won't be completed! -> data loss
+					// this->chunkBody.clear(); // otherwise the chunk won't be completed! -> data loss
 					break;
 				}
 			}
