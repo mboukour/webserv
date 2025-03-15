@@ -222,7 +222,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 	std::stringstream sS;
 	size_t crlf_pos;
 	while (true){
-		if (this->chunkState == GET_SIZE){
+		if (this->chunkState == GET_SIZE && this->packet.find("\r\n") != std::string::npos){
 			this->totalChunkSize = 0; this->currentChunkSize = 0;
 			this->chunkBody.clear();
 			crlf_pos = this->packet.find("\r\n");
@@ -249,11 +249,9 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				this->chunkState = GET_SIZE;
 			}
 			else{ // the whole this->packet is a part of the current chunk
-				this->chunkBody = this->packet;
 				this->currentChunkSize += this->packet.length();
-				write(fd, this->chunkBody.c_str(), this->chunkBody.length());
+				write(fd, this->packet.c_str(), this->packet.length());
 				this->packet.clear();// the this->packet is empty now and we are ready to receive another one
-				this->chunkBody.clear(); // otherwise the chunk won't be completed! -> data loss
 				break;
 			}
 		}
