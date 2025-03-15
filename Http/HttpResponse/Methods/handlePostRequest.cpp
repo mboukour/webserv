@@ -203,6 +203,65 @@ void HttpResponse::firstPostBin(const HttpRequest &request) {
   }
 }
 
+void	HttpResponse::setPacket(const HttpRequest &request){
+	if (this->postState == INIT_POST){
+		this->postState = NEW_REQ_ENTRY;
+		if (isDir(setFileName(request).c_str()) == true){
+
+			this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR); // check for failure
+		}
+		else
+			std::cout << RED << "Folder do not exist!" << RESET << std::endl; // might update it to throw an exception later
+		this->packet = request.getBody();
+	}
+	else
+		this->packet = request.getReqEntry();
+}
+
+void	HttpResponse::chunkedTransfer(const HttpRequest &request){
+	std::stringstream sS;
+	size_t crlf_pos;
+	while (true){
+		if (this->chunkState == GET_SIZE){
+			this->totalChunkSize = 0; this->currentChunkSize = 0;
+			this->chunkBody.clear();
+			crlf_pos = this->packet.find("\r\n");
+			sS << std::hex << this->packet.substr(0, crlf_pos);
+			sS >> this->totalChunkSize;
+			if (this->totalChunkSize == 0)
+				break;
+			if (sS.fail())
+				throw HttpErrorException(BAD_REQUEST, request ,"Bad chunk: Possible data corruption");
+			this->packet = this->packet.substr(crlf_pos + 2);
+			this->chunkState = GET_DATA;
+			sS.clear();
+		}
+		else{
+			this->left = this->totalChunkSize - this->currentChunkSize;
+			if ((this->left < this->packet.length())){// enough to finish the chunk, and we have remaining (which is the start of the next this->packet) // dkchi li ba9i rah included fl packet, ye3ni kina chi 7aja khra mn ghir dkchi li ba9i lina mn packet
+				this->chunkBody = this->packet.substr(0, this->left);
+				this->bodySize = this->chunkBody.length();
+				if (this->left + 2 < this->packet.length())
+					this->packet = this->packet.substr(this->left + 2);
+				else
+					this->packet.clear();
+				write(fd, this->chunkBody.c_str(), this->chunkBody.length());
+				this->chunkState = GET_SIZE;
+			}
+			else{ // the whole this->packet is a part of the current chunk
+				this->chunkBody = this->packet;
+				this->currentChunkSize += this->packet.length();
+				write(fd, this->chunkBody.c_str(), this->chunkBody.length());
+				this->packet.clear();// the this->packet is empty now and we are ready to receive another one
+				this->chunkBody.clear(); // otherwise the chunk won't be completed! -> data loss
+				break;
+			}
+		}
+	}
+	if (this->postState == LAST_ENTRY)
+		postResponse(request, 201, this->success_create, this->fileName);
+}
+
 void HttpResponse::handlePostRequest(const HttpRequest &request) {
 	std::string path = request.getRequestBlock()->getRoot();
 	std::string __contentType = request.getHeader("Content-Type");
@@ -233,57 +292,7 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 		}
 	}
 	else{
-		size_t crlf_pos;
-		if (this->postState == INIT_POST){
-			this->postState = NEW_REQ_ENTRY;
-			__folder = setFileName(request);
-			if (isDir(setFileName(request).c_str()) == true)
-				this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR); // check for failure
-			else
-				std::cout << RED << "Folder do not exist!" << RESET << std::endl; // might update it to throw an exception later
-			this->packet = request.getBody();
-		}
-		else
-			this->packet = request.getReqEntry();
-		std::stringstream sS;
-	while (true){
-			if (this->chunkState == GET_SIZE){
-				this->totalChunkSize = 0; this->currentChunkSize = 0;
-				this->chunkBody.clear();
-				crlf_pos = this->packet.find("\r\n");
-				sS << std::hex << this->packet.substr(0, crlf_pos);
-				sS >> this->totalChunkSize;
-				if (this->totalChunkSize == 0)
-					break;
-				if (sS.fail())
-					throw HttpErrorException(BAD_REQUEST, request ,"Bad chunk: Possible data corruption");
-				this->packet = this->packet.substr(crlf_pos + 2);
-				this->chunkState = GET_DATA;
-				sS.clear();
-			}
-			else{
-				this->left = this->totalChunkSize - this->currentChunkSize;
-				if ((this->left < this->packet.length())){// enough to finish the chunk, and we have remaining (which is the start of the next this->packet) // dkchi li ba9i rah included fl packet, ye3ni kina chi 7aja khra mn ghir dkchi li ba9i lina mn packet
-					this->chunkBody += this->packet.substr(0, this->left);
-					// this->bodySize = this->chunkBody.length();
-					if (this->left + 2 < this->packet.length())
-						this->packet = this->packet.substr(this->left + 2);
-					else
-						this->packet.clear();
-					write(fd, this->chunkBody.c_str(), this->chunkBody.length());
-					this->chunkState = GET_SIZE;
-				}
-				else{ // the whole this->packet is a part of the current chunk
-					this->chunkBody += this->packet;
-					this->currentChunkSize += this->packet.length();
-					// write(fd, this->chunkBody.c_str(), this->chunkBody.length());
-					this->packet.clear();// the this->packet is empty now and we are ready to receive another one
-					// this->chunkBody.clear(); // otherwise the chunk won't be completed! -> data loss
-					break;
-				}
-			}
-		}
-		if (this->postState == LAST_ENTRY)
-			postResponse(request, 201, this->success_create, this->fileName);
+		setPacket(request);
+		chunkedTransfer(request);
 	}
 }
