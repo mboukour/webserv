@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <fcntl.h>
+#include <iomanip>
 #include <iostream>
 #include <ostream>
 #include <sstream>
@@ -138,9 +139,9 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
 	std::string connectState;
 	ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
 	if (state->getIsKeepAlive())
-	connectState = "keep-alive";
+		connectState = "keep-alive";
 	else
-	connectState = "close";
+		connectState = "close";
 	const Server *server = request.getServer();
 	std::string serverName = server->getServerName();
 	int serverPort = server->getPort();
@@ -219,45 +220,104 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 }
 
 void	HttpResponse::chunkedTransfer(const HttpRequest &request){
-	std::stringstream sS;
-	size_t crlf_pos;
-	while (true){
-		if (this->chunkState == GET_SIZE && this->packet.find("\r\n") != std::string::npos){
-			this->totalChunkSize = 0; this->currentChunkSize = 0;
-			this->chunkBody.clear();
-			crlf_pos = this->packet.find("\r\n");
-			sS << std::hex << this->packet.substr(0, crlf_pos);
-			sS >> this->totalChunkSize;
-			if (this->totalChunkSize == 0)
+	bool processing = true;
+	size_t curr_pos = 0;
+	this->offset = this->packet.length();
+	while (processing)
+	{
+		// std::cout << "Called" << std::endl;
+		switch (this->chunkState)
+		{
+			case CH_START:
+				this->chunkState = CH_SIZE;
+				break ;
+			case CH_SIZE:
+			{
+				size_t end;
+				for (end = curr_pos; end < this->offset; end++)
+				{
+					if ((this->packet[end] == '\r' && this->packet[end + 1] == '\n') || this->packet[end] == '\n') // Check this condition
+					{
+						this->chunkState = CH_DATA;
+						break;
+					}
+				}
+				this->prev_chunk_size += this->packet.substr(curr_pos, end - curr_pos);
+				if (this->prev_chunk_size.size() > 20)
+				{
+					this->prev_chunk_size = "";
+					this->chunkState = CH_ERROR;
+					break;
+				}
+				curr_pos = end;
+				if (this->chunkState == CH_DATA)
+				{
+					std::stringstream ss(this->prev_chunk_size);
+					this->prev_chunk_size = "";
+					curr_pos += 2;
+					ss >> std::setbase(16) >> this->remaining_chunk_size;
+				}
+				if (curr_pos >= this->offset)
+					processing = false;
 				break;
-			if (sS.fail())
-				throw HttpErrorException(BAD_REQUEST, request ,"Bad chunk: Possible data corruption");
-			this->packet = this->packet.substr(crlf_pos + 2);
-			this->chunkState = GET_DATA;
-			sS.clear();
-		}
-		else{
-			this->left = this->totalChunkSize - this->currentChunkSize;
-			if ((this->left < this->packet.length())){// enough to finish the chunk, and we have remaining (which is the start of the next this->packet) // dkchi li ba9i rah included fl packet, ye3ni kina chi 7aja khra mn ghir dkchi li ba9i lina mn packet
-				this->chunkBody = this->packet.substr(0, this->left);
-				this->bodySize = this->chunkBody.length();
-				if (this->left + 2 < this->packet.length())
-					this->packet = this->packet.substr(this->left + 2);
+			}
+			case CH_DATA:
+			{
+				size_t ch_size = this->offset - curr_pos;
+				processing = false;
+				if (this->remaining_chunk_size <= ch_size)
+				{
+					ch_size = this->remaining_chunk_size;
+					processing = true;
+					this->chunkState = CH_TRAILER;
+				}
+				write(this->fd, this->packet.substr(curr_pos).c_str(), ch_size);
+				this->remaining_chunk_size -= ch_size;
+				//this->log.INFO << output_file << ": saved " << output.tellp() << " from " << this->content_length << ", remaining chunk size: " << this->remaining_chunk_size;
+				if (!this->remaining_chunk_size)
+				{
+					this->chunkState = CH_TRAILER;
+				}
+				curr_pos += ch_size;
+				if (curr_pos >= this->offset)
+					processing = false;
+				break;
+			}
+			case CH_TRAILER:
+				if (this->packet[curr_pos] == '0')
+				{
+					this->chunkState = CH_COMPLETE;
+				}
+				else if (curr_pos + 2 > this->offset)
+					processing = false;
+				else if (this->packet[curr_pos + 2] == '0')
+				{
+					this->chunkState = CH_COMPLETE;
+				}
 				else
-					this->packet.clear();
-				write(fd, this->chunkBody.c_str(), this->chunkBody.length());
-				this->chunkState = GET_SIZE;
-			}
-			else{ // the whole this->packet is a part of the current chunk
-				this->currentChunkSize += this->packet.length();
-				write(fd, this->packet.c_str(), this->packet.length());
-				this->packet.clear();// the this->packet is empty now and we are ready to receive another one
+				{
+					if (this->packet[curr_pos] == '\n')
+						curr_pos += 1;
+					else
+						curr_pos += 2;
+					this->chunkState = CH_SIZE;
+				}
 				break;
-			}
+			case CH_COMPLETE:
+				//this->chunkState = CH_START;
+				postResponse(request, 201, "Created", this->fileName);
+				return;
+				break;
+			case CH_ERROR:
+				//this->chunkState = CH_START;
+				if ()
+				postResponse(request, 500, "Error", "Error");
+				return;
+				break;
+			default:
+				break;
 		}
 	}
-	if (this->postState == LAST_ENTRY)
-		postResponse(request, 201, this->success_create, this->fileName);
 }
 
 void HttpResponse::handlePostRequest(const HttpRequest &request) {

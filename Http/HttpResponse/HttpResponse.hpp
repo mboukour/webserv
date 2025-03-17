@@ -18,20 +18,21 @@ class HttpResponse: public AHttp {
         const int epollFd;
         int statusCode;
         enum PostState {INIT_POST, NEW_REQ_ENTRY, LAST_ENTRY};
-        enum ChunkState {GET_SIZE, GET_DATA};
+        enum ChunkState {CH_START, CH_SIZE, CH_ERROR, CH_DATA, CH_COMPLETE, CH_TRAILER};
         PostState postState;
         PostState prevPostState;
         int fd;
         std::string fileName;
         ChunkState chunkState;
-        size_t totalChunkSize;
-        size_t currentChunkSize;
+        size_t remaining_chunk_size;
+        size_t offset;
         std::string chunkBody;
         size_t left;
         std::string success_create;
         std::string reasonPhrase;
         std::vector<std::string> cookies;
         std::string packet;
+        std::string prev_chunk_size;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);
