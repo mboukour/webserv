@@ -236,7 +236,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				size_t end;
 				for (end = curr_pos; end < this->offset; end++)
 				{
-					if ((this->packet[end] == '\r' && this->packet[end + 1] == '\n') || this->packet[end] == '\n') // Check this condition
+					if ((this->packet[end] == '\r' && this->packet[end + 1] == '\n') || this->packet[end] == '\n')
 					{
 						this->chunkState = CH_DATA;
 						break;
@@ -305,14 +305,17 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				break;
 			case CH_COMPLETE:
 				//this->chunkState = CH_START;
-				postResponse(request, 201, "Created", this->fileName);
-				return;
+				if (this->postState == LAST_ENTRY){
+					postResponse(request, 201, "Created", this->fileName);
+					return;
+				}
 				break;
 			case CH_ERROR:
 				//this->chunkState = CH_START;
-				if ()
-				postResponse(request, 500, "Error", "Error");
-				return;
+				if (this->postState == LAST_ENTRY){
+					postResponse(request, 500, "Error", "Error");
+					return;
+				}
 				break;
 			default:
 				break;
