@@ -32,6 +32,7 @@ void ConnectionState::handleWritable(void) {
     updateLastActivity();
     for (std::vector<SendMe>::iterator it = this->sendQueue.begin(); it != this->sendQueue.end();)
     {
+        Logger::getLogStream() << "Iterating" << std::endl;
         SendMe &toSend = *it;
         if (toSend.sendMode == FILE) {
             std::fstream fileToSend(toSend.filePath.c_str());
@@ -120,7 +121,6 @@ bool ConnectionState::isChunkedRequestComplete(void) const {
 }
 
 void ConnectionState::handleReadable(std::vector<Server> &servers) {
-    updateLastActivity();
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
 
@@ -128,6 +128,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
         std::vector<char> buffer(READ_SIZE);
         ssize_t bytesReceived = recv(this->eventFd, buffer.data(), buffer.size()- 1, 0);
         if (bytesReceived == 0) {
+            std::cout << "RECV ZERO" << std::endl;
             this->readState = NO_REQUEST;
             delete this->response;
             this->request = HttpRequest();
@@ -159,6 +160,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                     std::string respStr = exec.getResponseString();
                     ServerManager::sendString(respStr, this->eventFd);
                     resetReadState();
+                    updateLastActivity();
                     return ;
                 }
                 if (this->request.getHeader("Connection") == "close") {
@@ -171,11 +173,13 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                         std::string respStr = exec.getResponseString();
                         resetReadState();
                         ServerManager::sendString(respStr, this->eventFd);
+                        updateLastActivity();
                         return;
                     }
                 }
                 if (!request.isChunkedRequest() && (request.getContentLength() == 0 || request.getContentLength() == request.getBodySize())) {
                     resetReadState();
+                    updateLastActivity();
                     return ;
                 }
                 this->requestBuffer.clear();
@@ -200,6 +204,8 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 }
                 if (isLastEntry)
                     resetReadState();
+                updateLastActivity();
+                
             }
         } else {
             // recv returned -1 (probably would block)
@@ -244,6 +250,7 @@ void ConnectionState::activateWriteState(const std::string &stringToSend) {
 
     this->sendQueue.push_back(SendMe(stringToSend));
     if (this->writeState == NOT_REGISTERED) {
+        Logger::getLogStream() << "REGISTERNING " << this->eventFd << std::endl;
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
         ev.data.ptr = this;

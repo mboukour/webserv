@@ -24,7 +24,7 @@ class HttpRequest: public AHttp {
         const ABlock *requestBlock;
         std::map<std::string, std::string> cookies;
         size_t contentLength;
-        std::string reqEntry;
+        const std::string *reqEntry;
         bool isChunked;
 
         void parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort);
@@ -45,6 +45,7 @@ class HttpRequest: public AHttp {
         // void appendToBody(const std::string &toAppend);
         void setReqEntry(const std::string &newEntry);
         std::string getReqEntry(void) const;
+        const std::string *getReqEntryPtr(void) const;
         bool isCgiRequest(void) const;
         const Server *getServer(void) const;
         const ABlock *getRequestBlock(void) const;

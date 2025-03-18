@@ -15,9 +15,9 @@
 
 std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
 
-HttpRequest::HttpRequest(): AHttp(), contentLength(0), isChunked(false) {}
+HttpRequest::HttpRequest(): AHttp(), contentLength(0), reqEntry(NULL) ,isChunked(false) {}
 
-HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0), isChunked(false) {
+HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0), reqEntry(NULL) ,isChunked(false) {
 
     this->primalRequest = request;
     this->isCgi = false;
@@ -60,12 +60,18 @@ void HttpRequest::validateRequestLine(void) const {
 }
 
 void HttpRequest::setReqEntry(const std::string &reqEntry) {
-    this->reqEntry = reqEntry;
+    this->reqEntry = &reqEntry;
     this->bodySize += reqEntry.size();
 }
 
 std::string HttpRequest::getReqEntry(void) const {
-    return this->reqEntry;
+    if (!this->reqEntry)
+        throw std::logic_error("Trying to get req entry before setting it");
+    return *this->reqEntry;
+}
+
+const std::string *HttpRequest::getReqEntryPtr(void) const {
+    return (this->reqEntry);
 }
 
 std::string HttpRequest::getMethod() const {

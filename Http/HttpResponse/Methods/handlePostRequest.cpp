@@ -136,6 +136,7 @@ bool isDir(const char *path) {
 
 void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
                                 std::string body, std::string const fileName) {
+	std::cout << "Sending response" << std::endl;		
 	std::string connectState;
 	ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
 	if (state->getIsKeepAlive())
@@ -271,7 +272,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					processing = true;
 					this->chunkState = CH_TRAILER;
 				}
-				write(this->fd, this->packet.substr(curr_pos).c_str(), ch_size);
+				write(this->fd, this->packet.c_str() + curr_pos, ch_size);
 				this->remaining_chunk_size -= ch_size;
 				//this->log.INFO << output_file << ": saved " << output.tellp() << " from " << this->content_length << ", remaining chunk size: " << this->remaining_chunk_size;
 				if (!this->remaining_chunk_size)
@@ -345,8 +346,8 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 						postResponse(request, 201, this->success_create, this->fileName);
 					this->postState = NEW_REQ_ENTRY;
 			} else {
-				std::string buff = request.getReqEntry();
-				write(this->fd, buff.c_str(), buff.size());
+				const std::string *buff = request.getReqEntryPtr();
+				write(this->fd, buff->c_str(), buff->size());
 				if (this->postState == LAST_ENTRY)
 					postResponse(request, 201, this->success_create, this->fileName);
 			}
