@@ -336,5 +336,7 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 	else{
 		setPacket(request);
 		chunkedTransfer(request);
+		if (this->postState == LAST_ENTRY)
+			postResponse(request, 201, this->success_create, this->fileName);
 	}
 }
