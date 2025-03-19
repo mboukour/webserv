@@ -296,10 +296,8 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				}
 				break;
 			case CH_ERROR:
-				if (this->postState == LAST_ENTRY){
-					postResponse(request, 500, "Error", "Error");
-					return;
-				}
+				postResponse(request, 500, "Error", "Error");
+				return;
 				break;
 			default:
 				break;
@@ -314,21 +312,17 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 									// corresponding extension, ofc in a map
 	std::string __folder = "";
 	if (request.isChunkedRequest() == false) {
-		if (__contentType ==
-			"multipart/form-data"){ // content-type is the thing that decides the
-									// file type, since the file name is not
-									// provided when we have raw/binary data
-									// transfer
-		std::cout << MAGENTA << "Multi Form Data" << RESET << std::endl;
+		if (__contentType == "multipart/form-data"){
+			std::cout << MAGENTA << "Multi Form Data" << RESET << std::endl;
 		}
-		else { // chunked might be on/off
-			if (this->postState == INIT_POST ||
-				(this->postState == LAST_ENTRY && this->prevPostState == INIT_POST)) {
-					firstPostBin(request);
-					if (this->postState == LAST_ENTRY)
-						postResponse(request, 201, this->success_create, this->fileName);
-					this->postState = NEW_REQ_ENTRY;
-			} else {
+		else {
+			if (this->postState == INIT_POST || (this->postState == LAST_ENTRY && this->prevPostState == INIT_POST)) {
+				firstPostBin(request);
+				if (this->postState == LAST_ENTRY)
+					postResponse(request, 201, this->success_create, this->fileName);
+				this->postState = NEW_REQ_ENTRY;
+			}
+			else {
 				const std::string *buff = request.getReqEntryPtr();
 				write(this->fd, buff->c_str(), buff->size());
 				if (this->postState == LAST_ENTRY)
