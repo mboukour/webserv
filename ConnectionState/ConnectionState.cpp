@@ -113,10 +113,11 @@ void ConnectionState::resetReadState(void) {
 }
 
 
-bool ConnectionState::isChunkedRequestComplete(void) const {
-    size_t posOfChunkEnd = this->requestBuffer.find("0\r\n\r\n");
+bool ConnectionState::isChunkedRequestComplete(const std::string &bufferStr) const {
+    size_t posOfChunkEnd = bufferStr.find("0\r\n\r\n");
     if (posOfChunkEnd == std::string::npos)
         return false;
+    std::cout << "COMPLETE" << std::endl;
     return true;
 }
 
@@ -136,9 +137,11 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
             this->isDone = true;
             return ;
         } else if (bytesReceived > 0) {
+            // std::cout << bytesReceived << std::endl;
             buffer[bytesReceived] = '\0';
             std::string bufferStr(buffer.data(), bytesReceived);
-            this->requestBuffer+= bufferStr;
+            if (this->readState == READING_HEADERS)
+                this->requestBuffer += bufferStr;
             if (this->readState == READING_HEADERS && bufferStr.find("\r\n\r\n") != std::string::npos) {
                 struct sockaddr_in addr;
                 socklen_t addrLen = sizeof(addr);
@@ -150,6 +153,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 this->readState = READING_BODY;
                 std::cout << MAGENTA << "Changed state\n" << RESET;
                 try {
+                    // std::cout << "Buff: " << this->requestBuffer << std::endl;
                     this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
                     std::cout << "New Req: " << this->request;
                 } catch (const HttpErrorException &exec) {
@@ -196,10 +200,11 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 if (!request.isChunkedRequest())
                     isLastEntry = this->request.getBodySize() == this->request.getContentLength();
                 else
-                    isLastEntry = isChunkedRequestComplete();
+                    isLastEntry = isChunkedRequestComplete(bufferStr);
                 if (this->response) {
-                    if (isLastEntry)
+                    if (isLastEntry) {
                         this->response->setAsLastEntry();
+                    }
                     this->response->handleNewReqEntry(this->request);
                 }
                 if (isLastEntry)

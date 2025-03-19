@@ -57,7 +57,7 @@ class ConnectionState {
 
         void resetReadState(void);
         void updateLastActivity(void);
-        bool isChunkedRequestComplete(void) const;
+        bool isChunkedRequestComplete(const std::string &bufferStr) const;
     public:
         ConnectionState(int clientFd, int epollFd);
         // HttpRequest *getHttpRequest(void) const;

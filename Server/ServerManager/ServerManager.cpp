@@ -129,18 +129,18 @@ void ServerManager::handleConnections(void) {
             }
         }
 
-        for (std::map<int, ConnectionState*>::iterator it = clientStates.begin(); 
-            it != clientStates.end(); ) {
+        // for (std::map<int, ConnectionState*>::iterator it = clientStates.begin(); 
+        //     it != clientStates.end(); ) {
        
-            if (it->second->hasTimedOut() || (it->second->getIsDone() && it->second->isSendingDone())) {
-                std::map<int, ConnectionState*>::iterator toErase = it;
-                ++it;
-                delete toErase->second;
-                clientStates.erase(toErase);
-            } else {
-                ++it;
-            }
-        }
+        //     if (it->second->hasTimedOut() || (it->second->getIsDone() && it->second->isSendingDone())) {
+        //         std::map<int, ConnectionState*>::iterator toErase = it;
+        //         ++it;
+        //         delete toErase->second;
+        //         clientStates.erase(toErase);
+        //     } else {
+        //         ++it;
+        //     }
+        // }
     }
 }
 
