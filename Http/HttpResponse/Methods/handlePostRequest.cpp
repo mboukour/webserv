@@ -234,7 +234,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 			case CH_SIZE:{
 				size_t end;
 				for (end = curr_pos; end < this->offset; end++){
-					if ((this->packet[end] == '\r' && this->packet[end + 1] == '\n')){
+					if ((this->packet[end] == '\r' && this->packet[end + 1] == '\n') || this->packet[end] == '\n'){
 						this->chunkState = CH_DATA;
 						break;
 					}
@@ -282,7 +282,10 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				else if (this->packet[curr_pos + 2] == '0')
 					this->chunkState = CH_COMPLETE;
 				else{
-					curr_pos += 2;
+					if (this->packet[curr_pos] == '\n')
+						curr_pos += 1;
+					else
+						curr_pos += 2;
 					this->chunkState = CH_SIZE;
 				}
 				break;
