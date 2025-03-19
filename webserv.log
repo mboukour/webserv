@@ -4,10 +4,10 @@ Handling writable for 6
 Iterating
 Sedning: HTTP/1.1 201 Created
 Connection: keep-alive
-Content-Length: 1854
+Content-Length: 1855
 Content-Type: text/html
-Last-Modified: Wed, 19 Mar 2025 08:32:24 GMT
-Location: example.com:8080/uploads/text/325172283.txt
+Last-Modified: Wed, 19 Mar 2025 08:41:30 GMT
+Location: example.com:8080/uploads/text/2104014273.txt
 
 <!DOCTYPE html>
 <html lang="en">
@@ -69,30 +69,10 @@ Location: example.com:8080/uploads/text/325172283.txt
         <p class="message">Your file has been uploaded and is now available!</p>
         <p class="location">
             <strong>File Location:</strong><br>
-            example.com:8080/uploads/text/325172283.txt
+            example.com:8080/uploads/text/2104014273.txt
         </p>
     </div>
 </body>
 </html>
 
 Send queue is empty for 6
-Activating write state for 7
-REGISTERNING 7
-Handling writable for 7
-Iterating
-Sedning: HTTP/1.1 404 Not Found
-Content-Length: 812
-Content-Type: text/html
-
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>404 Not Found</title><style>body {font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: #555;} .container {text-align: center;} h1 {font-size: 50px; margin-bottom: 20px;} p {font-size: 18px; margin: 0;} .error-code {font-weight: bold; color: #d9534f;} hr {margin: 20px auto; border: none; border-top: 1px solid #ddd; width: 80%;}</style></head><body><div class="container"><h1><span class="error-code">404</span> Not Found</h1><hr><p>The server encountered a temporary error and could not complete your request.</p><p>Please try again later.</p></div></body></html>
-Send queue is empty for 7
-Activating write state for 7
-REGISTERNING 7
-Handling writable for 7
-Iterating
-Sedning: HTTP/1.1 404 Not Found
-Content-Length: 812
-Content-Type: text/html
-
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>404 Not Found</title><style>body {font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: #555;} .container {text-align: center;} h1 {font-size: 50px; margin-bottom: 20px;} p {font-size: 18px; margin: 0;} .error-code {font-weight: bold; color: #d9534f;} hr {margin: 20px auto; border: none; border-top: 1px solid #ddd; width: 80%;}</style></head><body><div class="container"><h1><span class="error-code">404</span> Not Found</h1><hr><p>The server encountered a temporary error and could not complete your request.</p><p>Please try again later.</p></div></body></html>
-Send queue is empty for 7

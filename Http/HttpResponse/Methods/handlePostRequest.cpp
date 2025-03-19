@@ -251,7 +251,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					this->prev_chunk_size = "";
 					if ((this->packet[curr_pos] == '\r' && this->packet[curr_pos + 1] == '\n'))
 						curr_pos += 2;
-					else if (this->packet[curr_pos] == '\r')
+					else if (this->packet[curr_pos] == '\n')
 						curr_pos++;
 					ss >> std::setbase(16) >> this->remaining_chunk_size;
 				}
@@ -287,7 +287,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				else{
 					if ((this->packet[curr_pos] == '\r' && this->packet[curr_pos + 1] == '\n'))
 						curr_pos += 2;
-					else if (this->packet[curr_pos] == '\r')
+					else if (this->packet[curr_pos] == '\n')
 						curr_pos++;
 					this->chunkState = CH_SIZE;
 				}
