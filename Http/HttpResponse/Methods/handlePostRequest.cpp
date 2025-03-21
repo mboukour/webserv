@@ -224,7 +224,7 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 std::string visualizeEscapes(const std::string input) {
     std::string result;
     result.reserve(input.length() * 2); // Pre-allocate for efficiency
-    
+
     for (size_t i = 0; i < input.length(); ++i) {
         if (input[i] == '\r') {
             result += "\\r";
@@ -234,7 +234,7 @@ std::string visualizeEscapes(const std::string input) {
             result += input[i];
         }
     }
-    
+
     return result;
 }
 
@@ -253,10 +253,6 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 			case CH_SIZE:{
 				size_t end;
 				if (this->pendingCRLF) {
-					if (this->packet[0] != '\n') {
-						Logger::getLogStream() << "YES: " << this->packet[0] << std::endl;
-						throw std::logic_error("Fuck off w dima ock");
-					}
 					this->pendingCRLF = false;
 					curr_pos++;
 				}
@@ -281,6 +277,8 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					else if (this->packet[curr_pos] == '\n')
 						curr_pos++;
 					ss >> std::setbase(16) >> this->remaining_chunk_size;
+					if (this->remaining_chunk_size == 0)
+						this->chunkState = CH_COMPLETE;
 				}
 				if (curr_pos >= this->offset)
 					processing = false;
@@ -291,14 +289,13 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				size_t ch_size = this->offset - curr_pos;
 				processing = false;
 				if (this->remaining_chunk_size <= ch_size) { // chunk will end in this packet
-					// Logger::getLogStream() << "9albi: " << this->chunkState << ": " << visualizeEscapes(this->packet.substr(0, 10)) << " // " << visualizeEscapes(this->packet.substr(this->packet.length() - 10)) << std::endl;
 					ch_size = this->remaining_chunk_size;
 					processing = true;
 					this->chunkState = CH_TRAILER;
 				}
 				write(this->fd, this->packet.c_str() + curr_pos, ch_size);
 				this->remaining_chunk_size -= ch_size;
-				if (!this->remaining_chunk_size) 
+				if (!this->remaining_chunk_size)
 					this->chunkState = CH_TRAILER;
 				curr_pos += ch_size;
 				if (curr_pos >= this->offset)
@@ -312,7 +309,6 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 						curr_pos += 2;
 					}
 					else if (this->packet[this->offset - 1] == '\r') {
-						Logger::getLogStream() << "verified" << std::endl;
 						this->pendingCRLF = true;
 						this->chunkState = CH_SIZE;
 						return;
@@ -320,10 +316,8 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					this->chunkState = CH_SIZE;
 				break;
 			case CH_COMPLETE:
-				if (this->postState == LAST_ENTRY){
 					postResponse(request, 201, this->success_create, this->fileName);
 					return;
-				}
 				break;
 			case CH_ERROR:
 				postResponse(request, 500, "Error", "Error");
