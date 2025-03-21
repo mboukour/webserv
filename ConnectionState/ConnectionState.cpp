@@ -113,14 +113,6 @@ void ConnectionState::resetReadState(void) {
 }
 
 
-bool ConnectionState::isChunkedRequestComplete(const std::string &bufferStr) const {
-    size_t posOfChunkEnd = bufferStr.find("0\r\n\r\n");
-    if (posOfChunkEnd == std::string::npos)
-        return false;
-    std::cout << "COMPLETE" << std::endl;
-    return true;
-}
-
 void ConnectionState::handleReadable(std::vector<Server> &servers) {
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
@@ -137,7 +129,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
             this->isDone = true;
             return ;
         } else if (bytesReceived > 0) {
-            // std::cout << bytesReceived << std::endl;
             buffer[bytesReceived] = '\0';
             std::string bufferStr(buffer.data(), bytesReceived);
             if (this->readState == READING_HEADERS)
@@ -153,7 +144,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 this->readState = READING_BODY;
                 std::cout << MAGENTA << "Changed state\n" << RESET;
                 try {
-                    // std::cout << "Buff: " << this->requestBuffer << std::endl;
                     this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
                     std::cout << "New Req: " << this->request;
                 } catch (const HttpErrorException &exec) {
@@ -189,7 +179,6 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 this->requestBuffer.clear();
             } else if (this->readState == READING_BODY) {
                 this->request.setReqEntry(bufferStr);
-                // bool isLastEntry;
                 if (request.getRequestBlock()->getIsLimited() && request.getBodySize() > request.getRequestBlock()->getMaxBodySize()) {
                     HttpErrorException exc(PAYLOAD_TOO_LARGE, request, "Payload too large");
                     resetReadState();
@@ -197,23 +186,22 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                     this->isDone = true;
                     return;
                 }
-                // if (!request.isChunkedRequest())
-                //     isLastEntry = this->request.getBodySize() == this->request.getContentLength();
-                // else
-                //     isLastEntry = isChunkedRequestComplete(bufferStr);
                 if (this->response) {
-                    // if (isLastEntry) {
-                    //     this->response->setAsLastEntry();
-                    // }
-                    this->response->handleNewReqEntry(this->request);
+                    try {
+                        this->response->handleNewReqEntry(this->request);
+                    } catch (const HttpErrorException &exec) {
+                        resetReadState();
+                        DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+                        ServerManager::sendString(exec.getResponseString(), this->eventFd);
+                        updateLastActivity();
+                        return;
+                    }
                 }
-                // if (isLastEntry)
-                //     resetReadState();
+                if (this->response->getIsLastEntry())
+                    resetReadState();
                 updateLastActivity();
-                
             }
         } else {
-            // recv returned -1 (probably would block)
             return ;
         }
     }

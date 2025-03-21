@@ -257,17 +257,14 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					curr_pos++;
 				}
 				for (end = curr_pos; end < this->offset; end++){
-					if ((this->packet[end] == '\r' && this->packet[end + 1] == '\n') || this->packet[end] == '\n'){
+					if ((this->packet[end] == '\r' && this->packet[end + 1] == '\n') || this->packet[end] == '\n') {
 						this->chunkState = CH_DATA;
 						break;
 					}
 				}
 				this->prev_chunk_size += this->packet.substr(curr_pos, end - curr_pos);
-				if (this->prev_chunk_size.size() > 20){
-					this->prev_chunk_size = "";
-					this->chunkState = CH_ERROR;
-					break;
-				}
+				if (this->prev_chunk_size.size() > 20)
+					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Size bigger than 20");
 				curr_pos = end;
 				if (this->chunkState == CH_DATA){
 					std::stringstream ss(this->prev_chunk_size);
@@ -303,25 +300,22 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				break;
 			}
 			case CH_TRAILER:
-					if ((this->packet[curr_pos] == '\r' && this->packet[curr_pos + 1] == '\n')) {
-						 if (curr_pos + 2 > this->offset)
-							return;
-						curr_pos += 2;
-					}
-					else if (this->packet[this->offset - 1] == '\r') {
-						this->pendingCRLF = true;
-						this->chunkState = CH_SIZE;
+				if ((this->packet[curr_pos] == '\r' && this->packet[curr_pos + 1] == '\n')) {
+					if (curr_pos + 2 > this->offset)
 						return;
-					}
+					curr_pos += 2;
+				}
+				else if (this->packet[this->offset - 1] == '\r') {
+					this->pendingCRLF = true;
 					this->chunkState = CH_SIZE;
+					return;
+				}
+				this->chunkState = CH_SIZE;
 				break;
 			case CH_COMPLETE:
+					this->isLastEntry = true;
 					postResponse(request, 201, this->success_create, this->fileName);
 					return;
-				break;
-			case CH_ERROR:
-				postResponse(request, 500, "Error", "Error");
-				return;
 				break;
 			default:
 				break;
@@ -340,16 +334,17 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 			std::cout << MAGENTA << "Multi Form Data" << RESET << std::endl;
 		}
 		else {
+			this->isLastEntry = request.getBodySize() == request.getContentLength();
 			if (this->postState == INIT_POST || (this->postState == LAST_ENTRY && this->prevPostState == INIT_POST)) {
 				firstPostBin(request);
-				if (this->postState == LAST_ENTRY)
+				if (this->isLastEntry)
 					postResponse(request, 201, this->success_create, this->fileName);
 				this->postState = NEW_REQ_ENTRY;
 			}
 			else {
 				const std::string *buff = request.getReqEntryPtr();
 				write(this->fd, buff->c_str(), buff->size());
-				if (this->postState == LAST_ENTRY)
+				if (this->isLastEntry)
 					postResponse(request, 201, this->success_create, this->fileName);
 			}
 		}
@@ -357,7 +352,5 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 	else{
 		setPacket(request);
 		chunkedTransfer(request);
-		if (this->postState == LAST_ENTRY)
-			postResponse(request, 201, this->success_create, this->fileName);
 	}
 }

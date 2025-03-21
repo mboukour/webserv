@@ -4,10 +4,10 @@ Handling writable for 6
 Iterating
 Sedning: HTTP/1.1 201 Created
 Connection: keep-alive
-Content-Length: 1855
+Content-Length: 1848
 Content-Type: text/html
-Last-Modified: Fri, 21 Mar 2025 03:01:20 GMT
-Location: example.com:8080/uploads/text/1437274240.txt
+Last-Modified: Fri, 21 Mar 2025 04:48:14 GMT
+Location: localhost:8080/uploads/1930449259.bin
 
 <!DOCTYPE html>
 <html lang="en">
@@ -69,7 +69,163 @@ Location: example.com:8080/uploads/text/1437274240.txt
         <p class="message">Your file has been uploaded and is now available!</p>
         <p class="location">
             <strong>File Location:</strong><br>
-            example.com:8080/uploads/text/1437274240.txt
+            localhost:8080/uploads/1930449259.bin
+        </p>
+    </div>
+</body>
+</html>
+
+Send queue is empty for 6
+Activating write state for 6
+REGISTERNING 6
+Handling writable for 6
+Iterating
+Sedning: HTTP/1.1 201 Created
+Connection: keep-alive
+Content-Length: 1848
+Content-Type: text/html
+Last-Modified: Fri, 21 Mar 2025 04:48:44 GMT
+Location: localhost:8080/uploads/1803852225.bin
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Successful</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 80%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #4CAF50;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .sc-rp-title {
+            font-size: 72px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6f61, #ffcc00);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .message {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .location {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- SC_RP title with bigger font and gradient -->
+        <h2 class="sc-rp-title">Created</h2>
+        <h1>File Uploaded Successfully</h1>
+        <p class="message">Your file has been uploaded and is now available!</p>
+        <p class="location">
+            <strong>File Location:</strong><br>
+            localhost:8080/uploads/1803852225.bin
+        </p>
+    </div>
+</body>
+</html>
+
+Send queue is empty for 6
+Activating write state for 6
+REGISTERNING 6
+Handling writable for 6
+Iterating
+Sedning: HTTP/1.1 201 Created
+Connection: keep-alive
+Content-Length: 1846
+Content-Type: text/html
+Last-Modified: Fri, 21 Mar 2025 04:49:23 GMT
+Location: localhost:8080/uploads/88756009.bin
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Successful</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 80%;
+            max-width: 600px;
+        }
+        h1 {
+            color: #4CAF50;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        .sc-rp-title {
+            font-size: 72px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6f61, #ffcc00);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .message {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .location {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- SC_RP title with bigger font and gradient -->
+        <h2 class="sc-rp-title">Created</h2>
+        <h1>File Uploaded Successfully</h1>
+        <p class="message">Your file has been uploaded and is now available!</p>
+        <p class="location">
+            <strong>File Location:</strong><br>
+            localhost:8080/uploads/88756009.bin
         </p>
     </div>
 </body>

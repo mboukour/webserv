@@ -34,6 +34,7 @@ class HttpResponse: public AHttp {
         std::string packet;
         std::string prev_chunk_size;
         bool pendingCRLF;
+        bool isLastEntry;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);
@@ -62,7 +63,7 @@ class HttpResponse: public AHttp {
         void setBody(const std::string &body);
         bool removeDirectory(const std::string &path);
         void handleNewReqEntry(const HttpRequest &request);
-        void setAsLastEntry(void);
+        bool getIsLastEntry(void) const;
         std::string toString(void) const;
 };
 
