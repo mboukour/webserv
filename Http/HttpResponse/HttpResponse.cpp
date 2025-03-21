@@ -18,7 +18,7 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd):
     clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(),
-    chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""){
+    chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""), pendingCRLF(false) {
     this->version = request.getVersion();
     std::ifstream htmlFile("Http/HttpResponse/upload_pages/success_create.html"); // html page when the upload is successfull, ruined can store in a better place
     if (!htmlFile.is_open()) {

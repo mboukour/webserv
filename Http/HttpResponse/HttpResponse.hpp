@@ -33,6 +33,7 @@ class HttpResponse: public AHttp {
         std::vector<std::string> cookies;
         std::string packet;
         std::string prev_chunk_size;
+        bool pendingCRLF;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);

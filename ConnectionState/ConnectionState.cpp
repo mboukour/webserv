@@ -189,7 +189,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 this->requestBuffer.clear();
             } else if (this->readState == READING_BODY) {
                 this->request.setReqEntry(bufferStr);
-                bool isLastEntry;
+                // bool isLastEntry;
                 if (request.getRequestBlock()->getIsLimited() && request.getBodySize() > request.getRequestBlock()->getMaxBodySize()) {
                     HttpErrorException exc(PAYLOAD_TOO_LARGE, request, "Payload too large");
                     resetReadState();
@@ -197,18 +197,18 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                     this->isDone = true;
                     return;
                 }
-                if (!request.isChunkedRequest())
-                    isLastEntry = this->request.getBodySize() == this->request.getContentLength();
-                else
-                    isLastEntry = isChunkedRequestComplete(bufferStr);
+                // if (!request.isChunkedRequest())
+                //     isLastEntry = this->request.getBodySize() == this->request.getContentLength();
+                // else
+                //     isLastEntry = isChunkedRequestComplete(bufferStr);
                 if (this->response) {
-                    if (isLastEntry) {
-                        this->response->setAsLastEntry();
-                    }
+                    // if (isLastEntry) {
+                    //     this->response->setAsLastEntry();
+                    // }
                     this->response->handleNewReqEntry(this->request);
                 }
-                if (isLastEntry)
-                    resetReadState();
+                // if (isLastEntry)
+                //     resetReadState();
                 updateLastActivity();
                 
             }
