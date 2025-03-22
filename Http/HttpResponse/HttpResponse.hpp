@@ -43,7 +43,7 @@ class HttpResponse: public AHttp {
         static std::string extToNature(const std::string &extension);
         static bool isCgiFile(const std::string &filePath, const HttpRequest &request);
 
-        void handleAutoIndex(const HttpRequest& request) const;
+        void handleAutoIndex(const HttpRequest& request);
         std::string makeCgiResponse(const HttpRequest &request);
         void sendResponse(void) const;
         void handleDeleteRequest(const HttpRequest &request);

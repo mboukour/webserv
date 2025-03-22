@@ -25,7 +25,7 @@ const std::string YELLOW = "\033[33m";
 const std::string RESET = "\033[0m";
 
 
-void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
+void HttpResponse::handleAutoIndex(const HttpRequest& request) {
 
     const std::string &path = request.getPath();
     const std::string &fullPath = request.getRequestBlock()->getRoot() + request.getPath();
@@ -75,13 +75,21 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) const {
     }
     response += "</body></html>";
 
-    std::stringstream headersSS;
-    headersSS << "HTTP/1.1 200 OK\r\n"
-             << "Content-Type: text/html\r\n"
-             << "Content-Length: " << response.size() << "\r\n"
-             << "\r\n";
+    this->version = request.getVersion();
+	this->statusCode = 200;
+	this->reasonPhrase = HttpErrorException::getReasonPhrase(statusCode);
+    this->headers["Content-Type"] = "text/html";
+    std::stringstream ss;
+    ss << response.size();
+    this->headers["Content-Length"] = ss.str();
+    ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+    if (state->getIsKeepAlive()) {
+        this->headers["Connection"] = "keep-alive";
+        this->headers["Keep-Alive"] = "timeout=10, max=1000";
+    } else
+        this->headers["Connection"] = "close";
 
-    ServerManager::sendString(headersSS.str(), this->clientFd);
+    ServerManager::sendString(toString(), this->clientFd);
     ServerManager::sendString(response, this->clientFd);
     closedir(dir);
 }
@@ -133,6 +141,10 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             this->reasonPhrase = "OK";
             this->headers["Content-Type"] = "text/html";
             this->headers["Content-Length"] = cl.str();
+        	ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+            if (state->getIsKeepAlive()) {
+                this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
+            }
             this->body.clear();
             ServerManager::sendString(toString(), this->clientFd);
             ServerManager::sendFile(indexFilePath, this->clientFd);

@@ -174,6 +174,9 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
 	this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);
 	this->headers["Location"] = location;
 	this->headers["Connection"] = connectState;
+	if (state->getIsKeepAlive()) {
+		this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
+	}
 	std::string toStr = this->toString();
 	ServerManager::sendString(toStr, this->clientFd);
 }

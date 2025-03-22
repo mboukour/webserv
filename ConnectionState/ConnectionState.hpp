@@ -11,7 +11,7 @@
 #include "../Http/HttpResponse/HttpResponse.hpp"
 
 #define READ_SIZE 65536
-
+#define MAX_REQUEST 1000
 class ConnectionState {
     private:
         static const int keepAliveTimeout;
@@ -22,6 +22,7 @@ class ConnectionState {
         ssize_t bytesRead;
         std::string requestBuffer;
         HttpRequest request;
+        size_t requestCount;
         enum WriteState {NOT_REGISTERED, REGISTERED};
         WriteState writeState;
         enum SendMode {NONE, STRING, FILE};

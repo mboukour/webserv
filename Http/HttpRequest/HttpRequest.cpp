@@ -157,7 +157,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             continue;
         }
 		if (this->method == "POST" && key == "Content-Type"){
-			if (value.length() > 20 && value.compare(0, 10, "multipart/form-data;")){
+			if (value.length() > 20 && !value.compare(0, 10, "multipart/form-data;")){
 				size_t bIndx = value.find("boundary");
 				if (bIndx == std::string::npos)
 					isOk = false;
@@ -172,7 +172,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 					}
 				}
 			}
-			else isOk = false; // check on later
+			// else isOk = false; // check on later
 		}
         this->headers[key] = value;
         if (key == "Host" || key == "host")

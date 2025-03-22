@@ -18,21 +18,21 @@
 const int ConnectionState::keepAliveTimeout = 10; // in seconds
 
 ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
-  readState(NO_REQUEST), bytesRead(0), request(), 
+  readState(NO_REQUEST), bytesRead(0), request(), requestCount(0), 
   writeState(NOT_REGISTERED), sendQueue(), response(NULL), 
   lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
 
 
 void ConnectionState::handleWritable(void) {
     if (this->sendQueue.empty()) {
-        Logger::getLogStream() << "Nope, nothing to send for " << this->eventFd << std::endl;
+        // Logger::getLogStream() << "Nope, nothing to send for " << this->eventFd << std::endl;
         return;
     }
-    Logger::getLogStream() << "Handling writable for " << this->eventFd << std::endl;
+    // Logger::getLogStream() << "Handling writable for " << this->eventFd << std::endl;
     updateLastActivity();
     for (std::vector<SendMe>::iterator it = this->sendQueue.begin(); it != this->sendQueue.end();)
     {
-        Logger::getLogStream() << "Iterating" << std::endl;
+        // Logger::getLogStream() << "Iterating" << std::endl;
         SendMe &toSend = *it;
         if (toSend.sendMode == FILE) {
             std::fstream fileToSend(toSend.filePath.c_str());
@@ -63,7 +63,7 @@ void ConnectionState::handleWritable(void) {
                 }
             }
         } else if (toSend.sendMode == STRING) {
-            Logger::getLogStream() << "Sedning: " << toSend.stringToSend << std::endl;
+            // Logger::getLogStream() << "Sedning: " << toSend.stringToSend << std::endl;
             size_t totalSent = 0;
             while(totalSent < toSend.stringToSend.size()) {
                 ssize_t bytesSent = send(this->eventFd, toSend.stringToSend.data() + totalSent, toSend.stringToSend.size() - totalSent, 0);
@@ -77,7 +77,7 @@ void ConnectionState::handleWritable(void) {
         it = this->sendQueue.erase(it);
     }
     if (this->sendQueue.empty()) {
-        Logger::getLogStream() << "Send queue is empty for " << this->eventFd << std::endl;
+        // Logger::getLogStream() << "Send queue is empty for " << this->eventFd << std::endl;
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLET;
         ev.data.ptr = this;
@@ -87,7 +87,10 @@ void ConnectionState::handleWritable(void) {
         }
         this->writeState = NOT_REGISTERED;
     }
-
+    // if (this->requestCount >= MAX_REQUEST) {
+    //     resetReadState();
+    //     this->isDone = true;
+    // }
 }
 
 
@@ -144,6 +147,7 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
                 this->readState = READING_BODY;
                 std::cout << MAGENTA << "Changed state\n" << RESET;
                 try {
+                    this->requestCount++;
                     this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
                     std::cout << "New Req: " << this->request;
                 } catch (const HttpErrorException &exec) {
