@@ -19,6 +19,7 @@ class HttpResponse: public AHttp {
         int statusCode;
         enum PostState {INIT_POST, NEW_REQ_ENTRY, LAST_ENTRY};
         enum ChunkState {CH_START, CH_SIZE, CH_ERROR, CH_DATA, CH_COMPLETE, CH_TRAILER};
+        enum MultiState {M_HEADERS, M_BOUND, M_BODY};
         PostState postState;
         PostState prevPostState;
         int fd;
@@ -35,6 +36,8 @@ class HttpResponse: public AHttp {
         std::string prev_chunk_size;
         bool pendingCRLF;
         bool isLastEntry;
+        MultiState multiState;
+        size_t currBound;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);
@@ -65,6 +68,7 @@ class HttpResponse: public AHttp {
         void handleNewReqEntry(const HttpRequest &request);
         bool getIsLastEntry(void) const;
         std::string toString(void) const;
+        void multiForm(const HttpRequest &request);
 };
 
 #endif

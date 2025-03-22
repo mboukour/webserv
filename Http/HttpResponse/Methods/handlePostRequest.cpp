@@ -323,6 +323,59 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 	}
 }
 
+void HttpResponse::multiForm(const HttpRequest &request){
+	size_t boundLen = request.getBoundary().length();
+	size_t curr_pos = 0;
+	std::cout << this->postState << std::endl;
+	std::string bound;
+	std::string tmp;
+	if (this->postState == INIT_POST){
+		this->postState = NEW_REQ_ENTRY;
+		this->packet = request.getBody();
+	}
+	else
+		this->packet = request.getReqEntry();
+	while (true){
+		tmp = "";
+		switch (this->multiState){
+			case M_BOUND:
+			{
+				if (boundLen > this->packet.length() - curr_pos) {
+					this->currBound += this->packet.length() - curr_pos;
+					break;
+				}
+				// tmp = this->packet.substr(0, boundLen + 1);
+				// if (tmp != bound)
+				// 	throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
+				// the whole bound was found
+				if (this->currBound != 0 && this->packet[curr_pos] == '\n'){
+					curr_pos++;
+					this->multiState = M_BODY;
+					continue;
+				}
+				curr_pos += boundLen - this->currBound + 2; // skip the bound len or what is left from bound len as i can be split + \r\n
+				if (curr_pos > this->packet.length()){
+					this->currBound = 1;
+					break;
+				}
+				this->currBound = 0;
+				this->multiState = M_HEADERS;
+			}
+			case M_HEADERS:
+			{
+
+			}
+			case M_BODY:
+			{
+
+			}
+		}
+	}
+	Logger::getLogStream() << this->packet;
+	// postResponse(request, 201, this->success_create, this->fileName);
+	// this->isLastEntry = true;
+}
+
 void HttpResponse::handlePostRequest(const HttpRequest &request) {
 	std::string path = request.getRequestBlock()->getRoot();
 	std::string __contentType = request.getHeader("Content-Type");
@@ -331,9 +384,10 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 	std::string __folder = "";
 	if (request.isChunkedRequest() == false) {
 		if (request.isMultiRequest()){
-			std::cout << MAGENTA << "Multi Form Data, key: " << request.getBoundary() << RESET << std::endl;
-      postResponse(request, 201, this->success_create, this->fileName);
-      this->isLastEntry = true;
+			this->isLastEntry = request.getBodySize() == request.getContentLength();
+			multiForm(request);
+			if (this->isLastEntry)
+				postResponse(request, 201, this->success_create, this->fileName);
 		}
 		else {
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
