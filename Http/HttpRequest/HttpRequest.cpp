@@ -12,12 +12,14 @@
 #include <string>
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
+#include "../../Utils/Logger/Logger.hpp"
 
 std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
 
 HttpRequest::HttpRequest(): AHttp(), contentLength(0), reqEntry(NULL) ,isChunked(false) {}
 
-HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL), contentLength(0), reqEntry(NULL) ,isChunked(false) {
+HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL),
+	contentLength(0), reqEntry(NULL) ,isChunked(false), isMultiForm(false), boundary("") {
 
     this->primalRequest = request;
     this->isCgi = false;
@@ -110,6 +112,7 @@ void HttpRequest::removeLeadingSpaces(std::string &str) {
 void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort) {
     std::string line;
     bool hostFound = false;
+    bool isOk = true;
     bool contentLengthFound = false;
     while(getline(ss, line) && line != "\r") { // looping through headers
         if (line[line.size() - 1] == '\r')
@@ -132,7 +135,6 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
         removeLeadingSpaces(value);
         if (key == "Content-Length")
         {
-
             std::stringstream l(value);
             l >> this->contentLength;
             if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
@@ -154,6 +156,24 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             this->headers[key] = value;
             continue;
         }
+		if (this->method == "POST" && key == "Content-Type"){
+			if (value.length() > 20 && value.compare(0, 10, "multipart/form-data;")){
+				size_t bIndx = value.find("boundary");
+				if (bIndx == std::string::npos)
+					isOk = false;
+				else{
+					std::string boundary = value.substr(bIndx);
+					bIndx = boundary.find("=");
+					if (bIndx == std::string::npos || bIndx + 1 >=  boundary.length()) // = is the last element in the boundry which means there is no key
+						isOk = false;
+					else{
+						this->boundary = boundary.substr(bIndx + 1);
+						this->isMultiForm = true;
+					}
+				}
+			}
+			else isOk = false; // check on later
+		}
         this->headers[key] = value;
         if (key == "Host" || key == "host")
         {
@@ -188,7 +208,6 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
                     }
                 }
             }
-
             if (!exactMatchFound && !prefixMatchFound) {
                 for (std::vector<Location>::const_iterator it = server.locationsCbegin();
                     it != server.locationsCend(); it++) {
@@ -206,6 +225,9 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
     if (!this->requestBlock->isMethodAllowed(this->method))
          throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
+
+	if (this->method == "POST" && isOk == false)
+		throw HttpErrorException(BAD_REQUEST, *this, "Content-Type: multipart/form-data: malformed header");
 
     if (this->method == "POST" && (!contentLengthFound && this->isChunked == false)) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn
         throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found and request is not chunked");
@@ -289,4 +311,12 @@ void HttpRequest::printHeaders(void) const {
     for (std::map<std::string, std::string>::const_iterator it = this->headers.begin(); it != this->headers.end(); it++) {
         std::cout << it->first << ": " << it->second << '\n';
     }
+}
+
+bool HttpRequest::isMultiRequest(void) const{
+	return this->isMultiForm;
+}
+
+const std::string & HttpRequest::getBoundary(void) const{
+    return this->boundary;
 }

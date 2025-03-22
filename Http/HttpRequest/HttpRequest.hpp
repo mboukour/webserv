@@ -26,6 +26,8 @@ class HttpRequest: public AHttp {
         size_t contentLength;
         const std::string *reqEntry;
         bool isChunked;
+        bool isMultiForm;
+        std::string boundary;
 
         void parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort);
         void parseCookies(void);
@@ -50,6 +52,8 @@ class HttpRequest: public AHttp {
         const Server *getServer(void) const;
         const ABlock *getRequestBlock(void) const;
         bool isChunkedRequest(void) const;
+        bool isMultiRequest(void) const;
+        const std::string & getBoundary(void) const;
         void printHeaders(void) const;
 };
 

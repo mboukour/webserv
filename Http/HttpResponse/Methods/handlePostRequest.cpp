@@ -330,8 +330,10 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 									// corresponding extension, ofc in a map
 	std::string __folder = "";
 	if (request.isChunkedRequest() == false) {
-		if (__contentType == "multipart/form-data"){
-			std::cout << MAGENTA << "Multi Form Data" << RESET << std::endl;
+		if (request.isMultiRequest()){
+			std::cout << MAGENTA << "Multi Form Data, key: " << request.getBoundary() << RESET << std::endl;
+      postResponse(request, 201, this->success_create, this->fileName);
+      this->isLastEntry = true;
 		}
 		else {
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
