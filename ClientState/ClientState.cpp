@@ -1,4 +1,4 @@
-#include "ConnectionState.hpp"
+#include "ClientState.hpp"
 
 #include <cerrno>
 #include <cstddef>
@@ -15,15 +15,15 @@
 #include "../Server/ServerManager/ServerManager.hpp"
 #include "../Utils/Logger/Logger.hpp"
 
-const int ConnectionState::keepAliveTimeout = 10; // in seconds
+const int ClientState::keepAliveTimeout = 10; // in seconds
 
-ConnectionState::ConnectionState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
+ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), requestCount(0), 
   writeState(NOT_REGISTERED), sendQueue(), response(NULL), 
   lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
 
 
-void ConnectionState::handleWritable(void) {
+void ClientState::handleWritable(void) {
     if (this->sendQueue.empty()) {
         // Logger::getLogStream() << "Nope, nothing to send for " << this->eventFd << std::endl;
         return;
@@ -80,7 +80,7 @@ void ConnectionState::handleWritable(void) {
         // Logger::getLogStream() << "Send queue is empty for " << this->eventFd << std::endl;
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLET;
-        ev.data.ptr = this;
+        ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
         if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
             std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(this->eventFd);
@@ -94,19 +94,19 @@ void ConnectionState::handleWritable(void) {
 }
 
 
-void ConnectionState::updateLastActivity(void) {
+void ClientState::updateLastActivity(void) {
     this->lastActivityTime = time(NULL);
 }
 
-bool ConnectionState::hasTimedOut(void) const {
+bool ClientState::hasTimedOut(void) const {
     return time(NULL) - lastActivityTime > keepAliveTimeout;
 }
 
-bool ConnectionState::getIsKeepAlive(void) const {
+bool ClientState::getIsKeepAlive(void) const {
     return this->isKeepAlive;
 }
 
-void ConnectionState::resetReadState(void) {
+void ClientState::resetReadState(void) {
     this->readState = NO_REQUEST;
     delete this->response;
     this->request = HttpRequest();
@@ -116,7 +116,7 @@ void ConnectionState::resetReadState(void) {
 }
 
 
-void ConnectionState::handleReadable(std::vector<Server> &servers) {
+void ClientState::handleReadable(std::vector<Server> &servers) {
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
 
@@ -211,29 +211,29 @@ void ConnectionState::handleReadable(std::vector<Server> &servers) {
     }
 }
 
-ConnectionState::SendMe::SendMe(const std::string &filePath, const std::streampos &currentPos) {
+ClientState::SendMe::SendMe(const std::string &filePath, const std::streampos &currentPos) {
     this->sendMode = FILE;
     this->filePath = filePath;
     this->currentPos = currentPos;
 }
 
-ConnectionState::SendMe::SendMe(const std::string &stringToSend) {
+ClientState::SendMe::SendMe(const std::string &stringToSend) {
     this->sendMode = STRING;
     this->stringToSend = stringToSend;
 }
 
 
-bool ConnectionState::isSendingDone(void) const {
+bool ClientState::isSendingDone(void) const {
     return this->sendQueue.empty();
 }
 
-void ConnectionState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
+void ClientState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
     Logger::getLogStream() << "Activating write state for " << this->eventFd << std::endl;
     this->sendQueue.push_back(SendMe(filePath, currentPos));
     if (this->writeState == NOT_REGISTERED) {
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-        ev.data.ptr = this;
+        ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
         if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
             std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(this->eventFd);
@@ -242,7 +242,7 @@ void ConnectionState::activateWriteState(const std::string &filePath, const std:
     }
 }
 
-void ConnectionState::activateWriteState(const std::string &stringToSend) {
+void ClientState::activateWriteState(const std::string &stringToSend) {
     Logger::getLogStream() << "Activating write state for " << this->eventFd << std::endl;
 
     this->sendQueue.push_back(SendMe(stringToSend));
@@ -250,7 +250,7 @@ void ConnectionState::activateWriteState(const std::string &stringToSend) {
         Logger::getLogStream() << "REGISTERNING " << this->eventFd << std::endl;
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-        ev.data.ptr = this;
+        ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
         if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
             std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(this->eventFd);
@@ -259,22 +259,24 @@ void ConnectionState::activateWriteState(const std::string &stringToSend) {
     }
 }
 
-int ConnectionState::getEventFd(void) const {
+int ClientState::getEventFd(void) const {
     return this->eventFd; 
 }
 
 
-HttpResponse * ConnectionState::getHttpResponse(void) const {
+HttpResponse * ClientState::getHttpResponse(void) const {
     return this->response;
 }
 
-bool ConnectionState::getIsDone(void) const {
+const HttpRequest &ClientState::getHttpRequest(void) const {
+    return this->request;
+}
+
+bool ClientState::getIsDone(void) const {
     return this->isDone;
 }
 
-ConnectionState::~ConnectionState() {
+ClientState::~ClientState() {
     if (this->response)
         delete this->response;
-    epoll_ctl(epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
-    close(this->eventFd);
 }

@@ -19,7 +19,7 @@ class Cgi {
         public:
         static bool isValidCgiExtension(const std::string &extension, const HttpRequest &request);
         static std::string getCgiResponse(const HttpRequest &request);
-
+        static void initCgi(const HttpRequest &request, int clientFd, int epollFd);
 };
 
 #endif

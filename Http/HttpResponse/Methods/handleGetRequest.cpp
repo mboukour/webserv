@@ -13,7 +13,7 @@
  #include <sys/stat.h>
 #include <vector>
 // #include "../ResponseState/ResponseState.hpp"
-#include "../../../ConnectionState/ConnectionState.hpp"
+#include "../../../ClientState/ClientState.hpp"
 #include <string>
 #include <dirent.h>
 #include <ctime>
@@ -82,7 +82,7 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) {
     std::stringstream ss;
     ss << response.size();
     this->headers["Content-Length"] = ss.str();
-    ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+    ClientState *state = ServerManager::getClientState(this->clientFd);
     if (state->getIsKeepAlive()) {
         this->headers["Connection"] = "keep-alive";
         this->headers["Keep-Alive"] = "timeout=10, max=1000";
@@ -141,7 +141,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             this->reasonPhrase = "OK";
             this->headers["Content-Type"] = "text/html";
             this->headers["Content-Length"] = cl.str();
-        	ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+        	ClientState *state = ServerManager::getClientState(this->clientFd);
             if (state->getIsKeepAlive()) {
                 this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
             }

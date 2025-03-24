@@ -4,7 +4,7 @@
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../HttpResponse.hpp"
 
-#include "../../../ConnectionState/ConnectionState.hpp"
+#include "../../../ClientState/ClientState.hpp"
 #include "../../../Debug/Debug.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../../Server/ServerManager/ServerManager.hpp"
@@ -139,7 +139,7 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
                                 std::string body, std::string const fileName) {
 	std::cout << "Sending response" << std::endl;
 	std::string connectState;
-	ConnectionState *state = ServerManager::getConnectionState(this->clientFd);
+	ClientState *state = ServerManager::getClientState(this->clientFd);
 	if (state->getIsKeepAlive())
 		connectState = "keep-alive";
 	else

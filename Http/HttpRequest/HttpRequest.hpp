@@ -33,7 +33,6 @@ class HttpRequest: public AHttp {
         void parseCookies(void);
         void validateRequestLine(void) const;
         static const Server& getServer(const std::string &host, const std::vector<Server> &servers, int serverPort);
-        static void removeLeadingSpaces(std::string &str);
         void setIsCgi(void) ;
     public:
         HttpRequest();

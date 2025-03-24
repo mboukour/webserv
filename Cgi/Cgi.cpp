@@ -1,8 +1,10 @@
 #include "Cgi.hpp"
 #include <cstddef>
+#include <fcntl.h>
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -11,6 +13,8 @@
 #include <sstream>
 #include <utility>
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include "CgiState/CgiState.hpp"
+#include "../Server/ServerManager/ServerManager.hpp"
 
 
 std::string Cgi::getCgiResponse(const HttpRequest &request) {
@@ -80,6 +84,54 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
 
     close(socket[0]);
     return cgiResponse;
+}
+
+void Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
+    std::pair<std::string, std::string> namePair = getNamePair(request); // first = scriptName // second = pathInfo
+    std::string extension = namePair.first.substr(namePair.first.find_last_of('.') + 1);
+    std::string interpreterPath = getInterpreterPath(extension, request);
+    std::string toExecute = request.getRequestBlock()->getRoot() + namePair.first;
+    std::map<std::string, std::string> env = createCgiEnv(request, namePair.first, namePair.second);
+    char **envp = convertEnvToDoublePointer(env);
+
+
+    int socket[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket) == -1) {
+        cleanupEnv(envp);
+        throw std::logic_error("Socketpair failed");
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        cleanupEnv(envp);
+        close(socket[0]);
+        close(socket[1]);
+        throw std::logic_error("Fork failed");
+    }
+
+    if (pid == 0) {
+        close(socket[0]);
+        dup2(socket[1], STDOUT_FILENO);
+        close(socket[1]);
+        char *argv[3];
+        argv[0] = const_cast<char*>(interpreterPath.c_str());
+        argv[1] = const_cast<char*>(toExecute.c_str());
+        argv[2] = NULL;
+        execve(interpreterPath.c_str(), argv, envp);
+        cleanupEnv(envp);
+        std::cerr << "CGI execution failed\n";
+        std::exit(1);
+    } // check if script exits directly and just throw internal server error??
+
+
+    cleanupEnv(envp);
+    close(socket[1]);
+    fcntl(socket[0], F_SETFL, O_NONBLOCK); // is this allowed?
+    struct epoll_event ev;
+    ev.events = EPOLLIN | EPOLLET; // cgi socket readable
+    ev.data.ptr = new EpollEvent(socket[0], pid , epollFd, ServerManager::getClientState(clientFd));
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, socket[0], &ev);
+    return;
 }
 
 bool Cgi::isValidCgiExtension(const std::string &extension, const HttpRequest &request) {

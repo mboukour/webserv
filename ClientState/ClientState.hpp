@@ -1,5 +1,5 @@
-#ifndef CONNECTIONSTATE_HPP
-#define CONNECTIONSTATE_HPP
+#ifndef ClientState_HPP
+#define ClientState_HPP
 
 #include <cstddef>
 #include <ctime>
@@ -12,7 +12,7 @@
 
 #define READ_SIZE 65536
 #define MAX_REQUEST 1000
-class ConnectionState {
+class ClientState {
     private:
         static const int keepAliveTimeout;
         const int eventFd;
@@ -59,9 +59,10 @@ class ConnectionState {
         void resetReadState(void);
         void updateLastActivity(void);
     public:
-        ConnectionState(int clientFd, int epollFd);
+        ClientState(int clientFd, int epollFd);
         // HttpRequest *getHttpRequest(void) const;
         HttpResponse *getHttpResponse(void) const;
+        const HttpRequest &getHttpRequest(void) const;
         int getEventFd(void) const;
         bool getIsDone(void) const;
         void handleReadable(std::vector<Server> &servers);
@@ -71,7 +72,7 @@ class ConnectionState {
         bool hasTimedOut(void) const;
         bool isSendingDone(void) const;
         bool getIsKeepAlive(void) const;
-        ~ConnectionState();
+        ~ClientState();
 };
 
 

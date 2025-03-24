@@ -18,11 +18,11 @@
 #include "../../Http/HttpResponse/HttpResponse.hpp"
 #include "../../Session/Login/Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
-#include "../../ConnectionState/ConnectionState.hpp"
+#include "../../ClientState/ClientState.hpp"
 #include "../../Utils/Logger/Logger.hpp"
 int ServerManager::epollFd = -1;
 std::vector<Server> ServerManager::servers;
-std::map<int, ConnectionState*> ServerManager::clientStates;
+std::map<int, EpollEvent*> ServerManager::eventStates;
 
 ServerManager::ServerManager() {}
 
@@ -32,12 +32,13 @@ void ServerManager::initialize(std::vector<Server> &serversList) {
 }
 
 void ServerManager::sendString(const std::string &str, int clientFd) {
-    ConnectionState *state = getConnectionState(clientFd);
+    // EpollEvent *
+    ClientState *state = getClientState(clientFd);
     state->activateWriteState(str);
 }
 
 void ServerManager::sendFile(const std::string &filePath, int clientFd) {
-    ConnectionState *state = getConnectionState(clientFd);
+    ClientState *state = getClientState(clientFd);
     state->activateWriteState(filePath, 0);
 }
 
@@ -79,9 +80,9 @@ void ServerManager::acceptConnections(int fdSocket) {
     DEBUG && std::cout << "New connection accepted: " << clientFd << std::endl;
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
-    ConnectionState *state = new ConnectionState(clientFd, epollFd);
-    clientStates[clientFd] = state;
-    ev.data.ptr = state;
+    EpollEvent* clientEvent = new EpollEvent(clientFd, epollFd, EpollEvent::CLIENT_CONNECTION);
+    ev.data.ptr = clientEvent;
+    eventStates[clientFd] = clientEvent;
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
     {
         std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
@@ -89,8 +90,37 @@ void ServerManager::acceptConnections(int fdSocket) {
     }
 }
 
-ConnectionState *ServerManager::getConnectionState(int clientFd) {
-    return clientStates.at(clientFd);
+ClientState *ServerManager::getClientState(int clientFd) {
+    return eventStates.at(clientFd)->getClientState();
+}
+
+EpollEvent *ServerManager::getEpollEvent(int clientFd) {
+    return eventStates.at(clientFd);
+}
+void ServerManager::cgiEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
+    CgiState *state = epollEvent->getCgiState();
+    if (event.events & EPOLLIN) // we only register cgi for readable, we will never write to it
+        state->handleCgiReadable();
+}
+
+void ServerManager::clientServerEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
+    const int eventFd = epollEvent->getEventFd();
+    if (epollEvent->getEventType() == EpollEvent::SERVER_SOCKET) {
+        if (event.events & EPOLLIN)
+            acceptConnections(eventFd);
+        return;
+    }
+    ClientState *state = epollEvent->getClientState();
+    if (event.events & EPOLLIN)
+        state->handleReadable(servers);
+    if (event.events & EPOLLOUT)
+        state->handleWritable();
+    if ((state->getIsDone() && state->isSendingDone()) || !state->getIsKeepAlive()) {
+        Logger::getLogStream() << "Deleteting state: " << eventFd << std::endl;
+        delete state;
+        std::map<int, EpollEvent *>::iterator it = eventStates.find(eventFd);
+        eventStates.erase(it);
+    }
 }
 
 void ServerManager::handleConnections(void) {
@@ -109,39 +139,29 @@ void ServerManager::handleConnections(void) {
         }
         for (int i = 0; i < event_count; i++)
         {
-            ConnectionState *state = static_cast<ConnectionState *>(events[i].data.ptr);
-            int eventFd = state->getEventFd();
-            if (events[i].events & EPOLLIN) {
-                if (isAServerFdSocket(eventFd))
-                    acceptConnections(eventFd);
-                else
-                    state->handleReadable(servers);
-            }
+            // ClientState *state = static_cast<ClientState *>(events[i].data.ptr);
+            EpollEvent *epollEvent = static_cast<EpollEvent *>(events[i].data.ptr);
+            const int eventType = epollEvent->getEventType();
+            if (eventType == EpollEvent::SERVER_SOCKET || eventType == EpollEvent::CLIENT_CONNECTION)
+                clientServerEpoll(epollEvent, events[i]);
+            else // CGI_READ
+                cgiEpoll(epollEvent, events[i]);
 
-            if (events[i].events & EPOLLOUT) {
-                state->handleWritable();
-            }
-            if ((state->getIsDone() && state->isSendingDone()) || !state->getIsKeepAlive()) {
-                Logger::getLogStream() << "Deleteting state: " << eventFd << std::endl;
-                delete state;
-                std::map<int, ConnectionState *>::iterator it = clientStates.find(eventFd);
-                clientStates.erase(it);
-            }
         }
 
-        for (std::map<int, ConnectionState*>::iterator it = clientStates.begin(); 
-            it != clientStates.end(); ) {
+        // for (std::map<int, EpollEvent*>::iterator it = eventStates.begin(); 
+        //     it != eventStates.end(); ) {
        
-            if (it->second->hasTimedOut() || (it->second->getIsDone() && it->second->isSendingDone())) {
-                Logger::getLogStream() << it->second->getEventFd() << " has timedout" << std::endl;
-                std::map<int, ConnectionState*>::iterator toErase = it;
-                ++it;
-                delete toErase->second;
-                clientStates.erase(toErase);
-            } else {
-                ++it;
-            }
-        }
+        //     if (it->second->hasTimedOut() || (it->second->getIsDone() && it->second->isSendingDone())) {
+        //         Logger::getLogStream() << it->second->getEventFd() << " has timedout" << std::endl;
+        //         std::map<int, ClientState*>::iterator toErase = it;
+        //         ++it;
+        //         delete toErase->second;
+        //         clientStates.erase(toErase);
+        //     } else {
+        //         ++it;
+        //     }
+        // }
     }
 }
 
@@ -161,7 +181,13 @@ void ServerManager::start(void) {
         it->startServer();
         int fdSocket = it->getFdSocket();
         ev.events = EPOLLIN | EPOLLET;
-        ev.data.ptr = new ConnectionState(fdSocket, epollFd);
+        // ev.data.ptr = new ClientState(fdSocket, epollFd);
+        EpollEvent *serverEvent = new EpollEvent(fdSocket, epollFd, EpollEvent::SERVER_SOCKET);
+        eventStates[fdSocket] = serverEvent;
+        std::cout << "Map entry for fd " << fdSocket << ": " 
+          << eventStates[fdSocket] << " type: " 
+          << eventStates[fdSocket]->getEventType() << std::endl;
+        ev.data.ptr = serverEvent;
         if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
         {
             std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
@@ -172,18 +198,11 @@ void ServerManager::start(void) {
 }
 
 void ServerManager::cleanUp() {
-    if (epollFd != -1)
-        close(epollFd);
-    for (std::vector<Server>::iterator it = servers.begin(); 
-        it != servers.end(); it++) {
-            if (!it->isServerUp())
-                break;
-            close(it->getFdSocket());
-    }
-
-    for (std::map<int, ConnectionState *>::iterator ite = clientStates.begin();
-        ite != clientStates.end(); ite++) {
-            delete ite->second;
-        }
+    // for (std::map<int, EpollEvent *>::iterator ite = eventStates.begin();
+    // ite != eventStates.end(); ite++) {
+    //     delete ite->second;
+    // }
     
+    // if (epollFd != -1)
+    //     close(epollFd);
 }

@@ -7,10 +7,10 @@ EXCEPTIONS = Exceptions/HttpErrorException/HttpErrorException.cpp
 HTTP = Http/AHttp/AHttp.cpp Http/HttpRequest/HttpRequest.cpp Http/HttpResponse/HttpResponse.cpp \
        Http/HttpResponse/Methods/handleDeleteRequest.cpp Http/HttpResponse/Methods/handleGetRequest.cpp \
        Http/HttpResponse/Methods/handlePostRequest.cpp
-STATE = ConnectionState/ConnectionState.cpp
-CGI = Cgi/Cgi.cpp
+STATE = EpollEvent/EpollEvent.cpp ClientState/ClientState.cpp
+CGI = Cgi/Cgi.cpp Cgi/CgiState/CgiState.cpp
 SESSION = Session/Login/Login.cpp
-UTILS = Utils/Logger/Logger.cpp
+UTILS = Utils/Logger/Logger.cpp Utils/AllUtils/AllUtils.cpp
 SRC += $(EXCEPTIONS) $(HTTP) $(CGI) $(SESSION) $(UTILS) $(STATE)
 OBJ = $(SRC:.cpp=.o)
 FLAGS = -Wall -Wextra -Werror -std=c++98

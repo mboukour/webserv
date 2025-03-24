@@ -13,6 +13,8 @@
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
 #include "../../Utils/Logger/Logger.hpp"
+#include "../../Utils/AllUtils/AllUtils.hpp"
+
 
 std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
 
@@ -103,12 +105,7 @@ std::string HttpRequest::getQueryString(void) const {
 std::string HttpRequest::getCookie(const std::string &cookie) const {
     return this->cookies.at(cookie);
 }
-void HttpRequest::removeLeadingSpaces(std::string &str) {
-    size_t firstNonSpace = str.find_first_not_of(" \t");
-    if (firstNonSpace != std::string::npos) {
-        str.erase(0, firstNonSpace);
-    }
-}
+
 void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort) {
     std::string line;
     bool hostFound = false;
@@ -132,7 +129,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
         key = line.substr(0, pos);
         value = line.substr(pos + 1);
-        removeLeadingSpaces(value);
+        AllUtils::removeLeadingSpaces(value);
         if (key == "Content-Length")
         {
             std::stringstream l(value);
@@ -240,7 +237,7 @@ void HttpRequest::parseCookies(void) {
     std::stringstream ss(cookieString);
     std::string singleCookie;
     while(getline(ss, singleCookie, ';')) {
-        removeLeadingSpaces(singleCookie);
+        AllUtils::removeLeadingSpaces(singleCookie);
         // std::cout << singleCookie << '\n';
         std::stringstream sc(singleCookie);
         std::string key;
