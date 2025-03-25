@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdlib>
+#include <stdexcept>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -91,20 +92,37 @@ void ServerManager::acceptConnections(int fdSocket) {
 }
 
 ClientState *ServerManager::getClientState(int clientFd) {
-    return eventStates.at(clientFd)->getClientState();
+    try {
+        return eventStates.at(clientFd)->getClientState();
+    } catch (const std::out_of_range &ex) {
+        std::cout << "Client state out of range" << std::endl;
+        return NULL;
+    }
 }
 
 EpollEvent *ServerManager::getEpollEvent(int clientFd) {
-    return eventStates.at(clientFd);
+    // try {
+        return eventStates.at(clientFd);
+    // } catch (const std::out_of_range &ex) {
+    //     std::cout << "Epoll event out of range: " << clientFd << std::endl;
+    //     return NULL;
+    // }
 }
+
+void ServerManager::registerEpollEvent(int fd, EpollEvent *event) {
+    eventStates[fd] = event;
+}
+
 void ServerManager::cgiEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
     CgiState *state = epollEvent->getCgiState();
     if (event.events & EPOLLIN) // we only register cgi for readable, we will never write to it
         state->handleCgiReadable();
+    
 }
 
 void ServerManager::clientServerEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
     const int eventFd = epollEvent->getEventFd();
+    Logger::getLogStream() << "New event: " << eventFd << std::endl;
     if (epollEvent->getEventType() == EpollEvent::SERVER_SOCKET) {
         if (event.events & EPOLLIN)
             acceptConnections(eventFd);
@@ -115,12 +133,66 @@ void ServerManager::clientServerEpoll(EpollEvent *epollEvent, struct epoll_event
         state->handleReadable(servers);
     if (event.events & EPOLLOUT)
         state->handleWritable();
-    if ((state->getIsDone() && state->isSendingDone()) || !state->getIsKeepAlive()) {
-        Logger::getLogStream() << "Deleteting state: " << eventFd << std::endl;
-        delete state;
-        std::map<int, EpollEvent *>::iterator it = eventStates.find(eventFd);
-        eventStates.erase(it);
+}
+
+
+void ServerManager::removeCgiAfterClient(ClientState *client) {
+    for (std::map<int, EpollEvent *>::iterator it = eventStates.begin();
+        it != eventStates.end(); ) {
+            std::map<int, EpollEvent*>::iterator toErase = it;
+            it++;
+            if (toErase->second->getEventType() == EpollEvent::CGI_READ) {
+                CgiState *cgiState = toErase->second->getCgiState();
+                if (cgiState->getClient() == client) {
+                    cgiState->cleanUpCgi();
+                    delete toErase->second;
+                    eventStates.erase(toErase);
+                }
+            }
+        }
+}
+
+bool ServerManager::checkIfDone(EpollEvent *event) {
+    const int eventType = event->getEventType();
+    switch (eventType) {
+        case EpollEvent::SERVER_SOCKET: { // we skip it, therefore not posi
+            throw std::logic_error("Can't check if server socket has timedout");
+        }
+        case EpollEvent::CGI_READ: {
+            if (event->getIsDone())
+                return true;
+            if (!event->hasTimedOut()) // not done and did timeout
+                return false;
+            CgiState *cgiState = event->getCgiState();
+            cgiState->notifyTimeOut();
+            return true;
+        }
+        case EpollEvent::CLIENT_CONNECTION: {
+            ClientState *clientState = event->getClientState();
+            if (event->hasTimedOut()) {
+                removeCgiAfterClient(clientState);
+                return true;
+            }
+            if (!event->getIsDone()) // not done, hasnt timedout
+                return false;
+            if (clientState->isSendingDone()) {
+                removeCgiAfterClient(clientState);
+                return true;
+            }
+            return false; // sending needs to be set as done
+        }
     }
+    return false;
+    // if (!event->getIsDone())
+    //     return false;
+    // if (event->getEventType() == EpollEvent::CGI_READ) // done cgi read
+    //     return true;
+    // if (event->getEventType() == EpollEvent::CLIENT_CONNECTION) {
+    //     ClientState *state = event->getClientState();
+    //     if (state->isSendingDone())
+    //         return true;
+    // }
+    // return false;
 }
 
 void ServerManager::handleConnections(void) {
@@ -131,6 +203,7 @@ void ServerManager::handleConnections(void) {
     while (true)
     {
         int event_count = epoll_wait(epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT_MS);
+        Logger::getLogStream() << "Epoll return..." << std::endl;
         if (event_count == -1)
         {
             errorStr = "epoll_wait() failed. Errno: ";
@@ -149,19 +222,23 @@ void ServerManager::handleConnections(void) {
 
         }
 
-        // for (std::map<int, EpollEvent*>::iterator it = eventStates.begin(); 
-        //     it != eventStates.end(); ) {
-       
-        //     if (it->second->hasTimedOut() || (it->second->getIsDone() && it->second->isSendingDone())) {
-        //         Logger::getLogStream() << it->second->getEventFd() << " has timedout" << std::endl;
-        //         std::map<int, ClientState*>::iterator toErase = it;
-        //         ++it;
-        //         delete toErase->second;
-        //         clientStates.erase(toErase);
-        //     } else {
-        //         ++it;
-        //     }
-        // }
+        for (std::map<int, EpollEvent*>::iterator it = eventStates.begin(); 
+            it != eventStates.end(); ) {
+            if (it->second->getEventType() == EpollEvent::SERVER_SOCKET) {
+                ++it;
+                continue;
+            }
+            if (checkIfDone(it->second)) {
+                
+                Logger::getLogStream() << it->second->getEventFd() << " has timedout or is done" << std::endl;
+                std::map<int, EpollEvent*>::iterator toErase = it;
+                ++it;
+                delete toErase->second;
+                eventStates.erase(toErase);
+            } else {
+                ++it;
+            }
+        }
     }
 }
 

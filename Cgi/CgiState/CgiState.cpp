@@ -5,6 +5,7 @@
 #include <ctime>
 #include <sched.h>
 #include <sstream>
+#include <sys/epoll.h>
 #include <vector>
 #include <sys/wait.h>
 #include "../../Utils/AllUtils/AllUtils.hpp"
@@ -12,9 +13,10 @@
 
 
 CgiState::CgiState(int cgiRead, pid_t cgiPid,  ClientState *client):
-    cgiRead(cgiRead), client(client), cgiPid(cgiPid),
+    cgiTimeout(5), cgiRead(cgiRead), cgiPid(cgiPid),
+    client(client), lastActivityTime(time(NULL)),
     readMode(RAW_CHUNKED), readState(READING_HEADERS), contentSent(0), contentLength(0),
-    isClean(false),isDone(false) {} // we assume we have to make our own chunked unless headers specify not to :)
+    isResponding(false), isClean(false),isDone(false) {} // we assume we have to make our own chunked unless headers specify not to :)
 
 
 void CgiState::parseCgiHeaders(void) {
@@ -132,12 +134,33 @@ void CgiState::readCgi(std::string bufferStr) {
             this->readState = READING_BODY;
             this->initBuffer.insert(0, "HTTP/1.1 200 OK\r\n");
             this->client->activateWriteState(this->initBuffer);
+            this->isResponding = true; // init buffer will always be sent first
             break;
         }
         case READING_BODY: {
             setupReadMode(bufferStr);
         }
     }
+}
+
+void CgiState::updateLastActivity(void) {
+    this->lastActivityTime = time(NULL);
+}
+
+bool CgiState::hasTimedOut(void) const {
+    return time(NULL) - lastActivityTime > cgiTimeout;
+}
+
+void CgiState::notifyTimeOut(void) {
+    if (!this->isResponding) {
+        HttpErrorException timeout(GATEWAY_TIMEOUT, "Cgi script has timedout");
+        std::cout << timeout.what() << std::endl;
+        this->client->activateWriteState(timeout.getResponseString());
+    }
+}
+
+ClientState *CgiState::getClient(void) const {
+    return this->client;
 }
 
 void CgiState::sendCurrentChunk(void) {
@@ -152,9 +175,8 @@ void CgiState::handleCgiReadable(void) {
         std::vector<char> buffer(4096);
         ssize_t bytesRead = recv(cgiRead, buffer.data(), buffer.size(), 0);
         if (bytesRead == 0) {
-            if (this->readMode == RAW_CHUNKED) {
+            if (this->readMode == RAW_CHUNKED)
                 sendCurrentChunk();
-            }
             cleanUpCgi();
             return;
         } else if (bytesRead > 0)
@@ -162,6 +184,7 @@ void CgiState::handleCgiReadable(void) {
         else {
             if (this->readMode == RAW_CHUNKED)
                 sendCurrentChunk();
+            updateLastActivity();
             return;
         }
     }
@@ -173,11 +196,11 @@ bool CgiState::getIsDone(void) const {
 }
 
 void CgiState::cleanUpCgi(void) {
-    close(cgiRead);
     pid_t res = waitpid(cgiPid, NULL, WNOHANG);
     if (res == 0) // still running
         kill(cgiPid, SIGKILL);
     this->isClean = true;
+    this->isDone = true;
 }
 
 CgiState::~CgiState() {

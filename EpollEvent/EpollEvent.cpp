@@ -6,7 +6,7 @@
 #include <sys/epoll.h>
 
 EpollEvent::EpollEvent(int eventFd, int epollFd, EventType eventType): // for servers and clients
-    eventFd(eventFd), epollFd(epollFd), eventType(eventType), lastActivityTime(time(NULL)) {
+    eventFd(eventFd), epollFd(epollFd), eventType(eventType) {
         if (this->eventType == CGI_READ)
             throw std::logic_error("Invalid EpollEvent constructor for init CGI");
         if (this->eventType == CLIENT_CONNECTION)
@@ -17,7 +17,7 @@ EpollEvent::EpollEvent(int eventFd, int epollFd, EventType eventType): // for se
 }
 
 EpollEvent::EpollEvent(int cgiRead, int cgiPid, int epollFd , ClientState *clientToSend): 
-    eventFd(cgiRead), epollFd(epollFd), eventType(CGI_READ), lastActivityTime(time(NULL)) {
+    eventFd(cgiRead), epollFd(epollFd), eventType(CGI_READ) {
         this->eventData.cgiState = new CgiState(cgiRead, cgiPid, clientToSend);
 }
 
@@ -57,8 +57,21 @@ bool EpollEvent::getIsDone(void) const {
         return this->eventData.cgiState->getIsDone();
 }
 
+bool EpollEvent::hasTimedOut(void) const {
+    if (this->eventType == SERVER_SOCKET)
+        throw std::logic_error("Server sockets can't time out");
+    else if (this->eventType == CLIENT_CONNECTION)
+        return this->eventData.clientState->hasTimedOut();
+    else // this->eventType = CGI_READ
+        return this->eventData.cgiState->hasTimedOut();
+}
+
 EpollEvent::~EpollEvent() {
     std::cout << "Closing event " << eventFd << std::endl;
+    if (this->eventType == CLIENT_CONNECTION)
+        delete this->eventData.clientState;
+    else if (this->eventType == CGI_READ)
+        delete this->eventData.cgiState;
     epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
     close (this->eventFd);
 }

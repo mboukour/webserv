@@ -21,14 +21,17 @@ class ServerManager {
 
         ServerManager();
 
+        static bool checkIfDone(EpollEvent *event);
         static bool isAServerFdSocket(int fdSocket);
         static const Server &getServer(int port);
         static void handleConnections(void);
         static void acceptConnections(int fdSocket);
         static void clientServerEpoll(EpollEvent *epollEvent, struct epoll_event &event);
         static void cgiEpoll(EpollEvent *epollEvent, struct epoll_event &event);
+        static void removeCgiAfterClient(ClientState *client);
     public:
         // static void sendResponse(HttpRequest &request, int clientFd);
+        static void registerEpollEvent(int fd, EpollEvent *event);
         static void sendString(const std::string &str, int clientFd);
         static void sendFile(const std::string &filePath, int clientFd);
         static ClientState *getClientState(int clientFd);

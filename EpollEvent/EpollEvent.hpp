@@ -21,17 +21,16 @@ class EpollEvent {
         CgiState *getCgiState(void) const;
         int getEventFd(void) const;
         bool getIsDone(void) const;
+        bool hasTimedOut(void) const;
         ~EpollEvent();
     private:
         const int eventFd;
         const int epollFd;
         const EventType eventType;
-        time_t lastActivityTime;
         union EventData {
             ClientState *clientState;
             CgiState *cgiState;
         } eventData;
-
 
 };
 

@@ -129,8 +129,10 @@ void Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
     fcntl(socket[0], F_SETFL, O_NONBLOCK); // is this allowed?
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET; // cgi socket readable
-    ev.data.ptr = new EpollEvent(socket[0], pid , epollFd, ServerManager::getClientState(clientFd));
+    EpollEvent *event = new EpollEvent(socket[0], pid , epollFd, ServerManager::getClientState(clientFd));
+    ev.data.ptr = event;
     epoll_ctl(epollFd, EPOLL_CTL_ADD, socket[0], &ev);
+    ServerManager::registerEpollEvent(socket[0], event);
     return;
 }
 
