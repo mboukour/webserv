@@ -199,25 +199,30 @@ std::string HttpResponse::setFileName(const HttpRequest &request) {
 }
 
 void HttpResponse::firstPostBin(const HttpRequest &request) {
-  if (isDir(setFileName(request).c_str()) == true) {
-    this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT,
-                    S_IRUSR | S_IWUSR); // check for failure
-    write(this->fd, request.getBody().c_str(), request.getBody().size());
-  } else {
-    std::cout << RED << "Folder do not exist!" << RESET << std::endl;
-    // throw an exception with an appropriate error page!!!!!!!!!!!!!
-  }
+	if (!request.isCgiRequest()) {
+		if (isDir(setFileName(request).c_str()) == true) {
+		  this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT,
+						  S_IRUSR | S_IWUSR); // check for failure
+		  write(this->fd, request.getBody().c_str(), request.getBody().size());
+		} else {
+		  std::cout << RED << "Folder do not exist!" << RESET << std::endl;
+		  // throw an exception with an appropriate error page!!!!!!!!!!!!!
+		}
+	} else {
+		cgiState->activateWriteState(request.getBody());
+	}
 }
 
 void	HttpResponse::setPacket(const HttpRequest &request){
 	if (this->postState == INIT_POST){
 		this->postState = NEW_REQ_ENTRY;
-		if (isDir(setFileName(request).c_str()) == true){
-
-			this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR); // check for failure
+		if (!request.isCgiRequest()) {
+			if (isDir(setFileName(request).c_str()) == true){
+				this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR); // check for failure
+			}
+			else
+				std::cout << RED << "Folder do not exist!" << RESET << std::endl; // might update it to throw an exception later
 		}
-		else
-			std::cout << RED << "Folder do not exist!" << RESET << std::endl; // might update it to throw an exception later
 		this->packet = request.getBody();
 	}
 	else
@@ -293,7 +298,10 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					processing = true;
 					this->chunkState = CH_TRAILER;
 				}
-				write(this->fd, this->packet.c_str() + curr_pos, ch_size);
+				if (request.isCgiRequest())
+					cgiState->activateWriteState(this->packet.c_str() + curr_pos);
+				else
+					write(this->fd, this->packet.c_str() + curr_pos, ch_size);
 				this->remaining_chunk_size -= ch_size;
 				if (!this->remaining_chunk_size)
 					this->chunkState = CH_TRAILER;
@@ -317,7 +325,8 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				break;
 			case CH_COMPLETE:
 					this->isLastEntry = true;
-					postResponse(request, 201, this->success_create, this->fileName);
+					if (!request.isCgiRequest())
+						postResponse(request, 201, this->success_create, this->fileName);
 					return;
 				break;
 			default:
@@ -389,21 +398,21 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 		if (request.isMultiRequest()){
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
 			multiForm(request);
-			if (this->isLastEntry)
+			if (this->isLastEntry && !request.isCgiRequest())
 				postResponse(request, 201, this->success_create, this->fileName);
 		}
 		else {
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
 			if (this->postState == INIT_POST || (this->postState == LAST_ENTRY && this->prevPostState == INIT_POST)) {
 				firstPostBin(request);
-				if (this->isLastEntry)
+				if (this->isLastEntry && !request.isCgiRequest())
 					postResponse(request, 201, this->success_create, this->fileName);
 				this->postState = NEW_REQ_ENTRY;
 			}
 			else {
 				const std::string *buff = request.getReqEntryPtr();
 				write(this->fd, buff->c_str(), buff->size());
-				if (this->isLastEntry)
+				if (this->isLastEntry && !request.isCgiRequest())
 					postResponse(request, 201, this->success_create, this->fileName);
 			}
 		}

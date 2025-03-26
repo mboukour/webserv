@@ -13,12 +13,11 @@ EpollEvent::EpollEvent(int eventFd, int epollFd, EventType eventType): // for se
             this->eventData.clientState = new ClientState(this->eventFd, this->epollFd);
         else if (this->eventType == SERVER_SOCKET)
             this->eventData.clientState = NULL;
-        std::cout << "EventType for " << eventFd << " is " << eventType << " " << this << std::endl;
 }
 
-EpollEvent::EpollEvent(int cgiRead, int cgiPid, int epollFd , ClientState *clientToSend): 
-    eventFd(cgiRead), epollFd(epollFd), eventType(CGI_READ) {
-        this->eventData.cgiState = new CgiState(cgiRead, cgiPid, clientToSend);
+EpollEvent::EpollEvent(int cgiFd, int cgiPid, int epollFd , ClientState *clientToSend): 
+    eventFd(cgiFd), epollFd(epollFd), eventType(CGI_READ) {
+        this->eventData.cgiState = new CgiState(cgiFd, cgiPid, epollFd, clientToSend);
 }
 
 // EpollEvent::EpollEvent(const EpollEvent& other): eventFd(other.eventFd), epollFd(other.epollFd), eventType(other.eventType) {

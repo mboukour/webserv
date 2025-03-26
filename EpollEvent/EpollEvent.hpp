@@ -15,7 +15,7 @@ class EpollEvent {
             CGI_READ,
         };
         EpollEvent(int eventFd, int epollFd, EventType eventType);
-        EpollEvent(int cgiRead, int cgiPid, int epollFd , ClientState *clientToSend);
+        EpollEvent(int cgiFd, int cgiPid, int epollFd , ClientState *clientToSend);
         EventType getEventType(void) const;
         ClientState *getClientState(void) const;
         CgiState *getCgiState(void) const;

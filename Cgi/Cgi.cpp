@@ -17,7 +17,7 @@
 #include "../Server/ServerManager/ServerManager.hpp"
 
 
-std::string Cgi::getCgiResponse(const HttpRequest &request) {
+CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
     std::pair<std::string, std::string> namePair = getNamePair(request); // first = scriptName // second = pathInfo
     std::string extension = namePair.first.substr(namePair.first.find_last_of('.') + 1);
     std::string interpreterPath = getInterpreterPath(extension, request);
@@ -43,75 +43,7 @@ std::string Cgi::getCgiResponse(const HttpRequest &request) {
     if (pid == 0) {
         close(socket[0]);
         dup2(socket[1], STDOUT_FILENO);
-        close(socket[1]);
-        char *argv[3];
-        argv[0] = const_cast<char*>(interpreterPath.c_str());
-        argv[1] = const_cast<char*>(toExecute.c_str());
-        argv[2] = NULL;
-        execve(interpreterPath.c_str(), argv, envp);
-        cleanupEnv(envp);
-        std::cerr << "CGI execution failed\n";
-        std::exit(1);
-    }
-
-
-    cleanupEnv(envp);
-    close(socket[1]);
-
-    clock_t start = clock();
-    int status;
-    while (waitpid(pid, &status, WNOHANG) != -1) {
-        if ((clock() - start) / CLOCKS_PER_SEC > CGI_TIMEOUT) {
-            kill(pid, SIGKILL);
-            close(socket[0]);
-            throw HttpErrorException(GATEWAY_TIMEOUT, request, "The CGI script took too long to respond");
-        }
-    }
-    if (WIFEXITED(status) && WEXITSTATUS(status)) {
-        throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "CGI script exited with a non-zero code");
-    }
-    std::string cgiResponse;
-    char buffer[4096];
-    ssize_t bytesRead;
-    while ((bytesRead = recv(socket[0], buffer, sizeof(buffer), 0)) > 0) {
-        cgiResponse.append(buffer, bytesRead);
-    }
-
-    if (bytesRead == -1) {
-        close(socket[0]);
-        throw std::logic_error("Error reading from the socket");
-    }
-
-    close(socket[0]);
-    return cgiResponse;
-}
-
-void Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
-    std::pair<std::string, std::string> namePair = getNamePair(request); // first = scriptName // second = pathInfo
-    std::string extension = namePair.first.substr(namePair.first.find_last_of('.') + 1);
-    std::string interpreterPath = getInterpreterPath(extension, request);
-    std::string toExecute = request.getRequestBlock()->getRoot() + namePair.first;
-    std::map<std::string, std::string> env = createCgiEnv(request, namePair.first, namePair.second);
-    char **envp = convertEnvToDoublePointer(env);
-
-
-    int socket[2];
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket) == -1) {
-        cleanupEnv(envp);
-        throw std::logic_error("Socketpair failed");
-    }
-
-    pid_t pid = fork();
-    if (pid == -1) {
-        cleanupEnv(envp);
-        close(socket[0]);
-        close(socket[1]);
-        throw std::logic_error("Fork failed");
-    }
-
-    if (pid == 0) {
-        close(socket[0]);
-        dup2(socket[1], STDOUT_FILENO);
+        dup2(socket[1], STDIN_FILENO);
         close(socket[1]);
         char *argv[3];
         argv[0] = const_cast<char*>(interpreterPath.c_str());
@@ -133,7 +65,7 @@ void Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
     ev.data.ptr = event;
     epoll_ctl(epollFd, EPOLL_CTL_ADD, socket[0], &ev);
     ServerManager::registerEpollEvent(socket[0], event);
-    return;
+    return event->getCgiState();
 }
 
 bool Cgi::isValidCgiExtension(const std::string &extension, const HttpRequest &request) {
@@ -236,7 +168,7 @@ std::map<std::string, std::string> Cgi::createCgiEnv(const HttpRequest &request,
     if (!contentType.empty())
         env["CONTENT_TYPE"] = request.getHeader("Content-Type");
     std::stringstream ss;
-    ss << request.getBodySize();
+    ss << request.getContentLength();
     env["CONTENT_LENGTH"] = ss.str();
 
     env["HTTP_HOST"] = request.getHeader("Host");

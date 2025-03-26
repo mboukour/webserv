@@ -12,6 +12,8 @@
 
 #define READ_SIZE 65536
 #define MAX_REQUEST 1000
+
+class CgiState;
 class ClientState {
     private:
         static const int keepAliveTimeout;
@@ -37,21 +39,15 @@ class ClientState {
 
                 SendMe(const std::string &filePath, const std::streampos &currentPos);
                 SendMe(const std::string &stringToSend);
-                void changeSend(const std::string &filePath, const std::streampos &currentPos) {
-                    this->sendMode = FILE;
-                    this->filePath = filePath;
-                    this->currentPos = currentPos;
-                }
-                void changeSend(const std::string &stringToSend) {
-                    this->sendMode = STRING;
-                    this->stringToSend = stringToSend;
-                }
+                void changeSend(const std::string &filePath, const std::streampos &currentPos);
+                void changeSend(const std::string &stringToSend);
         };
         std::vector<SendMe> sendQueue;
         // std::string filePath;
         // std::streampos currentPos;
         // std::string stringToSend;
         HttpResponse *response;
+        CgiState *cgiState;
         time_t lastActivityTime;
         bool isKeepAlive;
         bool isDone;

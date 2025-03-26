@@ -5,17 +5,22 @@
 #include <ctime>
 #include <sched.h>
 #include <sstream>
+#include <string>
 #include <sys/epoll.h>
+#include <sys/types.h>
 #include <vector>
 #include <sys/wait.h>
 #include "../../Utils/AllUtils/AllUtils.hpp"
+#include "../../Utils/Logger/Logger.hpp"
+
 #include "../../Server/ServerManager/ServerManager.hpp"
 
 
-CgiState::CgiState(int cgiRead, pid_t cgiPid,  ClientState *client):
-    cgiTimeout(5), cgiRead(cgiRead), cgiPid(cgiPid),
+CgiState::CgiState(int cgiFd, pid_t cgiPid, int epollFd,  ClientState *client):
+    cgiTimeout(5), cgiFd(cgiFd), epollFd(epollFd) ,cgiPid(cgiPid),
     client(client), lastActivityTime(time(NULL)),
     readMode(RAW_CHUNKED), readState(READING_HEADERS), contentSent(0), contentLength(0),
+    writeState(NOT_REGISTERED), writeQueue(),
     isResponding(false), isClean(false),isDone(false) {} // we assume we have to make our own chunked unless headers specify not to :)
 
 
@@ -151,9 +156,9 @@ bool CgiState::hasTimedOut(void) const {
     return time(NULL) - lastActivityTime > cgiTimeout;
 }
 
-void CgiState::notifyTimeOut(void) {
+void CgiState::notifyCgiClient(int statusCode) {
     if (!this->isResponding) {
-        HttpErrorException timeout(GATEWAY_TIMEOUT, "Cgi script has timedout");
+        HttpErrorException timeout(statusCode, "Cgi script has timedout or did exit");
         std::cout << timeout.what() << std::endl;
         this->client->activateWriteState(timeout.getResponseString());
     }
@@ -170,26 +175,84 @@ void CgiState::sendCurrentChunk(void) {
     this->currentChunk.clear();
 }
 
-void CgiState::handleCgiReadable(void) {
+
+
+void CgiState::handlecgiReadable(void) {
     while (true) {
         std::vector<char> buffer(4096);
-        ssize_t bytesRead = recv(cgiRead, buffer.data(), buffer.size(), 0);
+        ssize_t bytesRead = recv(cgiFd, buffer.data(), buffer.size(), 0);
         if (bytesRead == 0) {
-            if (this->readMode == RAW_CHUNKED)
+            if (!this->isResponding)
+                notifyCgiClient(INTERNAL_SERVER_ERROR);
+            else if (this->readMode == RAW_CHUNKED)
                 sendCurrentChunk();
             cleanUpCgi();
             return;
         } else if (bytesRead > 0)
             readCgi(std::string(buffer.data(), bytesRead));
         else {
-            if (this->readMode == RAW_CHUNKED)
+            if (this->readMode == RAW_CHUNKED && this->isResponding)
                 sendCurrentChunk();
             updateLastActivity();
             return;
         }
     }
+    updateLastActivity();
 }
 
+bool CgiState::isCgiAlive(void) const {
+    pid_t res = waitpid(this->cgiPid, NULL, WNOHANG);
+    if (res == -1 || res == this->cgiPid)
+        return false;
+    return true;
+}
+
+void CgiState::activateWriteState(const std::string &toWrite) {
+    std::cout << "CGI WRITE STATE" << std::endl;
+    this->writeQueue.push_back(toWrite);
+    if (this->writeState == NOT_REGISTERED) {
+        struct epoll_event ev;
+        ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+        ev.data.ptr = ServerManager::getEpollEvent(this->cgiFd);
+        epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->cgiFd, &ev);
+        this->writeState = REGISTERED;
+    }
+}
+
+void CgiState::handleCgiWritable(void) {
+    if (this->writeQueue.empty())
+        return;
+    std::cout << "WRITABLE" << std::endl;
+    for (std::vector<std::string>::iterator it = this->writeQueue.begin();
+        it != this->writeQueue.end(); ) {
+
+            if (!isCgiAlive()) { // avoinding SIGPIPE
+                if (!this->isResponding)
+                    notifyCgiClient(INTERNAL_SERVER_ERROR);
+                cleanUpCgi();
+                return;
+            }
+            size_t totalSent = 0;
+            while(totalSent < it->size()) {
+                ssize_t bytesSent = send(this->cgiFd, it->c_str(), it->size(),0);
+                if (bytesSent == -1) {
+                    *it = it->substr(bytesSent);
+                    updateLastActivity();
+                    return;
+                }
+                totalSent += bytesSent;
+                std::cout << "Writing: " << bytesSent << std::endl;
+            }
+            it = this->writeQueue.erase(it);
+        }
+    // loop reached end, we just emptied the whole writeQueue
+    updateLastActivity();
+    struct epoll_event ev;
+    ev.events = EPOLLIN | EPOLLET;
+    ev.data.ptr = ServerManager::getEpollEvent(this->cgiFd);
+    epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->cgiFd, &ev);
+    this->writeState = NOT_REGISTERED; 
+}
 
 bool CgiState::getIsDone(void) const {
     return this->isDone;
@@ -206,4 +269,6 @@ void CgiState::cleanUpCgi(void) {
 CgiState::~CgiState() {
     if (!this->isClean)
         cleanUpCgi();
+    std::cout << "Closing cgi state" << std::endl;
+
 }

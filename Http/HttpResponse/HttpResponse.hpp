@@ -10,7 +10,7 @@
 #include <string>
 
 class HttpRequest;
-
+class CgiState;
 // HttpResponse will check everything
 class HttpResponse: public AHttp {
     private:
@@ -38,13 +38,14 @@ class HttpResponse: public AHttp {
         bool isLastEntry;
         MultiState multiState;
         size_t currBound;
+        CgiState *cgiState;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);
         static bool isCgiFile(const std::string &filePath, const HttpRequest &request);
 
         void handleAutoIndex(const HttpRequest& request);
-        std::string makeCgiResponse(const HttpRequest &request);
+        // std::string makeCgiResponse(const HttpRequest &request);
         void sendResponse(void) const;
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);

@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <dirent.h>
 #include "../../Server/ServerManager/ServerManager.hpp"
-
+#include "../../Cgi/CgiState/CgiState.hpp"
 
 HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
@@ -36,7 +36,9 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
     }
     const std::string &method = request.getMethod();
     if (request.isCgiRequest()) {
-        Cgi::initCgi(request, this->clientFd, this->epollFd);
+        this->cgiState = Cgi::initCgi(request, this->clientFd, this->epollFd);
+        if (method == "POST")
+            handlePostRequest(request);
         // std::string response = Cgi::getCgiResponse(request);
         // size_t pos_crlf = response.find("\r\n\r\n");
         // size_t pos_lf = response.find("\n\n");
@@ -70,31 +72,31 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
 }
 
 
-std::string HttpResponse::makeCgiResponse(const HttpRequest &request) {
-    std::string response = Cgi::getCgiResponse(request);
-    std::cout << response;
-    size_t pos_crlf = response.find("\r\n\r\n");
-    size_t pos_lf = response.find("\n\n");
+// std::string HttpResponse::makeCgiResponse(const HttpRequest &request) {
+//     std::string response = Cgi::getCgiResponse(request);
+//     std::cout << response;
+//     size_t pos_crlf = response.find("\r\n\r\n");
+//     size_t pos_lf = response.find("\n\n");
 
-    size_t pos;
-    int delimiter_len;
+//     size_t pos;
+//     int delimiter_len;
 
-    if (pos_crlf != std::string::npos) {
-        pos = pos_crlf;
-        delimiter_len = 4;
-    } else if (pos_lf != std::string::npos) {
-        pos = pos_lf;
-        delimiter_len = 2;
-    } else {
-        throw HttpErrorException(500, request, "No headers delimiter in CGI response");
-    }
-    size_t cL = response.size() - pos - delimiter_len;
-    std::stringstream ss;
-    ss << cL;
-    response.insert(0, "Content-Length: " + ss.str() + "\r\n");
-    response.insert(0, "HTTP/1.1 200 OK\r\n");
-    return response;
-}
+//     if (pos_crlf != std::string::npos) {
+//         pos = pos_crlf;
+//         delimiter_len = 4;
+//     } else if (pos_lf != std::string::npos) {
+//         pos = pos_lf;
+//         delimiter_len = 2;
+//     } else {
+//         throw HttpErrorException(500, request, "No headers delimiter in CGI response");
+//     }
+//     size_t cL = response.size() - pos - delimiter_len;
+//     std::stringstream ss;
+//     ss << cL;
+//     response.insert(0, "Content-Length: " + ss.str() + "\r\n");
+//     response.insert(0, "HTTP/1.1 200 OK\r\n");
+//     return response;
+// }
 
 void HttpResponse::handleNewReqEntry(const HttpRequest &request) {
     if (request.getMethod() != "POST")

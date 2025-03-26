@@ -116,13 +116,14 @@ void ServerManager::registerEpollEvent(int fd, EpollEvent *event) {
 void ServerManager::cgiEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
     CgiState *state = epollEvent->getCgiState();
     if (event.events & EPOLLIN) // we only register cgi for readable, we will never write to it
-        state->handleCgiReadable();
-    
+        state->handlecgiReadable();
+    if (event.events & EPOLLOUT) {
+        state->handleCgiWritable();
+    }
 }
 
 void ServerManager::clientServerEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
     const int eventFd = epollEvent->getEventFd();
-    Logger::getLogStream() << "New event: " << eventFd << std::endl;
     if (epollEvent->getEventType() == EpollEvent::SERVER_SOCKET) {
         if (event.events & EPOLLIN)
             acceptConnections(eventFd);
@@ -164,7 +165,7 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
             if (!event->hasTimedOut()) // not done and did timeout
                 return false;
             CgiState *cgiState = event->getCgiState();
-            cgiState->notifyTimeOut();
+            cgiState->notifyCgiClient(GATEWAY_TIMEOUT);
             return true;
         }
         case EpollEvent::CLIENT_CONNECTION: {
@@ -203,7 +204,6 @@ void ServerManager::handleConnections(void) {
     while (true)
     {
         int event_count = epoll_wait(epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT_MS);
-        Logger::getLogStream() << "Epoll return..." << std::endl;
         if (event_count == -1)
         {
             errorStr = "epoll_wait() failed. Errno: ";
@@ -219,7 +219,6 @@ void ServerManager::handleConnections(void) {
                 clientServerEpoll(epollEvent, events[i]);
             else // CGI_READ
                 cgiEpoll(epollEvent, events[i]);
-
         }
 
         for (std::map<int, EpollEvent*>::iterator it = eventStates.begin(); 
@@ -261,9 +260,6 @@ void ServerManager::start(void) {
         // ev.data.ptr = new ClientState(fdSocket, epollFd);
         EpollEvent *serverEvent = new EpollEvent(fdSocket, epollFd, EpollEvent::SERVER_SOCKET);
         eventStates[fdSocket] = serverEvent;
-        std::cout << "Map entry for fd " << fdSocket << ": " 
-          << eventStates[fdSocket] << " type: " 
-          << eventStates[fdSocket]->getEventType() << std::endl;
         ev.data.ptr = serverEvent;
         if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
         {

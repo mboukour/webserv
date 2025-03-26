@@ -2,11 +2,13 @@
 #define CGI_HPP
 
 #include "../Http/HttpRequest/HttpRequest.hpp"
+
+
 #include <string>
 #include <map>
 
 #define CGI_TIMEOUT 2
-
+class CgiState;
 class Cgi {
     private:
         Cgi();
@@ -18,8 +20,7 @@ class Cgi {
         static void cleanupEnv(char **env);
         public:
         static bool isValidCgiExtension(const std::string &extension, const HttpRequest &request);
-        static std::string getCgiResponse(const HttpRequest &request);
-        static void initCgi(const HttpRequest &request, int clientFd, int epollFd);
+        static CgiState *initCgi(const HttpRequest &request, int clientFd, int epollFd);
 };
 
 #endif

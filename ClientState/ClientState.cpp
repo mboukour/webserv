@@ -14,12 +14,13 @@
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../Server/ServerManager/ServerManager.hpp"
 #include "../Utils/Logger/Logger.hpp"
+#include "../Cgi/CgiState/CgiState.hpp"
 
 const int ClientState::keepAliveTimeout = 10; // in seconds
 
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), requestCount(0), 
-  writeState(NOT_REGISTERED), sendQueue(), response(NULL), 
+  writeState(NOT_REGISTERED), sendQueue(), response(NULL), cgiState(NULL),
   lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
 
 
@@ -87,10 +88,6 @@ void ClientState::handleWritable(void) {
         }
         this->writeState = NOT_REGISTERED;
     }
-    // if (this->requestCount >= MAX_REQUEST) {
-    //     resetReadState();
-    //     this->isDone = true;
-    // }
 }
 
 
@@ -222,6 +219,17 @@ ClientState::SendMe::SendMe(const std::string &stringToSend) {
     this->stringToSend = stringToSend;
 }
 
+void ClientState::SendMe::changeSend(const std::string &filePath, const std::streampos &currentPos) {
+    this->sendMode = FILE;
+    this->filePath = filePath;
+    this->currentPos = currentPos;
+}
+
+
+void ClientState::SendMe::changeSend(const std::string &stringToSend) {
+    this->sendMode = STRING;
+    this->stringToSend = stringToSend;
+}
 
 bool ClientState::isSendingDone(void) const {
     return this->sendQueue.empty();
@@ -279,4 +287,5 @@ bool ClientState::getIsDone(void) const {
 ClientState::~ClientState() {
     if (this->response)
         delete this->response;
+    std::cout << "Closing client state" << std::endl;
 }

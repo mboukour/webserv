@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
+#include <stdexcept>
 #include <sys/epoll.h>
 #include <sys/types.h>
  #include <sys/stat.h>
@@ -131,7 +132,8 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         }
         if (foundIndex) {
             if (isCgiFile(indexFilePath, request)) {
-                ServerManager::sendString(makeCgiResponse(request), this->clientFd);
+                // ServerManager::sendString(makeCgiResponse(request), this->clientFd);
+                throw std::logic_error("Fix autoindex cgi");
                 return ;
             }
             std::stringstream cl;
