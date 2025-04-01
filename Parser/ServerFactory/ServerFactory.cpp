@@ -277,23 +277,24 @@ Location ServerFactory::createLocation(const Block& locationBlock, std::vector<s
     for (std::vector<stringVec>::const_iterator ite = locationBlock.directives.begin();
         ite != locationBlock.directives.end(); ite++) {
         std::string currentDirective = ite->begin()[0];
-        if (currentDirective == "return") {
-            parseReturnDirective(newLocation, *ite);
-        }
-        else
+        // if (currentDirective == "return") {
+        //     parseReturnDirective(newLocation, *ite);
+        // }
+        // else
             setBlockDirectives(newLocation, *ite);
     }
     return newLocation;
 }
 
 void ServerFactory::parseReturnDirective(Location& location, const stringVec& directive) {
+    (void)location;
     const std::string code = directive[1];
     if (directive.size() == 1 || directive.size() > 3)
         throw std::logic_error("Invalid return directive");
     if (!isValidSucccessCode(code) && !isValidErrorCode(code))
         throw std::logic_error("Invalid status code in return directive");
     
-    location.setReturnDirective(code, directive.size() == 2 ? "" : directive[2]);
+    // location.setReturnDirective(code, directive.size() == 2 ? "" : directive[2]);
 }
 
 void ServerFactory::inheritErrorPages(Server& server) {
@@ -348,14 +349,36 @@ Server ServerFactory::createServer(const Block &serverBlock) {
             std::string currentDirective = ite->begin()[0];
             if (currentDirective == "return") {
                 const std::string code = ite->begin()[1];
-                if (ite->size() == 1 || ite->size() > 3)
+                bool skipLength = false;
+                if (ite->size() >=3 && (*(ite->begin()[2].begin()) == '"') && (*(--(*(--ite->end())).end()) == '"'))
+                    skipLength = true;
+                if (ite->size() == 1 || (!skipLength && ite->size() > 3))
                     throw std::logic_error("Invalid return directive");
                 if (!isValidSucccessCode(code) && !isValidErrorCode(code))
                     throw std::logic_error("Invalid status code in return directive");
                 if (ite->size() == 2)
-                    newLocation.setReturnDirective(code, "");
-                else
-                    newLocation.setReturnDirective(code, ite->begin()[2]);
+                    newLocation.setReturnDirective(code, "", RETURN_BODY);
+                else {
+                    std::string path;
+                    if (skipLength) {
+                        for (stringVec::const_iterator lit = ite->begin() + 2; lit != ite->end(); lit++) {
+                            std::string add;
+                            if (*lit->begin() == '"')
+                                add = lit->substr(1);
+                            else if (*(--lit->end()) == '"')
+                                add = lit->substr(0, lit->size() -1);
+                            else 
+                                add = *lit;
+                            path += add;
+                            path += " ";
+                        }
+                        path = path.substr(0, path.size() - 1);
+                    }
+                    else
+                        path = ite->begin()[2];
+                    std::cout << "PATH: " << path << std::endl;
+                    newLocation.setReturnDirective(code, path, skipLength ? RETURN_BODY : RETURN_URL);
+                }
             }
             else
                 setBlockDirectives(newLocation, *ite);

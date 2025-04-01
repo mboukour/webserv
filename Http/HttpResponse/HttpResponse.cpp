@@ -20,6 +20,8 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
     clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(),
     chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""), pendingCRLF(false),
     isLastEntry(false), multiState(M_BOUND), currBound(0) {
+    if (handleReturnDirective(request))
+        return;
     this->version = request.getVersion();
     std::ifstream htmlFile("Http/HttpResponse/upload_pages/success_create.html"); // html page when the upload is successfull, ruined can store in a better place
     if (!htmlFile.is_open()) {
@@ -39,29 +41,9 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         this->cgiState = Cgi::initCgi(request, this->clientFd, this->epollFd);
         if (method == "POST")
             handlePostRequest(request);
-        // std::string response = Cgi::getCgiResponse(request);
-        // size_t pos_crlf = response.find("\r\n\r\n");
-        // size_t pos_lf = response.find("\n\n");
-
-        // size_t pos;
-        // int delimiter_len;
-
-        // if (pos_crlf != std::string::npos) {
-        //     pos = pos_crlf;
-        //     delimiter_len = 4;
-        // } else if (pos_lf != std::string::npos) {
-        //     pos = pos_lf;
-        //     delimiter_len = 2;
-        // } else {
-        //     throw HttpErrorException(500, request, "No headers delimiter in CGI response");
-        // }
-        // size_t cL = response.size() - pos - delimiter_len;
-        // std::stringstream ss;
-        // ss << cL;
-        // response.insert(0, "Content-Length: " + ss.str() + "\r\n");
-        // response.insert(0, "HTTP/1.1 200 OK\r\n");
-        // ServerManager::sendString(response, clientFd);
         return ;
+    } else {
+        std::cout << "NOT CGI" << std::endl;
     }
     if (method == "DELETE")
         handleDeleteRequest(request);
@@ -72,34 +54,35 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
 }
 
 
-// std::string HttpResponse::makeCgiResponse(const HttpRequest &request) {
-//     std::string response = Cgi::getCgiResponse(request);
-//     std::cout << response;
-//     size_t pos_crlf = response.find("\r\n\r\n");
-//     size_t pos_lf = response.find("\n\n");
+bool HttpResponse::isReturnRequest(const HttpRequest &request) {
+    const Location *loc = dynamic_cast< const Location *>(request.getRequestBlock());
+    if (!loc || !loc->getIsReturnLocation())
+        return false;
+    return true;
+}
 
-//     size_t pos;
-//     int delimiter_len;
 
-//     if (pos_crlf != std::string::npos) {
-//         pos = pos_crlf;
-//         delimiter_len = 4;
-//     } else if (pos_lf != std::string::npos) {
-//         pos = pos_lf;
-//         delimiter_len = 2;
-//     } else {
-//         throw HttpErrorException(500, request, "No headers delimiter in CGI response");
-//     }
-//     size_t cL = response.size() - pos - delimiter_len;
-//     std::stringstream ss;
-//     ss << cL;
-//     response.insert(0, "Content-Length: " + ss.str() + "\r\n");
-//     response.insert(0, "HTTP/1.1 200 OK\r\n");
-//     return response;
-// }
+bool HttpResponse::handleReturnDirective(const HttpRequest &request) const {
+    const Location *loc = dynamic_cast< const Location *>(request.getRequestBlock());
+    if (!loc || !loc->getIsReturnLocation())
+        return false;
+    HttpResponse resp(request.getVersion(), loc->getReturnCode(),
+        HttpErrorException::getReasonPhrase(loc->getReturnCode()), "");
+    switch (loc->getReturnType()) {
+        case RETURN_URL:
+            resp.setHeader("Location", loc->getReturnPath());
+            break;
+        case RETURN_BODY:
+            resp.setBody(loc->getReturnPath());
+            break;
+    }
+    ServerManager::sendString(resp.toString(), this->clientFd);
+    std::cout << resp.toString() << std::endl;
+    return true;
+}
 
 void HttpResponse::handleNewReqEntry(const HttpRequest &request) {
-    if (request.getMethod() != "POST")
+    if (request.getMethod() != "POST" || isReturnRequest(request))
         return ;
     handlePostRequest(request);
 }

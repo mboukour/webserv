@@ -170,16 +170,14 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
         }
         case EpollEvent::CLIENT_CONNECTION: {
             ClientState *clientState = event->getClientState();
-            if (event->hasTimedOut()) {
+            if ((event->getIsDone() || event->hasTimedOut()) && clientState->isSendingDone()) {
                 removeCgiAfterClient(clientState);
                 return true;
             }
-            if (!event->getIsDone()) // not done, hasnt timedout
-                return false;
-            if (clientState->isSendingDone()) {
-                removeCgiAfterClient(clientState);
-                return true;
-            }
+            // if (clientState->isSendingDone()) {
+            //     removeCgiAfterClient(clientState);
+            //     return true;
+            // }
             return false; // sending needs to be set as done
         }
     }

@@ -99,7 +99,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
 
     struct stat filestat;
-    if (stat(path.c_str(), &filestat) == -1)
+    if (stat(path.c_str(), &filestat) == -1) 
         throw HttpErrorException(NOT_FOUND, request, "cant find file");
     if (filestat.st_mode & S_IFREG) {
         std::fstream fileToGet(path.c_str());

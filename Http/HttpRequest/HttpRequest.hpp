@@ -34,6 +34,7 @@ class HttpRequest: public AHttp {
         void validateRequestLine(void) const;
         static const Server& getServer(const std::string &host, const std::vector<Server> &servers, int serverPort);
         void setIsCgi(void) ;
+
     public:
         HttpRequest();
         HttpRequest(const std::string &request, const std::vector<Server>& servers, int serverPort); // throws exceptions that should never terminate execution of the program

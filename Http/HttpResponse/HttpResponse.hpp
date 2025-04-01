@@ -38,14 +38,21 @@ class HttpResponse: public AHttp {
         bool isLastEntry;
         MultiState multiState;
         size_t currBound;
+        std::string subHeaders;
+        std::string multiBody;
+        bool skip;
         CgiState *cgiState;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);
+        static std::pair<std::string, std::string> newMapNode(const HttpRequest &request, std::string const &str);
         static bool isCgiFile(const std::string &filePath, const HttpRequest &request);
-
+        static bool isReturnRequest(const HttpRequest &request);
+        static std::map<std::string, std::string> strToHeaderMap(const HttpRequest &request, std::string &str);
+        static std::map<std::string, std::string> extractFileInfo(const HttpRequest &request, std::string const &str);
         void handleAutoIndex(const HttpRequest& request);
         // std::string makeCgiResponse(const HttpRequest &request);
+        bool handleReturnDirective(const HttpRequest &request) const;
         void sendResponse(void) const;
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);
@@ -56,7 +63,9 @@ class HttpResponse: public AHttp {
         std::string setFileName(const HttpRequest& request);
         void chunkedTransfer(const HttpRequest &request);
         void setPacket(const HttpRequest &request);
-
+        void multiForm(const HttpRequest &request);
+        void multiChunked(const HttpRequest &request);
+        void multiForm_chunked(const HttpRequest &request);
     public:
         HttpResponse();
         ~HttpResponse();
@@ -69,7 +78,7 @@ class HttpResponse: public AHttp {
         void handleNewReqEntry(const HttpRequest &request);
         bool getIsLastEntry(void) const;
         std::string toString(void) const;
-        void multiForm(const HttpRequest &request);
+        // void multiForm(const HttpRequest &request);
 };
 
 #endif

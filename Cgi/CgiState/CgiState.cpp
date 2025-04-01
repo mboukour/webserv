@@ -15,9 +15,10 @@
 
 #include "../../Server/ServerManager/ServerManager.hpp"
 
+const int CgiState::cgiTimeout(5);
 
 CgiState::CgiState(int cgiFd, pid_t cgiPid, int epollFd,  ClientState *client):
-    cgiTimeout(5), cgiFd(cgiFd), epollFd(epollFd) ,cgiPid(cgiPid),
+     cgiFd(cgiFd), epollFd(epollFd) ,cgiPid(cgiPid),
     client(client), lastActivityTime(time(NULL)),
     readMode(RAW_CHUNKED), readState(READING_HEADERS), contentSent(0), contentLength(0),
     writeState(NOT_REGISTERED), writeQueue(),
@@ -156,6 +157,7 @@ bool CgiState::hasTimedOut(void) const {
     return time(NULL) - lastActivityTime > cgiTimeout;
 }
 
+
 void CgiState::notifyCgiClient(int statusCode) {
     if (!this->isResponding) {
         HttpErrorException timeout(statusCode, "Cgi script has timedout or did exit");
@@ -236,7 +238,7 @@ void CgiState::handleCgiWritable(void) {
             while(totalSent < it->size()) {
                 ssize_t bytesSent = send(this->cgiFd, it->c_str(), it->size(),0);
                 if (bytesSent == -1) {
-                    *it = it->substr(bytesSent);
+                    *it = it->substr(totalSent);
                     updateLastActivity();
                     return;
                 }

@@ -4,6 +4,7 @@
 #include <string>
 
 Location::Location(): ABlock(), locationName(""), isReturnLocation(false) {
+    this->returnDir.returnType = RETURN_URL;
     this->returnDir.code = -1;
     this->returnDir.path = "";
 }
@@ -36,18 +37,23 @@ std::string Location::getLocationName(void) const {
     return (this->locationName);
 }
 
-void Location::setReturnDirective(const std::string &returnCode, const std::string &path) {
+void Location::setReturnDirective(const std::string &returnCode, const std::string &path, ReturnType type) {
     std::stringstream ss;
     ss << returnCode;
     int code;
     ss >> code;
     this->returnDir.code = code;
+    this->returnDir.returnType = type;
     this->returnDir.path = path;
     this->isReturnLocation = true;
 }
 
 bool Location::getIsReturnLocation(void) const {
     return this->isReturnLocation;
+}
+
+ReturnType Location::getReturnType(void) const {
+    return this->returnDir.returnType;
 }
 
 int Location::getReturnCode(void) const {
@@ -57,5 +63,6 @@ int Location::getReturnCode(void) const {
 std::string Location::getReturnPath(void) const {
     return this->returnDir.path;
 }
+
 
 Location::~Location() {}

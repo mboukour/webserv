@@ -18,9 +18,10 @@ class Cgi {
         static std::map<std::string, std::string> createCgiEnv(const HttpRequest &request, const std::string &scriptName, const std::string &pathInfo);
         static char **convertEnvToDoublePointer(const std::map<std::string, std::string> &env);
         static void cleanupEnv(char **env);
-        public:
+    public:
         static bool isValidCgiExtension(const std::string &extension, const HttpRequest &request);
         static CgiState *initCgi(const HttpRequest &request, int clientFd, int epollFd);
+        static CgiState *fileCgi(const std::string &filePath, int clientFd, int epollFd);
 };
 
 #endif

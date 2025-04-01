@@ -64,7 +64,7 @@ void ClientState::handleWritable(void) {
                 }
             }
         } else if (toSend.sendMode == STRING) {
-            // Logger::getLogStream() << "Sedning: " << toSend.stringToSend << std::endl;
+            Logger::getLogStream() << "Sedning: " << toSend.stringToSend << std::endl;
             size_t totalSent = 0;
             while(totalSent < toSend.stringToSend.size()) {
                 ssize_t bytesSent = send(this->eventFd, toSend.stringToSend.data() + totalSent, toSend.stringToSend.size() - totalSent, 0);
@@ -96,6 +96,8 @@ void ClientState::updateLastActivity(void) {
 }
 
 bool ClientState::hasTimedOut(void) const {
+    if (request.isCgiRequest() && cgiState && cgiState->isCgiAlive())
+        return false;
     return time(NULL) - lastActivityTime > keepAliveTimeout;
 }
 

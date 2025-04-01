@@ -15,7 +15,6 @@
 #include "../../Utils/Logger/Logger.hpp"
 #include "../../Utils/AllUtils/AllUtils.hpp"
 
-
 std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
 
 HttpRequest::HttpRequest(): AHttp(), contentLength(0), reqEntry(NULL) ,isChunked(false) {}
@@ -154,12 +153,13 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             continue;
         }
 		if (this->method == "POST" && key == "Content-Type"){
-			if (value.length() > 20 && !value.compare(0, 10, "multipart/form-data;")){
+			if (value.length() > 20 && value.compare(0, 10, "multipart/form-data;")){
 				size_t bIndx = value.find("boundary");
 				if (bIndx == std::string::npos)
 					isOk = false;
 				else{
 					std::string boundary = value.substr(bIndx);
+                    std::cout << "Here: [" << boundary << "]" << std::endl;
 					bIndx = boundary.find("=");
 					if (bIndx == std::string::npos || bIndx + 1 >=  boundary.length()) // = is the last element in the boundry which means there is no key
 						isOk = false;
@@ -169,7 +169,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 					}
 				}
 			}
-			// else isOk = false; // check on later
+			else isOk = false; // check on later
 		}
         this->headers[key] = value;
         if (key == "Host" || key == "host")
@@ -223,7 +223,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
     if (!this->requestBlock->isMethodAllowed(this->method))
          throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
 
-	if (this->method == "POST" && isOk == false)
+	if (this->isMultiForm && this->method == "POST" && isOk == false)
 		throw HttpErrorException(BAD_REQUEST, *this, "Content-Type: multipart/form-data: malformed header");
 
     if (this->method == "POST" && (!contentLengthFound && this->isChunked == false)) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn

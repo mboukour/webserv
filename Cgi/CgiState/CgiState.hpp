@@ -9,7 +9,7 @@
 
 class CgiState {
     private:
-        const int cgiTimeout;
+        static const int cgiTimeout;
         const int cgiFd;
         const int epollFd;
         const pid_t cgiPid;
@@ -33,7 +33,6 @@ class CgiState {
 
         CgiState();
 
-        bool isCgiAlive(void) const;
         void updateLastActivity(void);
         void setupReadMode(size_t headersPos);
         void setupReadMode(const std::string &bufferStr);
@@ -50,6 +49,7 @@ class CgiState {
         void cleanUpCgi(void);
         bool getIsDone(void) const;
         ClientState *getClient(void) const;
+        bool isCgiAlive(void) const;
         ~CgiState();
 };
 
