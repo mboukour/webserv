@@ -1,14 +1,94 @@
 Activating write state for 6
 REGISTERNING 6
-Sedning: HTTP/1.1 301 Moved Permanently
-Location: https://www.google.com/search?q=tsh&oq=tsh&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABDIGCAkQLhhA0gEHODA5ajFqMagCALACAA&sourceid=chrome&ie=UTF-8
+Activating write state for 6
+Sedning: HTTP/1.1 200 OK
+Transfer-Encoding: chunked
+Content-Type: text/html
 
 
-6 has timedout or is done
+Sedning: a62
+<!DOCTYPE html>
+        <html>
+        <head>
+            <title>HTTP Test Tool</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #333; }
+                h2 { color: #555; }
+                pre { background-color: #f5f5f5; padding: 10px; border: 1px solid #ddd; }
+                .container { margin-bottom: 20px; }
+                form { margin: 15px 0; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+            </style>
+        </head>
+        <body>
+            <h1>HTTP Testing Tool</h1>
+<div class='container'>
+<h2>Request Information</h2>
+<table>
+<tr><th>Variable</th><th>Value</th></tr>
+<tr><td>Request Method</td><td>GET</td></tr>
+<tr><td>Content-Type</td><td></td></tr>
+<tr><td>Content-Length</td><td>0</td></tr>
+<tr><td>Transfer-Encoding</td><td></td></tr>
+<tr><td>Script Name</td><td>/claude.py</td></tr>
+<tr><td>Query String</td><td></td></tr>
+<tr><td>Remote Address</td><td></td></tr>
+</table>
+</div>
+
+        <div class="container">
+            <h2>Test Forms</h2>
+            
+            <h3>1. Standard Form Upload</h3>
+            <form method="post" enctype="multipart/form-data">
+                <p>
+                    <label for="name">Name:</label>
+                    <input type="text" name="name" id="name">
+                </p>
+                <p>
+                    <label for="file1">File:</label>
+                    <input type="file" name="file1" id="file1">
+                </p>
+                <p>
+                    <button type="submit">Upload</button>
+                </p>
+            </form>
+            
+            <h3>2. Multiple File Upload</h3>
+            <form method="post" enctype="multipart/form-data">
+                <p>
+                    <label for="files">Select multiple files:</label>
+                    <input type="file" name="files" id="files" multiple>
+                </p>
+                <p>
+                    <button type="submit">Upload Multiple</button>
+                </p>
+            </form>
+            
+            <h3>3. Generate Test Download</h3>
+            <form method="get">
+                <p>
+                    <label for="download">File size (bytes):</label>
+                    <input type="number" name="download" id="download" value="10240">
+                </p>
+                <p>
+                    <button type="submit">Generate</button>
+                </p>
+            </form>
+            
+        </div>
+        
+</body></html>
+
+
 Activating write state for 6
 REGISTERNING 6
-Sedning: HTTP/1.1 301 Moved Permanently
-Location: https://www.google.com/search?q=tsh&oq=tsh&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQABiABDIHCAIQABiABDIHCAMQABiABDIHCAQQABiABDIHCAUQABiABDIHCAYQABiABDIHCAcQABiABDIHCAgQABiABDIGCAkQLhhA0gEHODA5ajFqMagCALACAA&sourceid=chrome&ie=UTF-8
+7 has timedout or is done
+Sedning: 0
 
 
 6 has timedout or is done
+7 has timedout or is done
