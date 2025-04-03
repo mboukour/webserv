@@ -209,6 +209,10 @@ bool CgiState::isCgiAlive(void) const {
     return true;
 }
 
+bool CgiState::isWritingDone(void) const {
+    return this->writeQueue.empty();
+}
+
 void CgiState::activateWriteState(const std::string &toWrite) {
     std::cout << "CGI WRITE STATE" << std::endl;
     this->writeQueue.push_back(toWrite);

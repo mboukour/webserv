@@ -45,6 +45,7 @@ class CgiState {
         void handleCgiWritable(void);
         void activateWriteState(const std::string &toWrite);
         void notifyCgiClient(int statusCode);
+        bool isWritingDone(void) const;
         bool hasTimedOut(void) const;
         void cleanUpCgi(void);
         bool getIsDone(void) const;

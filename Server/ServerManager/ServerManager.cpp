@@ -160,13 +160,12 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
             throw std::logic_error("Can't check if server socket has timedout");
         }
         case EpollEvent::CGI_READ: {
-            if (event->getIsDone())
-                return true;
-            if (!event->hasTimedOut()) // not done and did timeout
-                return false;
             CgiState *cgiState = event->getCgiState();
-            cgiState->notifyCgiClient(GATEWAY_TIMEOUT);
-            return true;
+            if ((event->getIsDone() || event->hasTimedOut()) && cgiState->isWritingDone()) {
+                cgiState->notifyCgiClient(GATEWAY_TIMEOUT);
+                return true;
+            }
+            return false;
         }
         case EpollEvent::CLIENT_CONNECTION: {
             ClientState *clientState = event->getClientState();

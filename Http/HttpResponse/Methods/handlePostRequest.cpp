@@ -137,6 +137,8 @@ bool isDir(const char *path) {
 
 void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
                                 std::string body, std::string const fileName) {
+	if (request.isCgiRequest())
+		return;
 	std::cout << "Sending response" << std::endl;
 	std::string connectState;
 	ClientState *state = ServerManager::getClientState(this->clientFd);
@@ -541,7 +543,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				if (bound_pos == std::string::npos){
 					if (this->multiBody.length() > boundLen){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
-						if (this->skip == false)
+						if (this->skip == false) 
 							write(this->fd, toWrite.c_str(), toWrite.length());
 						toWrite.clear();
 						this->multiBody = this->multiBody.substr(this->multiBody.length() - boundLen);
@@ -800,7 +802,7 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 									// corresponding extension, ofc in a map
 	std::string __folder = "";
 	if (request.isChunkedRequest() == false) {
-		if (request.isMultiRequest()){
+		if (request.isMultiRequest() && !request.isCgiRequest()){
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
 			multiForm(request);
 			if (this->isLastEntry){
@@ -818,7 +820,10 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 			}
 			else {
 				const std::string *buff = request.getReqEntryPtr();
-				write(this->fd, buff->c_str(), buff->size());
+				if (request.isCgiRequest())
+					this->cgiState->activateWriteState(*buff);
+				else
+					write(this->fd, buff->c_str(), buff->size());
 				if (this->isLastEntry && !request.isCgiRequest())
 					postResponse(request, 201, this->success_create, this->fileName);
 			}
