@@ -424,6 +424,7 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 
 
 void HttpResponse::multiForm(const HttpRequest &request){
+	Logger::getLogStream() << ">New packet arrived" << std::endl;
 	std::string const bound = "--" + request.getBoundary();
 	size_t boundLen = bound.length();
 	size_t curr_pos = 0;
@@ -434,6 +435,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 	}
 	else
 		this->packet = request.getReqEntry();
+	Logger::getLogStream() << ">New packet assigned" << std::endl;
 	// Logger::getLogStream() << visualizeEscapes(this->packet);
 	while (true){
 		tmp = ""; // ???
@@ -442,6 +444,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 			{
 				// std::cout << BLUE << "Switched to M_BOUND" << std::endl;
 				// std::cout << BLUE << "size: " << this->packet.length() << std::endl;
+				Logger::getLogStream() << ">Searching for boundary" << std::endl;
 				if (this->packet.length() == 0)
 					return;
 				if (boundLen > this->packet.length() - curr_pos) {
@@ -471,16 +474,19 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				// Logger::getLogStream() << "Switched to M_BOUND*[" << visualizeEscapes(this->packet) + "]";
 				if (this->packet == bound + "--\r\n"){
 					this->isLastEntry = true;
+					Logger::getLogStream() << ">Response sent to client" << std::endl;
 					return;
 				}
 				// the whole bound was found
 				this->packet = this->packet.substr(curr_pos);
 				this->multiState = M_HEADERS;
 				this->subHeaders = "";
+				Logger::getLogStream() << ">Moved to headers" << std::endl;
 				break;
 			}
 			case M_HEADERS:
 			{
+				Logger::getLogStream() << ">Searching for headers" << std::endl;
 				// std::cout << RED << "Switched to M_HEADERS" << std::endl;
 				// Logger::getLogStream() << "___________________" << this->packet << "___________________";
 				this->packet = this->subHeaders + this->packet;
@@ -522,12 +528,13 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				this->fileName = folder + file;
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				this->multiState = M_BODY;
-				Logger::getLogStream() << "GOT HEADERS, NOW GET BODY" << std::endl;
+				Logger::getLogStream() << ">Moved to body" << std::endl;
 				break;
 			}
 			case M_BODY:
 			{
 				// std::cout << YELLOW << "Switched to M_BODY" << std::endl;
+				Logger::getLogStream() << ">Searching for body" << std::endl;
 				this->multiBody += this->packet;
 				this->packet.clear();
 				size_t bound_pos = this->multiBody.find(bound);
@@ -551,6 +558,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				// close file here
 				close(this->fd);
 				this->skip = false;
+				Logger::getLogStream() << ">Moved to boundary" << std::endl;
 				break;
 			}
 			default:
