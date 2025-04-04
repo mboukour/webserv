@@ -21,7 +21,7 @@ const int ClientState::keepAliveTimeout = 10; // in seconds
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), requestCount(0), 
   writeState(NOT_REGISTERED), sendQueue(), response(NULL), cgiState(NULL),
-  lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false) {}
+  lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false), isClean(false) {}
 
 
 void ClientState::handleWritable(void) {
@@ -129,6 +129,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
             this->request = HttpRequest();
             this->response = NULL;
             this->isDone = true;
+            // epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
             return ;
         } else if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0';

@@ -69,25 +69,31 @@ void ServerManager::acceptConnections(int fdSocket) {
     struct sockaddr_in client_addr;
     std::string errorStr;
     socklen_t client_len = sizeof(client_addr);
-    int clientFd = accept(fdSocket, (struct sockaddr *)&client_addr, &client_len);
-    if (clientFd == -1)
-    {
-        errorStr = "Error: accept failed. Errno: " ;
-        errorStr += strerror(errno);
-        throw std::runtime_error(errorStr);
-    }
-    fcntl(clientFd, F_SETFL, O_NONBLOCK);
+    while (true) {
+        int clientFd = accept(fdSocket, (struct sockaddr *)&client_addr, &client_len);
+        if (clientFd == -1)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return ;
+            errorStr = "Error: accept failed. Errno: " ;
+            errorStr += strerror(errno);
+            std::cout << errorStr << std::endl;
+            throw std::runtime_error(errorStr);
+        }
+        fcntl(clientFd, F_SETFL, O_NONBLOCK);
     
-    DEBUG && std::cout << "New connection accepted: " << clientFd << std::endl;
-    struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET;
-    EpollEvent* clientEvent = new EpollEvent(clientFd, epollFd, EpollEvent::CLIENT_CONNECTION);
-    ev.data.ptr = clientEvent;
-    eventStates[clientFd] = clientEvent;
-    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
-    {
-        std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
-        close(clientFd);
+        
+        DEBUG && std::cout << "New connection accepted: " << clientFd << std::endl;
+        struct epoll_event ev;
+        ev.events = EPOLLIN | EPOLLET;
+        EpollEvent* clientEvent = new EpollEvent(clientFd, epollFd, EpollEvent::CLIENT_CONNECTION);
+        ev.data.ptr = clientEvent;
+        eventStates[clientFd] = clientEvent;
+        if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
+        {
+            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            close(clientFd);
+        }
     }
 }
 
@@ -205,7 +211,7 @@ void ServerManager::handleConnections(void) {
         {
             errorStr = "epoll_wait() failed. Errno: ";
             errorStr += strerror(errno);
-            std::cerr << errorStr << '\n';
+            Logger::getLogStream() << errorStr << std::endl;
         }
         for (int i = 0; i < event_count; i++)
         {
@@ -253,7 +259,7 @@ void ServerManager::start(void) {
 
         it->startServer();
         int fdSocket = it->getFdSocket();
-        ev.events = EPOLLIN | EPOLLET;
+        ev.events =  EPOLLIN | EPOLLET;
         // ev.data.ptr = new ClientState(fdSocket, epollFd);
         EpollEvent *serverEvent = new EpollEvent(fdSocket, epollFd, EpollEvent::SERVER_SOCKET);
         eventStates[fdSocket] = serverEvent;

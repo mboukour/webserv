@@ -33,6 +33,7 @@
 
 
 Webserv
+*.log
 .vscode
 Atest
 uploads

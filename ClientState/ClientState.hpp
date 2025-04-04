@@ -51,8 +51,10 @@ class ClientState {
         time_t lastActivityTime;
         bool isKeepAlive;
         bool isDone;
+        bool isClean;
 
         void resetReadState(void);
+        void cleanUpEpoll(void);
         void updateLastActivity(void);
     public:
         ClientState(int clientFd, int epollFd);

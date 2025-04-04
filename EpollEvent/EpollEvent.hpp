@@ -27,11 +27,13 @@ class EpollEvent {
         const int eventFd;
         const int epollFd;
         const EventType eventType;
+        bool isClean;
         union EventData {
             ClientState *clientState;
             CgiState *cgiState;
         } eventData;
 
+        void cleanUpEpollEvent(void);
 };
 
 
