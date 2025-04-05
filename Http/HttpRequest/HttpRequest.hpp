@@ -19,6 +19,7 @@ class HttpRequest: public AHttp {
         std::string path;
         std::string queryString;
         std::string primalRequest;
+        enum RequestType {CONTENT_LENGTH, CHUNKED};
         bool isCgi;
         const Server *server;
         const ABlock *requestBlock;

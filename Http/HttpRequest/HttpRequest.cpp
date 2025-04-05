@@ -44,8 +44,10 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     pos = request.find("\r\n\r\n");
     this->body = request.substr(pos + 4);
     this->bodySize = this->body.size();
-    if (this->getRequestBlock()->getIsLimited() && this->bodySize > this->getRequestBlock()->getMaxBodySize()) // if initial part of body bigger than max
-        throw HttpErrorException(PAYLOAD_TOO_LARGE, "Payload too large");
+    if (this->requestBlock->getIsLimited()
+        && ((!this->isChunked && this->contentLength > this->requestBlock->getMaxBodySize())
+        || this->bodySize > this->requestBlock->getMaxBodySize()))
+            throw HttpErrorException(PAYLOAD_TOO_LARGE, "Payload too large");
     setIsCgi();
     parseCookies();
 }
@@ -140,8 +142,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             // if (this->requestBlock->getIsLimited() && this->contentLength > this->requestBlock->getMaxBodySize())
             //     throw HttpErrorException(PAYLOAD_TOO_LARGE, "payload too large");
             contentLengthFound = true;
-             this->headers[key] = value;
-
+            this->headers[key] = value;
             continue;
         }
         if (key == "Transfer-Encoding") {

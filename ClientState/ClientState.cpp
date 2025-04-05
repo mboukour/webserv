@@ -129,7 +129,6 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
             this->request = HttpRequest();
             this->response = NULL;
             this->isDone = true;
-            // epoll_ctl(this->epollFd, EPOLL_CTL_DEL, this->eventFd, NULL);
             return ;
         } else if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0';
