@@ -341,7 +341,6 @@ std::pair<std::string, std::string> HttpResponse::newMapNode(const HttpRequest &
 	if (str.empty())
 		return std::pair<std::string, std::string>("", "");;
 	size_t pos = str.find(":");
-	// Logger::getLogStream() << "mamak[" << visualizeEscapes(str) << "]mamak";
 	if (pos == std::string::npos)
 		throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Invalid form header![1]");
 	std::string key = str.substr(0, pos);
@@ -419,6 +418,28 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 	return info;
 }
 
+std::string HttpResponse::generateFileName(const HttpRequest &request, std::string &file){
+	std::string folder = request.getRequestBlock()->getUploadPath();
+	size_t pos = file.rfind(".");
+	std::string fileExten = "";
+	if (pos == std::string::npos && pos != 0){ // what if content-type header doesn't exist ?
+		std::string contentType = headers["Content-Type"];
+		std::stringstream s(contentType);
+		s >> contentType; // to skip ": "
+		s >> contentType;
+		fileExten = getConTypeExten(contentType);
+	}
+	if (folder.empty()){
+		std::cerr << YELLOW << "[ALERT!]: " << RESET << "The upload path was not set in the config file. Uploading the file to the root directory..." << std::endl;
+		folder = request.getRequestBlock()->getRoot();
+	}
+	if (!isDir(folder.c_str())){
+		std::cerr << YELLOW << "[ALERT!]: " << RESET;
+		std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
+		folder = "";
+	}
+	return folder + file + fileExten;
+}
 
 void HttpResponse::multiForm(const HttpRequest &request){
 	std::string const bound = "--" + request.getBoundary();
@@ -486,27 +507,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					this->multiState = M_BODY;
 					break;
 				}
-
-				std::string folder = request.getRequestBlock()->getUploadPath();
-				size_t pos = file.rfind(".");
-				std::string fileExten = "";
-				if (pos == std::string::npos && pos != 0){ // what if content-type header doesn't exist ?
-					std::string contentType = headers["Content-Type"];
-					std::stringstream s(contentType);
-					s >> contentType; // to skip ": "
-					s >> contentType;
-					fileExten = getConTypeExten(contentType);
-				}
-				if (folder.empty()){
-					std::cerr << YELLOW << "[ALERT!]: " << RESET << "The upload path was not set in the config file. Uploading the file to the root directory..." << std::endl;
-					folder = request.getRequestBlock()->getRoot();
-				}
-				if (!isDir(folder.c_str())){
-					std::cerr << YELLOW << "[ALERT!]: " << RESET;
-					std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
-					folder = "";
-				}
-				this->fileName = folder + file + fileExten;
+				this->fileName = generateFileName(request, file);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				this->multiState = M_BODY;
 				break;
@@ -548,6 +549,12 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 	size_t boundLen = bound.length();
 	size_t curr_pos = 0;
 	std::string tmp;
+	if (this->postState == INIT_POST){
+		this->postState = NEW_REQ_ENTRY;
+		this->packet = request.getBody();
+	}
+	else
+		this->packet = request.getReqEntry();
 	while (true){
 		switch (this->multiState){ // what if this is the last boundary ?
 			case M_BOUND:
@@ -555,10 +562,9 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				tmp = "";
 				if (this->packet.length() == 0)
 					return;
-				if (boundLen > this->packet.length() - curr_pos) { // if the boundary was split into two packets
+				if (boundLen > this->packet.length() - curr_pos) {
 					this->currBound += this->packet.length() - curr_pos;
-					this->packet.clear();
-					return;
+					break;
 				}
 				if (this->currBound != 0 && this->packet[curr_pos] == '\n'){
 					curr_pos++;
@@ -568,17 +574,20 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				curr_pos += boundLen - this->currBound + 2; // skip the bound len or what is left from bound len as i can be split + \r\n
 				if (curr_pos > this->packet.length()){
 					this->currBound = 1;
-					this->packet.clear();
-					return;
+					break;
 				}
 				this->currBound = 0;
 				tmp = this->packet.substr(0, boundLen);
 				if (tmp != bound){
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
 				}
+				if (this->packet == bound + "--\r\n"){
+					this->isLastEntry = true;
+					return;
+				}
 				this->packet = this->packet.substr(curr_pos);
 				this->multiState = M_HEADERS;
-				this->subHeaders.clear();
+				this->subHeaders = "";
 				break;
 			}
 			case M_HEADERS:
@@ -601,27 +610,9 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					this->multiState = M_BODY;
 					break;
 				}
-
-				size_t pos = file.rfind(".");
-				std::string folder = "uploads/";
-				if (pos != std::string::npos && pos != 0){ // what if content-type header doesn't exist ?
-					std::string contentType = headers["Content-Type"];
-					std::stringstream s(contentType);
-					s >> contentType; // to skip ": "
-					s >> contentType;
-					folder += extToNature(getConTypeExten(contentType));
-				}
-				else
-					folder += "binary/";
-				if (!isDir(folder.c_str())){
-					std::cerr << YELLOW << "[ALERT!]: " << RESET;
-					std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
-					folder = "";
-				}
-				this->fileName = folder + file;
+				this->fileName = generateFileName(request, file);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				this->multiState = M_BODY;
-				Logger::getLogStream() << "GOT HEADERS, NOW GET BODY" << std::endl;
 				break;
 			}
 			case M_BODY:
