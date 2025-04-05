@@ -549,12 +549,6 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 	size_t boundLen = bound.length();
 	size_t curr_pos = 0;
 	std::string tmp;
-	if (this->postState == INIT_POST){
-		this->postState = NEW_REQ_ENTRY;
-		this->packet = request.getBody();
-	}
-	else
-		this->packet = request.getReqEntry();
 	while (true){
 		switch (this->multiState){ // what if this is the last boundary ?
 			case M_BOUND:
@@ -582,7 +576,6 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
 				}
 				if (this->packet == bound + "--\r\n"){
-					this->isLastEntry = true;
 					return;
 				}
 				this->packet = this->packet.substr(curr_pos);
