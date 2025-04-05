@@ -49,6 +49,7 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         handleGetRequest(request);
     else if (method == "POST")
         handlePostRequest(request);
+    request.getRequestBlock()->getUploadPath();
 }
 
 
