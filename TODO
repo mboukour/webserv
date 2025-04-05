@@ -15,4 +15,4 @@ POST:Browser: uploading file with size > maxBody results in:
 	Closing client state
 	Closing event 7
 	Closing client state
-but it works fine with Postman
+the appropriate error page is shown.it works fine with Postman
