@@ -42,6 +42,7 @@ class HttpResponse: public AHttp {
         std::string multiBody;
         bool skip;
         CgiState *cgiState;
+        size_t written;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);

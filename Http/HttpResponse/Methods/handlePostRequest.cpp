@@ -22,6 +22,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -204,11 +205,10 @@ void HttpResponse::firstPostBin(const HttpRequest &request) {
 	if (!request.isCgiRequest()) {
 		if (isDir(setFileName(request).c_str()) == true) {
 		  this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT,
-						  S_IRUSR | S_IWUSR); // check for failure
+						S_IRUSR | S_IWUSR); // check for failure
 		  write(this->fd, request.getBody().c_str(), request.getBody().size());
 		} else {
 		  std::cout << RED << "Folder do not exist!" << RESET << std::endl;
-		  // throw an exception with an appropriate error page!!!!!!!!!!!!!
 		}
 	} else {
 		cgiState->activateWriteState(request.getBody());
@@ -219,11 +219,22 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 	if (this->postState == INIT_POST){
 		this->postState = NEW_REQ_ENTRY;
 		if (!request.isCgiRequest()) {
-			if (isDir(setFileName(request).c_str()) == true){
-				this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR); // check for failure
+			this->written = 0;
+			std::string folder = request.getRequestBlock()->getUploadPath();
+			std::string file = randomizeFileName() + getConTypeExten(request.getHeader("Content-Type"));
+			if (folder.empty()){
+				std::cerr << YELLOW << "[ALERT!]: " << RESET << "The upload path was not set in the config file. Uploading the file to the root directory..." << std::endl;
+				folder = request.getRequestBlock()->getRoot();
 			}
-			else
-				std::cout << RED << "Folder do not exist!" << RESET << std::endl; // might update it to throw an exception later
+			if (!isDir(folder.c_str())){
+				std::cerr << YELLOW << "[ALERT!]: " << RESET;
+				std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
+				folder = "";
+			}
+			this->fileName = folder + file;
+			this->fd = open(this->fileName.c_str(), O_CREAT | O_WRONLY, 0644); // check for failure
+			if (this->fd == -1)
+				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Internal server error");
 		}
 		this->packet = request.getBody();
 	}
@@ -249,13 +260,11 @@ std::string visualizeEscapes(const std::string input) {
 }
 
 void	HttpResponse::chunkedTransfer(const HttpRequest &request){
-	// Logger::getLogStream() << this->chunkState << ": " << visualizeEscapes(this->packet.substr(0, 10)) << " // " << visualizeEscapes(this->packet.substr(this->packet.length() - 10)) << std::endl;
 	bool processing = true;
 	size_t curr_pos = 0;
 	this->offset = this->packet.length();
 	while (processing)
 	{
-		// std::cout << "Called" << std::endl;
 		switch (this->chunkState){
 			case CH_START:
 				this->chunkState = CH_SIZE;
@@ -302,8 +311,20 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				}
 				if (request.isCgiRequest())
 					cgiState->activateWriteState(this->packet.c_str() + curr_pos);
-				else
-					write(this->fd, this->packet.c_str() + curr_pos, ch_size);
+				else{
+					ssize_t w = write(this->fd, this->packet.c_str() + curr_pos, ch_size);
+					if (w == -1)
+						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
+					this->written += w;
+					if (request.getRequestBlock()->getIsLimited()) {
+						if (this->written > request.getRequestBlock()->getMaxBodySize()){
+							unlink(this->fileName.c_str());
+							close(this->fd);
+							std::cout << YELLOW << "File to unlink: " + this->fileName << RESET << std::endl;
+							throw HttpErrorException(PAYLOAD_TOO_LARGE, request, "Payload too large.");
+						}
+					}
+				}
 				this->remaining_chunk_size -= ch_size;
 				if (!this->remaining_chunk_size)
 					this->chunkState = CH_TRAILER;
@@ -699,12 +720,10 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 					processing = true;
 					this->chunkState = CH_TRAILER;
 				}
-				// Logger::getLogStream() << visualizeEscapes(this->packet.substr(curr_pos, ch_size));
 				std::string save = this->packet;
 				this->packet = this->packet.substr(curr_pos, ch_size);
 				multiForm_chunked(request);
 				this->packet = save;
-				// write(this->fd, this->packet.c_str() + curr_pos, ch_size);
 				this->remaining_chunk_size -= ch_size;
 				if (!this->remaining_chunk_size)
 					this->chunkState = CH_TRAILER;
