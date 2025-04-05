@@ -186,7 +186,6 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                     HttpErrorException exc(PAYLOAD_TOO_LARGE, request, "Payload too large");
                     resetReadState();
                     ServerManager::sendString(exc.getResponseString(), this->eventFd);
-                    this->isDone = true;
                     return;
                 }
                 if (this->response) {
