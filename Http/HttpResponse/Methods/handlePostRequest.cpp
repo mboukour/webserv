@@ -355,7 +355,6 @@ std::map<std::string, std::string> HttpResponse::strToHeaderMap(const HttpReques
 	std::map<std::string, std::string> headers;
 	size_t pos = 0;
 	size_t curr = 0;
-	// std::cout << "DEBUG: [" << visualizeEscapes(str) << "]" << std::endl;
 	while (true){
 		curr = 0;
 		pos = str.find("\r\n");
@@ -382,8 +381,7 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 	std::string key;
 	std::string value;
 	if (str.empty())
-		return info;
-	std::cout << "[" + str + "]" << std::endl;
+		throw HttpErrorException(BAD_REQUEST, request, "Content-Disposition field not found.");
 	sS >> skip;
 	if (sS.fail() || sS.eof())
 		throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server encountered an unexpected internal error.");
@@ -398,7 +396,6 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 	if (key != "name")
 		throw HttpErrorException(BAD_REQUEST, request, "Missing name field in a multipart form-data request!");
 	value = string.substr(pos + 1);
-	// std::cout << "[" + value + "]" << std::endl;
 	if (value.length() < 2 || value[0] != '"' || (value[value.length() - 1] != '"' && value[value.length() - 1] != ';'))
 		throw HttpErrorException(BAD_REQUEST, request, "Malformed name field in multipart form-data request!");
 	value = value.substr(1, value.length() - 3);
@@ -408,10 +405,8 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 	if (pos == std::string::npos)
 		throw HttpErrorException(BAD_REQUEST, request, "Invalid filename field in multipart form-data request!");
 	key = string.substr(0, pos);
-	// std::cout << "Before [" << key << "]" << std::endl;
 	while (!key.empty() && key[0] == ' ')
 		key.erase(0, 1);
-	// std::cout << "After [" << key << "]" << std::endl;
 	if (key != "filename"){
 		info["filename"] = "";
 		return info;
@@ -426,7 +421,6 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 
 
 void HttpResponse::multiForm(const HttpRequest &request){
-	Logger::getLogStream() << ">New packet arrived" << std::endl;
 	std::string const bound = "--" + request.getBoundary();
 	size_t boundLen = bound.length();
 	size_t curr_pos = 0;
@@ -437,26 +431,17 @@ void HttpResponse::multiForm(const HttpRequest &request){
 	}
 	else
 		this->packet = request.getReqEntry();
-	Logger::getLogStream() << ">New packet assigned" << std::endl;
-	// Logger::getLogStream() << visualizeEscapes(this->packet);
 	while (true){
-		tmp = ""; // ???
 		switch (this->multiState){ // what if this is the last boundary ?
 			case M_BOUND:
 			{
-				// std::cout << BLUE << "Switched to M_BOUND" << std::endl;
-				// std::cout << BLUE << "size: " << this->packet.length() << std::endl;
-				Logger::getLogStream() << ">Searching for boundary" << std::endl;
+				tmp = "";
 				if (this->packet.length() == 0)
 					return;
 				if (boundLen > this->packet.length() - curr_pos) {
-					// std::cout << visualizeEscapes(this->packet.substr(curr_pos));
-					// sleep(2);
-					// exit(10);
 					this->currBound += this->packet.length() - curr_pos;
 					break;
 				}
-				// std::cout << GREEN << "HERE" << std::endl;
 				if (this->currBound != 0 && this->packet[curr_pos] == '\n'){
 					curr_pos++;
 					this->multiState = M_BODY;
@@ -470,40 +455,31 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				this->currBound = 0;
 				tmp = this->packet.substr(0, boundLen);
 				if (tmp != bound){
-					// Logger::getLogStream() << "case <<" << visualizeEscapes(tmp) + ">> case";
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
 				}
-				// Logger::getLogStream() << "Switched to M_BOUND*[" << visualizeEscapes(this->packet) + "]";
 				if (this->packet == bound + "--\r\n"){
 					this->isLastEntry = true;
-					Logger::getLogStream() << ">Response sent to client" << std::endl;
 					return;
 				}
-				// the whole bound was found
 				this->packet = this->packet.substr(curr_pos);
 				this->multiState = M_HEADERS;
 				this->subHeaders = "";
-				Logger::getLogStream() << ">Moved to headers" << std::endl;
 				break;
 			}
 			case M_HEADERS:
 			{
-				Logger::getLogStream() << ">Searching for headers" << std::endl;
-				// std::cout << RED << "Switched to M_HEADERS" << std::endl;
-				// Logger::getLogStream() << "___________________" << this->packet << "___________________";
 				this->packet = this->subHeaders + this->packet;
 				size_t head_pos = this->packet.find("\r\n\r\n");
 				if (head_pos == std::string::npos){
 					this->subHeaders += this->packet;
-					break;
+					this->packet.clear();
+					return;
 				}
-				// std::cout << YELLOW << "this?" << RESET << std::endl;
 				std::string headerStr = this->packet.substr(0, head_pos) + "\r\n";
 				std::map<std::string, std::string> headers = strToHeaderMap(request, headerStr);
 				std::map<std::string, std::string> contentDisposition = extractFileInfo(request, headers["Content-Disposition"]);
 				curr_pos = head_pos + 4;
 				this->packet = this->packet.substr(curr_pos);
-				// open file here
 				std::string file = contentDisposition["filename"];
 				if (file == ""){
 					this->skip = true;
@@ -511,39 +487,39 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					break;
 				}
 
+				std::string folder = request.getRequestBlock()->getUploadPath();
 				size_t pos = file.rfind(".");
-				std::string folder = "uploads/";
-				if (pos != std::string::npos && pos != 0){ // what if content-type header doesn't exist ?
+				std::string fileExten = "";
+				if (pos == std::string::npos && pos != 0){ // what if content-type header doesn't exist ?
 					std::string contentType = headers["Content-Type"];
 					std::stringstream s(contentType);
 					s >> contentType; // to skip ": "
 					s >> contentType;
-					folder += extToNature(getConTypeExten(contentType));
+					fileExten = getConTypeExten(contentType);
 				}
-				else
-					folder += "binary/";
+				if (folder.empty()){
+					std::cerr << YELLOW << "[ALERT!]: " << RESET << "The upload path was not set in the config file. Uploading the file to the root directory..." << std::endl;
+					folder = request.getRequestBlock()->getRoot();
+				}
 				if (!isDir(folder.c_str())){
 					std::cerr << YELLOW << "[ALERT!]: " << RESET;
 					std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
 					folder = "";
 				}
-				this->fileName = folder + file;
+				this->fileName = folder + file + fileExten;
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				this->multiState = M_BODY;
-				Logger::getLogStream() << ">Moved to body" << std::endl;
 				break;
 			}
 			case M_BODY:
 			{
-				// std::cout << YELLOW << "Switched to M_BODY" << std::endl;
-				Logger::getLogStream() << ">Searching for body" << std::endl;
 				this->multiBody += this->packet;
 				this->packet.clear();
 				size_t bound_pos = this->multiBody.find(bound);
 				if (bound_pos == std::string::npos){
 					if (this->multiBody.length() > boundLen){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
-						if (this->skip == false) 
+						if (this->skip == false)
 							write(this->fd, toWrite.c_str(), toWrite.length());
 						toWrite.clear();
 						this->multiBody = this->multiBody.substr(this->multiBody.length() - boundLen);
@@ -557,10 +533,8 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				this->multiBody.clear();
 				curr_pos = 0; // the packet will now start from the next
 				this->multiState = M_BOUND;
-				// close file here
 				close(this->fd);
 				this->skip = false;
-				Logger::getLogStream() << ">Moved to boundary" << std::endl;
 				break;
 			}
 			default:
@@ -574,24 +548,18 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 	size_t boundLen = bound.length();
 	size_t curr_pos = 0;
 	std::string tmp;
-	// Logger::getLogStream() << visualizeEscapes(this->packet);
 	while (true){
-		tmp = ""; // ???
 		switch (this->multiState){ // what if this is the last boundary ?
 			case M_BOUND:
 			{
-				// std::cout << BLUE << "Switched to M_BOUND" << std::endl;
-				// std::cout << BLUE << "size: " << this->packet.length() << std::endl;
+				tmp = "";
 				if (this->packet.length() == 0)
 					return;
-				if (boundLen > this->packet.length() - curr_pos) {
-					// std::cout << visualizeEscapes(this->packet.substr(curr_pos));
-					// sleep(2);
-					// exit(10);
+				if (boundLen > this->packet.length() - curr_pos) { // if the boundary was split into two packets
 					this->currBound += this->packet.length() - curr_pos;
-					break;
+					this->packet.clear();
+					return;
 				}
-				// std::cout << GREEN << "HERE" << std::endl;
 				if (this->currBound != 0 && this->packet[curr_pos] == '\n'){
 					curr_pos++;
 					this->multiState = M_BODY;
@@ -600,38 +568,33 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				curr_pos += boundLen - this->currBound + 2; // skip the bound len or what is left from bound len as i can be split + \r\n
 				if (curr_pos > this->packet.length()){
 					this->currBound = 1;
-					break;
+					this->packet.clear();
+					return;
 				}
 				this->currBound = 0;
 				tmp = this->packet.substr(0, boundLen);
 				if (tmp != bound){
-					// Logger::getLogStream() << "case <<" << visualizeEscapes(tmp) + ">> case";
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
 				}
-				// Logger::getLogStream() << "Switched to M_BOUND*[" << visualizeEscapes(this->packet) + "]";
-				// the whole bound was found
 				this->packet = this->packet.substr(curr_pos);
 				this->multiState = M_HEADERS;
-				this->subHeaders = "";
+				this->subHeaders.clear();
 				break;
 			}
 			case M_HEADERS:
 			{
-				// std::cout << RED << "Switched to M_HEADERS" << std::endl;
-				// Logger::getLogStream() << "___________________" << this->packet << "___________________";
 				this->packet = this->subHeaders + this->packet;
 				size_t head_pos = this->packet.find("\r\n\r\n");
 				if (head_pos == std::string::npos){
 					this->subHeaders += this->packet;
-					break;
+					this->packet.clear();
+					return;
 				}
-				// std::cout << YELLOW << "this?" << RESET << std::endl;
 				std::string headerStr = this->packet.substr(0, head_pos) + "\r\n";
 				std::map<std::string, std::string> headers = strToHeaderMap(request, headerStr);
 				std::map<std::string, std::string> contentDisposition = extractFileInfo(request, headers["Content-Disposition"]);
 				curr_pos = head_pos + 4;
 				this->packet = this->packet.substr(curr_pos);
-				// open file here
 				std::string file = contentDisposition["filename"];
 				if (file == ""){
 					this->skip = true;
@@ -663,7 +626,6 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 			}
 			case M_BODY:
 			{
-				// std::cout << YELLOW << "Switched to M_BODY" << std::endl;
 				this->multiBody += this->packet;
 				this->packet.clear();
 				size_t bound_pos = this->multiBody.find(bound);
@@ -684,7 +646,6 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				this->multiBody.clear();
 				curr_pos = 0; // the packet will now start from the next
 				this->multiState = M_BOUND;
-				// close file here
 				close(this->fd);
 				this->skip = false;
 				break;
@@ -710,14 +671,12 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 	this->offset = this->packet.length();
 	while (processing)
 	{
-		// std::cout << "Called" << std::endl;
 		switch (this->chunkState){
 			case CH_START:
 				this->chunkState = CH_SIZE;
 				break ;
 			case CH_SIZE:{
 				size_t end;
-				// std::cout << BLUE << "Getting size" << RESET << std::endl;
 				if (this->pendingCRLF) {
 					this->pendingCRLF = false;
 					curr_pos++;
@@ -801,6 +760,9 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 	std::string __exten = ".bin"; // we need to save every content-type with its
 									// corresponding extension, ofc in a map
 	std::string __folder = "";
+	if (request.getRequestBlock()->getIsLimited()) {
+		std::cout << MAGENTA <<  "max body size: " << request.getRequestBlock()->getMaxBodySize() << RESET << std::endl;
+	}
 	if (request.isChunkedRequest() == false) {
 		if (request.isMultiRequest() && !request.isCgiRequest()){
 			this->isLastEntry = request.getBodySize() == request.getContentLength();

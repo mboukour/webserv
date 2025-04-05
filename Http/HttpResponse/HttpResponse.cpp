@@ -172,3 +172,7 @@ HttpResponse::~HttpResponse(){
     if (this->fd != -1)
         close(this->fd);
 }
+
+int HttpResponse::getFd(void) const{
+    return this->fd;
+}

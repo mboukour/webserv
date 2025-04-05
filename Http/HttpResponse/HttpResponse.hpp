@@ -79,6 +79,7 @@ class HttpResponse: public AHttp {
         void handleNewReqEntry(const HttpRequest &request);
         bool getIsLastEntry(void) const;
         std::string toString(void) const;
+        int getFd(void) const;
         // void multiForm(const HttpRequest &request);
 };
 
