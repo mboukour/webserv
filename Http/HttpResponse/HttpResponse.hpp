@@ -53,6 +53,7 @@ class HttpResponse: public AHttp {
         void handleAutoIndex(const HttpRequest& request);
         // std::string makeCgiResponse(const HttpRequest &request);
         bool handleReturnDirective(const HttpRequest &request) const;
+        bool handleSessionTest(const HttpRequest &request) const;
         void sendResponse(void) const;
         void handleDeleteRequest(const HttpRequest &request);
         void handleGetRequest(const HttpRequest &request);

@@ -14,7 +14,9 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-std::string Login::generateUniqueSessionID(std::map<std::string, std::string>& userCreds) {
+std::map<std::string, std::string> Login::userCreds;
+
+std::string Login::generateUniqueSessionID() {
     while(true) {
         std::srand(static_cast<unsigned int>(std::time(NULL)));
         int randomPart1 = std::rand();
@@ -29,7 +31,7 @@ std::string Login::generateUniqueSessionID(std::map<std::string, std::string>& u
     }
 }
 
-std::string Login::getLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds) {
+std::string Login::getLogin(const HttpRequest &request) {
 
     std::string sessionId;
     try {
@@ -82,7 +84,7 @@ std::string Login::getLogin(const HttpRequest &request, std::map<std::string, st
     return html.str();
 }
 
-std::string Login::deleteLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds) {
+std::string Login::deleteLogin(const HttpRequest &request) {
     std::string sessionId;
     try {
         sessionId = request.getCookie("sessionId");
@@ -117,7 +119,7 @@ std::string Login::deleteLogin(const HttpRequest &request, std::map<std::string,
     return html.str();
 }
 
-std::string Login::postLogin(const HttpRequest &request, HttpResponse &response ,std::map<std::string, std::string> &userCreds) {
+std::string Login::postLogin(const HttpRequest &request, HttpResponse &response) {
     const std::string &body = request.getBody();
 
 
@@ -128,7 +130,7 @@ std::string Login::postLogin(const HttpRequest &request, HttpResponse &response 
     if (userName.size() > NAME_MAX_LENGTH)
         throw HttpErrorException(BAD_REQUEST, request, "Name exceeded max length"); // we can change this by showing custom error for login??
 
-    std::string sessionId = generateUniqueSessionID(userCreds);
+    std::string sessionId = generateUniqueSessionID();
     userCreds[sessionId] = userName;
     response.addCookie("sessionId", sessionId, "");
     std::stringstream html;
@@ -155,16 +157,16 @@ std::string Login::postLogin(const HttpRequest &request, HttpResponse &response 
 }
 
 
-void Login::respondToLogin(const HttpRequest &request, std::map<std::string, std::string> &userCreds, int clientFd) {
+void Login::respondToLogin(const HttpRequest &request, int clientFd) {
     const std::string &method = request.getMethod();
     HttpResponse response(request.getVersion(), 200, "OK", "");
     std::string html;
     if (method == "GET")
-        html =  getLogin(request, userCreds);
+        html =  getLogin(request);
     else if (method == "POST")
-        html = postLogin(request, response, userCreds);
+        html = postLogin(request, response);
     else 
-        html = deleteLogin(request, userCreds);
+        html = deleteLogin(request);
     response.setBody(html);
     std::string responseStr = response.toString();
     ServerManager::sendString(responseStr, clientFd);

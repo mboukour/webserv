@@ -29,15 +29,12 @@ void CgiState::parseCgiHeaders(void) {
     std::stringstream ss(this->initBuffer);
     std::string line;
     while(std::getline(ss, line)) {
-        // Handle \r\n line endings
         if (!line.empty() && line[line.size() - 1] == '\r')
             line = line.substr(0, line.size() - 1);
             
-        // Empty line indicates end of headers
         if (line.empty())
             break;
             
-        // Parse key:value
         size_t pos = line.find(":");
         if (pos == std::string::npos) {
             std::cerr << "Invalid header line: " << line << std::endl;
@@ -47,8 +44,7 @@ void CgiState::parseCgiHeaders(void) {
         std::string key = line.substr(0, pos);
         std::string value = line.substr(pos + 1);
         AllUtils::removeLeadingSpaces(value);
-        
-        // Only process the headers we care about
+
         if (key == "Content-Length") {
             this->readMode = CONTENT_LENGTH;
             std::stringstream clSs(value);
@@ -62,7 +58,6 @@ void CgiState::parseCgiHeaders(void) {
             else
                 throw HttpErrorException(INTERNAL_SERVER_ERROR, "Unsupported Transfer-Encoding: " + value);
         }
-        // Ignore all other headers
     }
 }
 
@@ -88,9 +83,21 @@ void CgiState::setupReadMode(size_t headersPos) {
             break;
         }
         case READY_CHUNKED: {
+            if (hasChunkEnded(this->initBuffer)) {
+                cleanUpCgi();
+                this->isDone = true;
+            }
             break;
         }
     }
+}
+
+bool CgiState::hasChunkEnded(const std::string &toCheck) {
+    if (toCheck.find("0\r\n\r\n") != std::string::npos) {
+        std::cout << "END" << std::endl;
+        return true;
+    }
+    return false;
 }
 
 void CgiState::setupReadMode(const std::string &bufferStr) {
@@ -111,6 +118,10 @@ void CgiState::setupReadMode(const std::string &bufferStr) {
             break;
         }
         case READY_CHUNKED: {
+        if (hasChunkEnded(bufferStr)) {
+            cleanUpCgi();
+            this->isDone = true;
+        }
             break;
         }
     }
@@ -180,8 +191,8 @@ void CgiState::sendCurrentChunk(void) {
 
 
 void CgiState::handlecgiReadable(void) {
+    std::vector<char> buffer(READ_SIZE);
     while (true) {
-        std::vector<char> buffer(4096);
         ssize_t bytesRead = recv(cgiFd, buffer.data(), buffer.size(), 0);
         if (bytesRead == 0) {
             if (!this->isResponding)
@@ -214,7 +225,6 @@ bool CgiState::isWritingDone(void) const {
 }
 
 void CgiState::activateWriteState(const std::string &toWrite) {
-    std::cout << "CGI WRITE STATE" << std::endl;
     this->writeQueue.push_back(toWrite);
     if (this->writeState == NOT_REGISTERED) {
         struct epoll_event ev;
@@ -228,7 +238,6 @@ void CgiState::activateWriteState(const std::string &toWrite) {
 void CgiState::handleCgiWritable(void) {
     if (this->writeQueue.empty())
         return;
-    std::cout << "WRITABLE" << std::endl;
     for (std::vector<std::string>::iterator it = this->writeQueue.begin();
         it != this->writeQueue.end(); ) {
 
@@ -247,7 +256,6 @@ void CgiState::handleCgiWritable(void) {
                     return;
                 }
                 totalSent += bytesSent;
-                std::cout << "Writing: " << bytesSent << std::endl;
             }
             it = this->writeQueue.erase(it);
         }

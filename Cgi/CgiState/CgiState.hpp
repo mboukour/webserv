@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <vector>
 
+#define READ_SIZE 65536
 class CgiState {
     private:
         static const int cgiTimeout;
@@ -30,9 +31,9 @@ class CgiState {
         bool isResponding;
         bool isClean;
         bool isDone;
-
         CgiState();
-
+        
+        static bool hasChunkEnded(const std::string &toCheck);
         void updateLastActivity(void);
         void setupReadMode(size_t headersPos);
         void setupReadMode(const std::string &bufferStr);

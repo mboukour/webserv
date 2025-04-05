@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <dirent.h>
 #include "../../Server/ServerManager/ServerManager.hpp"
-#include "../../Cgi/CgiState/CgiState.hpp"
+#include "../../Session/Login/Login.hpp"
 
 HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
@@ -20,7 +20,7 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
     clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(),
     chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""), pendingCRLF(false),
     isLastEntry(false), multiState(M_BOUND), currBound(0) {
-    if (handleReturnDirective(request))
+    if (handleSessionTest(request) || handleReturnDirective(request))
         return;
     this->version = request.getVersion();
     std::ifstream htmlFile("Http/HttpResponse/upload_pages/success_create.html"); // html page when the upload is successfull, ruined can store in a better place
@@ -42,8 +42,6 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         if (method == "POST")
             handlePostRequest(request);
         return ;
-    } else {
-        std::cout << "NOT CGI" << std::endl;
     }
     if (method == "DELETE")
         handleDeleteRequest(request);
@@ -61,6 +59,14 @@ bool HttpResponse::isReturnRequest(const HttpRequest &request) {
     return true;
 }
 
+
+bool HttpResponse::handleSessionTest(const HttpRequest &request) const {
+    if (request.getPath() == "/session-test") {
+        Login::respondToLogin(request, this->clientFd);
+        return true;
+    }
+    return false;
+}
 
 bool HttpResponse::handleReturnDirective(const HttpRequest &request) const {
     const Location *loc = dynamic_cast< const Location *>(request.getRequestBlock());

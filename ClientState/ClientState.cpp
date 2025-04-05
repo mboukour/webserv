@@ -119,8 +119,8 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
 
+    std::vector<char> buffer(READ_SIZE);
     while (true) {
-        std::vector<char> buffer(READ_SIZE);
         ssize_t bytesReceived = recv(this->eventFd, buffer.data(), buffer.size()- 1, 0);
         if (bytesReceived == 0) {
             std::cout << "RECV ZERO" << std::endl;
