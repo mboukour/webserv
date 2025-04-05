@@ -1,1 +1,18 @@
 - We might need to throw in an error (send string and over ride the send file (for like get))
+POST:Browser: uploading file with size > maxBody results in:
+	Server listening on port 8080
+	New connection accepted: 6
+	New connection accepted: 7
+	Changed state
+	Accepted default server for port: 8080
+	Here: [boundary=----WebKitFormBoundarywKEELEjiOkt2ExSo]
+	Response sent with code 413 Reason: Payload too large
+
+	Changed state
+	Response sent with code 400 Reason: ------WebKitFormBoundarywKEELEjiOkt2ExSo
+
+	Closing event 6
+	Closing client state
+	Closing event 7
+	Closing client state
+but it works fine with Postman
