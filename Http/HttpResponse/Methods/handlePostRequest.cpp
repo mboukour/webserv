@@ -510,6 +510,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 			}
 			case M_HEADERS:
 			{
+				this->skip = false;
 				this->packet = this->subHeaders + this->packet;
 				size_t head_pos = this->packet.find("\r\n\r\n");
 				if (head_pos == std::string::npos){
@@ -526,10 +527,12 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				if (file == ""){
 					this->skip = true;
 					this->multiState = M_BODY;
-					break;
+					continue;
 				}
 				this->fileName = generateFileName(request, file);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
+				if (this->fd == -1)
+					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
 				this->multiState = M_BODY;
 				break;
 			}
@@ -541,8 +544,11 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				if (bound_pos == std::string::npos){
 					if (this->multiBody.length() > boundLen){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
-						if (this->skip == false)
-							write(this->fd, toWrite.c_str(), toWrite.length());
+						if (this->skip == false){
+							ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
+							if (ret == -1)
+								throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+						}
 						toWrite.clear();
 						this->multiBody = this->multiBody.substr(this->multiBody.length() - boundLen);
 					}
@@ -550,8 +556,11 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				}
 				this->packet = this->multiBody.substr(bound_pos);
 				this->multiBody = this->multiBody.substr(0, bound_pos - 2); // \r\n -> as long a you found the boundary, \r\n is 100% guaranteed to be there
-				if (this->skip == false)
-					write(this->fd, this->multiBody.c_str(), this->multiBody.length());
+				if (this->skip == false){
+					ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
+					if (ret == -1)
+						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+				}
 				this->multiBody.clear();
 				curr_pos = 0; // the packet will now start from the next
 				this->multiState = M_BOUND;
@@ -596,9 +605,8 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				if (tmp != bound){
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
 				}
-				if (this->packet == bound + "--\r\n"){
+				if (this->packet == bound + "--\r\n")
 					return;
-				}
 				this->packet = this->packet.substr(curr_pos);
 				this->multiState = M_HEADERS;
 				this->subHeaders = "";
@@ -606,6 +614,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 			}
 			case M_HEADERS:
 			{
+				this->skip = false;
 				this->packet = this->subHeaders + this->packet;
 				size_t head_pos = this->packet.find("\r\n\r\n");
 				if (head_pos == std::string::npos){
@@ -622,10 +631,12 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				if (file == ""){
 					this->skip = true;
 					this->multiState = M_BODY;
-					break;
+					continue;
 				}
 				this->fileName = generateFileName(request, file);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
+				if (this->fd == -1)
+					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
 				this->multiState = M_BODY;
 				break;
 			}
@@ -637,8 +648,11 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				if (bound_pos == std::string::npos){
 					if (this->multiBody.length() > boundLen){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
-						if (this->skip == false)
-							write(this->fd, toWrite.c_str(), toWrite.length());
+						if (this->skip == false){
+							ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
+							if (ret == -1)
+								throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+						}
 						toWrite.clear();
 						this->multiBody = this->multiBody.substr(this->multiBody.length() - boundLen);
 					}
@@ -646,8 +660,11 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				}
 				this->packet = this->multiBody.substr(bound_pos);
 				this->multiBody = this->multiBody.substr(0, bound_pos - 2); // \r\n -> as long a you found the boundary, \r\n is 100% guaranteed to be there
-				if (this->skip == false)
-					write(this->fd, this->multiBody.c_str(), this->multiBody.length());
+				if (this->skip == false){
+					ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
+					if (ret == -1)
+						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+				}
 				this->multiBody.clear();
 				curr_pos = 0; // the packet will now start from the next
 				this->multiState = M_BOUND;
