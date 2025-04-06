@@ -20,7 +20,7 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd):
     clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(),
     chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""), pendingCRLF(false),
-    isLastEntry(false), multiState(M_BOUND), currBound(0), isChunked(false) {
+    isLastEntry(false), multiState(M_BOUND), currBound(0), written(0), isChunked(false) {
     if (handleSessionTest(request) || handleReturnDirective(request))
         return;
     this->version = request.getVersion();
@@ -178,4 +178,8 @@ HttpResponse::~HttpResponse(){
         if (this->isChunked && !this->isLastEntry)
             unlink(this->fileName.c_str());
     }
+}
+
+int HttpResponse::getFd(void) const{
+    return this->fd;
 }

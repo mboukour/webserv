@@ -42,6 +42,7 @@ class HttpResponse: public AHttp {
         std::string multiBody;
         bool skip;
         CgiState *cgiState;
+        size_t written;
         bool isChunked;
 
         static std::string getConTypeExten(const std::string &contentType);
@@ -68,6 +69,7 @@ class HttpResponse: public AHttp {
         void multiForm(const HttpRequest &request);
         void multiChunked(const HttpRequest &request);
         void multiForm_chunked(const HttpRequest &request);
+        std::string generateFileName(const HttpRequest &request, std::string &file);
     public:
         HttpResponse();
         ~HttpResponse();
@@ -80,6 +82,7 @@ class HttpResponse: public AHttp {
         void handleNewReqEntry(const HttpRequest &request);
         bool getIsLastEntry(void) const;
         std::string toString(void) const;
+        int getFd(void) const;
         // void multiForm(const HttpRequest &request);
 };
 

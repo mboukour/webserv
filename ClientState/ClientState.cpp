@@ -19,7 +19,7 @@
 const int ClientState::keepAliveTimeout = 10; // in seconds
 
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
-  readState(NO_REQUEST), bytesRead(0), request(), requestCount(0), 
+  readState(NO_REQUEST), bytesRead(0), request(), requestCount(0),
   writeState(NOT_REGISTERED), sendQueue(), response(NULL), cgiState(NULL),
   lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false), isClean(false) {}
 
@@ -39,9 +39,9 @@ void ClientState::handleWritable(void) {
             std::fstream fileToSend(toSend.filePath.c_str());
             if (!fileToSend.is_open())
                 throw std::runtime_error("Could'nt open file");
-        
+
         fileToSend.seekg(toSend.currentPos);
-        
+
         // Read one chunk
             std::vector<char> buffer(READ_SIZE);
             while(true) {
@@ -107,6 +107,8 @@ bool ClientState::getIsKeepAlive(void) const {
 
 void ClientState::resetReadState(void) {
     this->readState = NO_REQUEST;
+    if (this->response)
+        close(this->response->getFd());
     delete this->response;
     this->request = HttpRequest();
     this->response = NULL;
@@ -269,7 +271,7 @@ void ClientState::activateWriteState(const std::string &stringToSend) {
 }
 
 int ClientState::getEventFd(void) const {
-    return this->eventFd; 
+    return this->eventFd;
 }
 
 
