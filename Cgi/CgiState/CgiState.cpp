@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <ctime>
+#include <iomanip>
 #include <sched.h>
 #include <sstream>
 #include <string>
@@ -22,7 +23,8 @@ CgiState::CgiState(int cgiFd, pid_t cgiPid, int epollFd,  ClientState *client):
     client(client), lastActivityTime(time(NULL)),
     readMode(RAW_CHUNKED), readState(READING_HEADERS), contentSent(0), contentLength(0),
     writeState(NOT_REGISTERED), writeQueue(),
-    isResponding(false), isClean(false),isDone(false) {} // we assume we have to make our own chunked unless headers specify not to :)
+    isResponding(false), isClean(false),isDone(false), cgiChunkState(CH_START), cgiOffset(0),
+    cgi_chunk_size(""), cgi_remaining_chunk_size(0) {} // we assume we have to make our own chunked unless headers specify not to :)
 
 
 void CgiState::parseCgiHeaders(void) {
@@ -31,10 +33,10 @@ void CgiState::parseCgiHeaders(void) {
     while(std::getline(ss, line)) {
         if (!line.empty() && line[line.size() - 1] == '\r')
             line = line.substr(0, line.size() - 1);
-            
+
         if (line.empty())
             break;
-            
+
         size_t pos = line.find(":");
         if (pos == std::string::npos) {
             std::cerr << "Invalid header line: " << line << std::endl;
@@ -67,7 +69,7 @@ void CgiState::setupReadMode(size_t headersPos) {
         case CONTENT_LENGTH: {
             if (this->contentSent > this->contentLength) {
                 std::stringstream ss;
-                ss  << "Content size: " << this->contentSent << " bigger than Content length: " << this->contentLength; 
+                ss  << "Content size: " << this->contentSent << " bigger than Content length: " << this->contentLength;
                 throw HttpErrorException(INTERNAL_SERVER_ERROR, ss.str());
             }
             else if (this->contentSent == this->contentLength) {
@@ -93,11 +95,93 @@ void CgiState::setupReadMode(size_t headersPos) {
 }
 
 bool CgiState::hasChunkEnded(const std::string &toCheck) {
-    if (toCheck.find("0\r\n\r\n") != std::string::npos) {
-        std::cout << "END" << std::endl;
-        return true;
-    }
-    return false;
+	bool processing = true;
+	size_t curr_pos = 0;
+	this->cgiOffset = toCheck.length();
+	while (processing)
+	{
+		switch (this->cgiChunkState){
+			case CH_START:
+				this->cgiChunkState = CH_SIZE;
+				break ;
+			case CH_SIZE:{
+				size_t end;
+				if (this->cgiPendingCRLF) {
+					this->cgiPendingCRLF = false;
+					curr_pos++;
+				}
+				for (end = curr_pos; end < this->cgiOffset; end++){
+					if ((toCheck[end] == '\r' && toCheck[end + 1] == '\n') || toCheck[end] == '\n') {
+						this->cgiChunkState = CH_DATA;
+						break;
+					}
+				}
+				this->cgi_chunk_size += toCheck.substr(curr_pos, end - curr_pos);
+				if (this->cgi_chunk_size.size() > 20)
+					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Size bigger than 20");
+				curr_pos = end;
+				if (this->cgiChunkState == CH_DATA){
+					std::stringstream ss(this->cgi_chunk_size);
+					this->cgi_chunk_size = "";
+					if ((toCheck[curr_pos] == '\r' && toCheck[curr_pos + 1] == '\n'))
+						curr_pos += 2;
+					else if (toCheck[curr_pos] == '\n')
+						curr_pos++;
+					ss >> std::setbase(16) >> this->cgi_remaining_chunk_size;
+					if (this->cgi_remaining_chunk_size == 0)
+						this->cgiChunkState = CH_COMPLETE;
+				}
+				if (curr_pos >= this->cgiOffset)
+					processing = false;
+				break;
+			}
+			case CH_DATA:
+			{
+				size_t ch_size = this->cgiOffset - curr_pos;
+				processing = false;
+				if (this->cgi_remaining_chunk_size <= ch_size) { // chunk will end in this packet
+					ch_size = this->cgi_remaining_chunk_size;
+					processing = true;
+					this->cgiChunkState = CH_TRAILER;
+				}
+				if (request.isCgiRequest())
+					cgiState->activateWriteState(toCheck.c_str() + curr_pos);
+				else{
+					ssize_t w = write(this->fd, toCheck.c_str() + curr_pos, ch_size);
+					if (w == -1)
+						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
+				}
+				this->cgi_remaining_chunk_size -= ch_size;
+				if (!this->cgi_remaining_chunk_size)
+					this->cgiChunkState = CH_TRAILER;
+				curr_pos += ch_size;
+				if (curr_pos >= this->cgiOffset)
+					processing = false;
+				break;
+			}
+			case CH_TRAILER:
+				if ((toCheck[curr_pos] == '\r' && toCheck[curr_pos + 1] == '\n')) {
+					if (curr_pos + 2 > this->cgiOffset)
+						return;
+					curr_pos += 2;
+				}
+				else if (toCheck[this->cgiOffset - 1] == '\r') {
+					this->cgiPendingCRLF = true;
+					this->cgiChunkState = CH_SIZE;
+					return;
+				}
+				this->cgiChunkState = CH_SIZE;
+				break;
+			case CH_COMPLETE:
+					this->isLastEntry = true;
+					if (!request.isCgiRequest())
+						postResponse(request, 201, this->success_create, this->fileName);
+					return;
+				break;
+			default:
+				break;
+		}
+	}
 }
 
 void CgiState::setupReadMode(const std::string &bufferStr) {
@@ -265,7 +349,7 @@ void CgiState::handleCgiWritable(void) {
     ev.events = EPOLLIN | EPOLLET;
     ev.data.ptr = ServerManager::getEpollEvent(this->cgiFd);
     epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->cgiFd, &ev);
-    this->writeState = NOT_REGISTERED; 
+    this->writeState = NOT_REGISTERED;
 }
 
 bool CgiState::getIsDone(void) const {

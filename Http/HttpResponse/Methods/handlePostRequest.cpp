@@ -156,7 +156,6 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 	if (this->postState == INIT_POST){
 		this->postState = NEW_REQ_ENTRY;
 		if (!request.isCgiRequest()) {
-			this->written = 0;
 			std::string folder = request.getRequestBlock()->getUploadPath();
 			std::string file = randomizeFileName() + getConTypeExten(request.getHeader("Content-Type"));
 			if (folder.empty()){
@@ -235,15 +234,6 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					ssize_t w = write(this->fd, this->packet.c_str() + curr_pos, ch_size);
 					if (w == -1)
 						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
-					this->written += w;
-					if (request.getRequestBlock()->getIsLimited()) {
-						if (this->written > request.getRequestBlock()->getMaxBodySize()){
-							unlink(this->fileName.c_str());
-							close(this->fd);
-							std::cout << YELLOW << "File to unlink: " + this->fileName << RESET << std::endl;
-							throw HttpErrorException(PAYLOAD_TOO_LARGE, request, "Payload too large.");
-						}
-					}
 				}
 				this->remaining_chunk_size -= ch_size;
 				if (!this->remaining_chunk_size)
