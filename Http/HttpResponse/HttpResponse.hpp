@@ -62,8 +62,6 @@ class HttpResponse: public AHttp {
         void handlePostRequest(const HttpRequest &request);
         void postResponse(const HttpRequest& request,
             int statusCode, std::string body, std::string const fileName);
-        void firstPostBin(const HttpRequest& request);
-        std::string setFileName(const HttpRequest& request);
         void chunkedTransfer(const HttpRequest &request);
         void setPacket(const HttpRequest &request);
         void multiForm(const HttpRequest &request);

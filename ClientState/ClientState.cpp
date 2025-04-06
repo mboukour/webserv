@@ -107,8 +107,6 @@ bool ClientState::getIsKeepAlive(void) const {
 
 void ClientState::resetReadState(void) {
     this->readState = NO_REQUEST;
-    if (this->response)
-        close(this->response->getFd());
     delete this->response;
     this->request = HttpRequest();
     this->response = NULL;
@@ -118,6 +116,8 @@ void ClientState::resetReadState(void) {
 
 
 void ClientState::handleReadable(std::vector<Server> &servers) {
+    if (this->isDone)
+        return;
     if (this->readState == NO_REQUEST)
         this->readState = READING_HEADERS;
 
@@ -195,7 +195,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                         this->response->handleNewReqEntry(this->request);
                     } catch (const HttpErrorException &exec) {
                         resetReadState();
-                        DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+                        DEBUG && std::cerr << "Response sent with code" << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
                         ServerManager::sendString(exec.getResponseString(), this->eventFd);
                         updateLastActivity();
                         return;

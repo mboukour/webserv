@@ -46,23 +46,6 @@ std::string getFileLastModifiedTime(const std::string &filePath) {
   return std::string(buffer);
 }
 
-std::string regexReplace(const std::string &filename) {
-  std::string result;
-  for (size_t i = 0; i < filename.size(); i++) {
-    if ((filename[i] >= 'a' && filename[i] <= 'z') || // lowercase letters
-        (filename[i] >= 'A' && filename[i] <= 'Z') || // uppercase letters
-        (filename[i] >= '0' && filename[i] <= '9') || // digits
-        (filename[i] == '_') ||                       // underscore
-        (filename[i] == '.') ||                       // period
-        (filename[i] == '-')) {                       // hyphen
-      result += filename[i];                          // Keep the character
-    } else {
-      result += '_'; // Replace with underscore
-    }
-  }
-  return result;
-}
-
 std::string randomizeFileName() {
   struct timeval tv;
   gettimeofday(&tv, NULL);
@@ -73,16 +56,6 @@ std::string randomizeFileName() {
   std::string fileID = sS.str();
   return fileID;
 }
-
-// if the transfer encoding is set tp chunked, the content-lenght header
-// presence is not necessary map with the content-type and it corresponding file
-// extension parse is chunked is set
-
-// why sometimes i get "Fatal Runtime error: BODY ISZE BIGGER THAN CL"
-
-// TODO:
-// generate response: the randomized file name must be mentioned in the response
-// headers create && fill the file
 
 std::string HttpResponse::getConTypeExten(const std::string &contentType) {
   if (contentType == "text/html")
@@ -129,15 +102,13 @@ std::string HttpResponse::extToNature(const std::string &extension) {
 }
 
 bool isDir(const char *path) {
-  struct stat info;
-  if (stat(path, &info) != 0)
-    return false;
-  return (info.st_mode & S_IFDIR) != 0; // Check if it's a directory
-                                        //      holds info    is it a dir
+	struct stat info;
+	if (stat(path, &info) != 0)
+		return false;
+	return (info.st_mode & S_IFDIR) != 0;
 }
 
-void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
-                                std::string body, std::string const fileName) {
+void HttpResponse::postResponse(const HttpRequest &request, int statusCode, std::string body, std::string const fileName) {
 	if (request.isCgiRequest())
 		return;
 	std::cout << "Sending response" << std::endl;
@@ -158,14 +129,12 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
 	this->reasonPhrase = HttpErrorException::getReasonPhrase(statusCode);
 	std::string find = "FILE_LOCATION";
 	size_t pos = body.rfind(find);
-	if (pos != std::string::npos) {
-	body.replace(pos, find.length(), location);
-	}
+	if (pos != std::string::npos)
+		body.replace(pos, find.length(), location);
 	find = "SC_RP";
 	pos = body.rfind(find);
-	if (pos != std::string::npos) {
-	body.replace(pos, find.length(), this->reasonPhrase);
-	}
+	if (pos != std::string::npos)
+		body.replace(pos, find.length(), this->reasonPhrase);
 	this->body = body;
 	sS.str("");
 	sS.clear();
@@ -177,42 +146,10 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode,
 	this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);
 	this->headers["Location"] = location;
 	this->headers["Connection"] = connectState;
-	if (state->getIsKeepAlive()) {
+	if (state->getIsKeepAlive())
 		this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
-	}
 	std::string toStr = this->toString();
 	ServerManager::sendString(toStr, this->clientFd);
-}
-
-std::string HttpResponse::setFileName(const HttpRequest &request) {
-  std::string __contentType = request.getHeader("Content-Type");
-  std::string __exten = ".bin"; // we need to save every content-type with its
-                                // corresponding extension, ofc in a map
-  std::string __folder = "";
-  std::string ret = getConTypeExten(__contentType);
-  if (ret.empty() == false)
-    __exten = ret;
-  ret = extToNature(__exten);
-  if (ret.empty() == false)
-    __folder = ret;
-  this->fileName = randomizeFileName() + __exten;
-  __folder = "uploads/" + __folder;
-  this->fileName = __folder + this->fileName;
-  return __folder;
-}
-
-void HttpResponse::firstPostBin(const HttpRequest &request) {
-	if (!request.isCgiRequest()) {
-		if (isDir(setFileName(request).c_str()) == true) {
-		  this->fd = open(this->fileName.c_str(), O_WRONLY | O_CREAT,
-						S_IRUSR | S_IWUSR); // check for failure
-		  write(this->fd, request.getBody().c_str(), request.getBody().size());
-		} else {
-		  std::cout << RED << "Folder do not exist!" << RESET << std::endl;
-		}
-	} else {
-		cgiState->activateWriteState(request.getBody());
-	}
 }
 
 void	HttpResponse::setPacket(const HttpRequest &request){
@@ -240,23 +177,6 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 	}
 	else
 		this->packet = request.getReqEntry();
-}
-
-std::string visualizeEscapes(const std::string input) {
-    std::string result;
-    result.reserve(input.length() * 2); // Pre-allocate for efficiency
-
-    for (size_t i = 0; i < input.length(); ++i) {
-        if (input[i] == '\r') {
-            result += "\\r";
-        } else if (input[i] == '\n') {
-            result += "\\n";
-        } else {
-            result += input[i];
-        }
-    }
-
-    return result;
 }
 
 void	HttpResponse::chunkedTransfer(const HttpRequest &request){
@@ -679,8 +599,6 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 }
 
 void HttpResponse::multiChunked(const HttpRequest &request){
-	std::string const bound = "--" + request.getBoundary();
-	// size_t boundLen = bound.length();
 	bool processing = true;
 	size_t curr_pos = 0;
 	this->offset = this->packet.length();
@@ -775,14 +693,7 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 
 
 void HttpResponse::handlePostRequest(const HttpRequest &request) {
-	std::string path = request.getRequestBlock()->getRoot();
-	std::string __contentType = request.getHeader("Content-Type");
-	std::string __exten = ".bin"; // we need to save every content-type with its
-									// corresponding extension, ofc in a map
-	std::string __folder = "";
-	if (request.getRequestBlock()->getIsLimited()) {
-		std::cout << MAGENTA <<  "max body size: " << request.getRequestBlock()->getMaxBodySize() << RESET << std::endl;
-	}
+	std::string path = request.getRequestBlock()->getRoot(); // what to use it for ?
 	if (request.isChunkedRequest() == false) {
 		if (request.isMultiRequest() && !request.isCgiRequest()){
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
@@ -794,20 +705,13 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 		}
 		else {
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
-			if (this->postState == INIT_POST || (this->postState == LAST_ENTRY && this->prevPostState == INIT_POST)) {
-				firstPostBin(request);
-				if (this->isLastEntry && !request.isCgiRequest())
-					postResponse(request, 201, this->success_create, this->fileName);
-				this->postState = NEW_REQ_ENTRY;
-			}
-			else {
-				const std::string *buff = request.getReqEntryPtr();
-				if (request.isCgiRequest())
-					this->cgiState->activateWriteState(*buff);
-				else
-					write(this->fd, buff->c_str(), buff->size());
-				if (this->isLastEntry && !request.isCgiRequest())
-					postResponse(request, 201, this->success_create, this->fileName);
+			setPacket(request);
+			ssize_t w = write(this->fd, this->packet.c_str(), this->packet.length());
+			if (w == -1)
+				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
+			if (this->isLastEntry){
+				postResponse(request, 201, this->success_create, this->fileName);
+				close(this->fd);
 			}
 		}
 	}
