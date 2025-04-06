@@ -118,7 +118,7 @@ bool CgiState::hasChunkEnded(const std::string &toCheck) {
 				}
 				this->cgi_chunk_size += toCheck.substr(curr_pos, end - curr_pos);
 				if (this->cgi_chunk_size.size() > 20)
-					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Size bigger than 20");
+                    throw HttpErrorException(INTERNAL_SERVER_ERROR, "Size bigger than 20");
 				curr_pos = end;
 				if (this->cgiChunkState == CH_DATA){
 					std::stringstream ss(this->cgi_chunk_size);
@@ -139,17 +139,10 @@ bool CgiState::hasChunkEnded(const std::string &toCheck) {
 			{
 				size_t ch_size = this->cgiOffset - curr_pos;
 				processing = false;
-				if (this->cgi_remaining_chunk_size <= ch_size) { // chunk will end in this packet
+				if (this->cgi_remaining_chunk_size <= ch_size) {
 					ch_size = this->cgi_remaining_chunk_size;
 					processing = true;
 					this->cgiChunkState = CH_TRAILER;
-				}
-				if (request.isCgiRequest())
-					cgiState->activateWriteState(toCheck.c_str() + curr_pos);
-				else{
-					ssize_t w = write(this->fd, toCheck.c_str() + curr_pos, ch_size);
-					if (w == -1)
-						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
 				}
 				this->cgi_remaining_chunk_size -= ch_size;
 				if (!this->cgi_remaining_chunk_size)
@@ -162,26 +155,23 @@ bool CgiState::hasChunkEnded(const std::string &toCheck) {
 			case CH_TRAILER:
 				if ((toCheck[curr_pos] == '\r' && toCheck[curr_pos + 1] == '\n')) {
 					if (curr_pos + 2 > this->cgiOffset)
-						return;
+						return false;
 					curr_pos += 2;
 				}
 				else if (toCheck[this->cgiOffset - 1] == '\r') {
 					this->cgiPendingCRLF = true;
 					this->cgiChunkState = CH_SIZE;
-					return;
+					return false;
 				}
 				this->cgiChunkState = CH_SIZE;
 				break;
 			case CH_COMPLETE:
-					this->isLastEntry = true;
-					if (!request.isCgiRequest())
-						postResponse(request, 201, this->success_create, this->fileName);
-					return;
-				break;
+				return true;
 			default:
 				break;
 		}
 	}
+    return false;
 }
 
 void CgiState::setupReadMode(const std::string &bufferStr) {
