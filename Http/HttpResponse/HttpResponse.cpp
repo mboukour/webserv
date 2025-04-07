@@ -24,15 +24,71 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
     if (handleSessionTest(request) || handleReturnDirective(request))
         return;
     this->version = request.getVersion();
-    std::ifstream htmlFile("Http/HttpResponse/upload_pages/success_create.html"); // html page when the upload is successfull, ruined can store in a better place
-    if (!htmlFile.is_open()) {
-        throw HttpErrorException(500, request, "Failed to open HTML file");
-    }
-    std::stringstream sS;
-    sS << htmlFile.rdbuf();
-    this->success_create = sS.str();
-    htmlFile.close() ;
-
+    this->success_create =
+        "<!DOCTYPE html>\n"
+        "<html lang=\"en\">\n"
+        "<head>\n"
+        "    <meta charset=\"UTF-8\">\n"
+        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+        "    <title>File Upload Successful</title>\n"
+        "    <style>\n"
+        "        body {\n"
+        "            font-family: 'Arial', sans-serif;\n"
+        "            background-color: #f7f7f7;\n"
+        "            display: flex;\n"
+        "            justify-content: center;\n"
+        "            align-items: center;\n"
+        "            height: 100vh;\n"
+        "            margin: 0;\n"
+        "        }\n"
+        "        .container {\n"
+        "            background-color: white;\n"
+        "            border-radius: 8px;\n"
+        "            padding: 40px;\n"
+        "            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);\n"
+        "            text-align: center;\n"
+        "            width: 80%;\n"
+        "            max-width: 600px;\n"
+        "        }\n"
+        "        h1 {\n"
+        "            color: #4CAF50;\n"
+        "            font-size: 36px;\n"
+        "            margin-bottom: 20px;\n"
+        "        }\n"
+        "        .sc-rp-title {\n"
+        "            font-size: 72px;\n"
+        "            font-weight: bold;\n"
+        "            color: #4CAF50;\n"
+        "            margin-bottom: 20px;\n"
+        "            background: linear-gradient(45deg, #ff6f61, #ffcc00);\n"
+        "            -webkit-background-clip: text;\n"
+        "            color: transparent;\n"
+        "        }\n"
+        "        .message {\n"
+        "            color: #333;\n"
+        "            font-size: 18px;\n"
+        "            margin-bottom: 20px;\n"
+        "        }\n"
+        "        .location {\n"
+        "            font-size: 16px;\n"
+        "            color: #555;\n"
+        "            margin-bottom: 30px;\n"
+        "            word-wrap: break-word;\n"
+        "        }\n"
+        "    </style>\n"
+        "</head>\n"
+        "<body>\n"
+        "    <div class=\"container\">\n"
+        "        <h2 class=\"sc-rp-title\">SC_RP</h2>\n"
+        "        <h1>File Uploaded Successfully</h1>\n"
+        "        <p class=\"message\">Your file has been uploaded and is now available!</p>\n"
+        "        <p class=\"location\">\n"
+        "            <strong>File Location:</strong><br>\n"
+        "            FILE_LOCATION\n"
+        "        </p>\n"
+        "    </div>\n"
+        "</body>\n"
+        "</html>\n";
     if (request.getMethod() == "POST" && request.getContentLength() == request.getBodySize()) {
         this->prevPostState = this->postState;
         this->postState = LAST_ENTRY;
