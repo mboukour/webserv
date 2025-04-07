@@ -1,4 +1,2 @@
-- We might need to throw in an error (send string and over ride the send file (for like get))
-> what if success_create.html doesn't exist ?
-> POST: what if we want to upload nothing
-> POST: raw upload
+> POST add created files into a vector
+> Unlink everything in case of timeout (for post)

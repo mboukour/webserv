@@ -50,6 +50,7 @@ class ClientState {
         CgiState *cgiState;
         time_t lastActivityTime;
         bool isKeepAlive;
+        bool isResponding;
         bool isDone;
         bool isClean;
 
@@ -62,12 +63,14 @@ class ClientState {
         HttpResponse *getHttpResponse(void) const;
         const HttpRequest &getHttpRequest(void) const;
         int getEventFd(void) const;
+        void setAsDone(void);
         bool getIsDone(void) const;
         void handleReadable(std::vector<Server> &servers);
         void activateWriteState(const std::string &filePath, const std::streampos &currentPos);
         void activateWriteState(const std::string &stringToSend);
         void handleWritable(void);
         bool hasTimedOut(void) const;
+        bool getIsResponding(void) const;
         bool isSendingDone(void) const;
         bool getIsKeepAlive(void) const;
         ~ClientState();

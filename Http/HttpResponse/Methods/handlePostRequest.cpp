@@ -231,6 +231,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				if (request.isCgiRequest())
 					cgiState->activateWriteState(this->packet.c_str() + curr_pos);
 				else{
+					this->hasWritten = true;
 					ssize_t w = write(this->fd, this->packet.c_str() + curr_pos, ch_size);
 					if (w == -1)
 						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
@@ -257,6 +258,8 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				this->chunkState = CH_SIZE;
 				break;
 			case CH_COMPLETE:
+					if (!this->hasWritten)
+						throw HttpErrorException(BAD_REQUEST, request, "Empty post body");
 					this->isLastEntry = true;
 					if (!request.isCgiRequest())
 						postResponse(request, 201, this->success_create, this->fileName);
@@ -455,6 +458,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					if (this->multiBody.length() > boundLen){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
 						if (this->skip == false){
+							this->hasWritten = true;
 							ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
 							if (ret == -1)
 								throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
@@ -467,6 +471,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				this->packet = this->multiBody.substr(bound_pos);
 				this->multiBody = this->multiBody.substr(0, bound_pos - 2); // \r\n -> as long a you found the boundary, \r\n is 100% guaranteed to be there
 				if (this->skip == false){
+					this->hasWritten = true;
 					ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
 					if (ret == -1)
 						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
@@ -559,6 +564,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					if (this->multiBody.length() > boundLen){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
 						if (this->skip == false){
+							this->hasWritten = true;
 							ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
 							if (ret == -1)
 								throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
@@ -571,6 +577,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				this->packet = this->multiBody.substr(bound_pos);
 				this->multiBody = this->multiBody.substr(0, bound_pos - 2); // \r\n -> as long a you found the boundary, \r\n is 100% guaranteed to be there
 				if (this->skip == false){
+					this->hasWritten = true;
 					ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
 					if (ret == -1)
 						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
@@ -671,6 +678,8 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 				this->chunkState = CH_SIZE;
 				break;
 			case CH_COMPLETE:
+					if (!this->hasWritten)
+						throw HttpErrorException(BAD_REQUEST, request, "Empty post body");
 					this->isLastEntry = true;
 					postResponse(request, 201, this->success_create, this->fileName);
 					return;
@@ -694,6 +703,8 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 			}
 		}
 		else {
+			if (request.getContentLength() == 0)
+				throw HttpErrorException(BAD_REQUEST, request, "Empty post request");
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
 			setPacket(request);
 			ssize_t w = write(this->fd, this->packet.c_str(), this->packet.length());

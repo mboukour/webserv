@@ -98,11 +98,11 @@ std::string Cgi::getInterpreterPath(std::string extension, const HttpRequest &re
         if (extension == "py") lookFor = "/usr/bin/python3";
         else if (extension == "pl") lookFor = "/usr/bin/perl";
         else if (extension == "js") lookFor = "/usr/bin/node";
-        else if (extension == "sh") lookFor = "/bin/bash";
         else if (extension == "rb") lookFor = "/usr/bin/ruby";
         else if (extension == "java") lookFor = "/usr/bin/java";
         else if (extension == "go") lookFor = "/usr/bin/go";
         else if (extension == "bash") lookFor = "/bin/bash";
+        else if (extension == "sh") lookFor = "/bin/sh";
         else if (extension == "lua") lookFor = "/usr/bin/lua";
         else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php-cgi"; 
         else throw HttpErrorException(NOT_IMPLEMENTED, request , "The requested CGI extension is not supported: " + extension);

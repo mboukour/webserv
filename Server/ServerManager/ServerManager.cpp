@@ -176,6 +176,12 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
         case EpollEvent::CLIENT_CONNECTION: {
             ClientState *clientState = event->getClientState();
             if ((event->getIsDone() || event->hasTimedOut()) && clientState->isSendingDone()) {
+                if (!clientState->getIsResponding()) {
+                    clientState->setAsDone();
+                    HttpErrorException ex(GATEWAY_TIMEOUT, "TIMEOUT"); // make it work w request
+                    clientState->activateWriteState(ex.getResponseString());
+                    return false;
+                }
                 removeCgiAfterClient(clientState);
                 return true;
             }

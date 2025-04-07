@@ -13,14 +13,13 @@
 #include "../../Server/ServerManager/ServerManager.hpp"
 #include "../../Session/Login/Login.hpp"
 
+
 HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 
-
-
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd):
-    clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), prevPostState(INIT_POST), fd(-1), fileName(),
+    clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1), fileName(),
     chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""), pendingCRLF(false),
-    isLastEntry(false), multiState(M_BOUND), currBound(0), isChunked(false) {
+    isLastEntry(false), multiState(M_BOUND), currBound(0), hasWritten(false), isChunked(false) {
     if (handleSessionTest(request) || handleReturnDirective(request))
         return;
     this->version = request.getVersion();
@@ -89,10 +88,6 @@ HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd
         "    </div>\n"
         "</body>\n"
         "</html>\n";
-    if (request.getMethod() == "POST" && request.getContentLength() == request.getBodySize()) {
-        this->prevPostState = this->postState;
-        this->postState = LAST_ENTRY;
-    }
     const std::string &method = request.getMethod();
     if (request.isCgiRequest()) {
         this->cgiState = Cgi::initCgi(request, this->clientFd, this->epollFd);
@@ -228,14 +223,15 @@ void HttpResponse::sendResponse(void) const {
     ServerManager::sendString(responseStr, this->clientFd);
 }
 
+
+int HttpResponse::getFd(void) const{
+    return this->fd;
+}
+
 HttpResponse::~HttpResponse(){
     if (this->fd != -1) {
         close(this->fd);
         if (this->isChunked && !this->isLastEntry)
             unlink(this->fileName.c_str());
     }
-}
-
-int HttpResponse::getFd(void) const{
-    return this->fd;
 }

@@ -21,7 +21,6 @@ class HttpResponse: public AHttp {
         enum ChunkState {CH_START, CH_SIZE, CH_ERROR, CH_DATA, CH_COMPLETE, CH_TRAILER};
         enum MultiState {M_HEADERS, M_BOUND, M_BODY};
         PostState postState;
-        PostState prevPostState;
         int fd;
         std::string fileName;
         ChunkState chunkState;
@@ -41,6 +40,7 @@ class HttpResponse: public AHttp {
         std::string subHeaders;
         std::string multiBody;
         bool skip;
+        bool hasWritten;
         CgiState *cgiState;
         bool isChunked;
 
@@ -67,6 +67,7 @@ class HttpResponse: public AHttp {
         void multiChunked(const HttpRequest &request);
         void multiForm_chunked(const HttpRequest &request);
         std::string generateFileName(const HttpRequest &request, std::string &file);
+        
     public:
         HttpResponse();
         ~HttpResponse();
@@ -80,6 +81,7 @@ class HttpResponse: public AHttp {
         bool getIsLastEntry(void) const;
         std::string toString(void) const;
         int getFd(void) const;
+        bool hasPostTimedOut(void) const;
         // void multiForm(const HttpRequest &request);
 };
 

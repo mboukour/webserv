@@ -21,7 +21,7 @@ const int ClientState::keepAliveTimeout = 10; // in seconds
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), requestCount(0),
   writeState(NOT_REGISTERED), sendQueue(), response(NULL), cgiState(NULL),
-  lastActivityTime(time(NULL)), isKeepAlive(true), isDone(false), isClean(false) {}
+  lastActivityTime(time(NULL)), isKeepAlive(true),isResponding(false), isDone(false), isClean(false) {}
 
 
 void ClientState::handleWritable(void) {
@@ -53,6 +53,7 @@ void ClientState::handleWritable(void) {
 
                 ssize_t totalSent = 0;
                 while (totalSent < bytesRead) {
+                    this->isResponding = true;
                     ssize_t bytesSent = send(this->eventFd, buffer.data() + totalSent, bytesRead - totalSent, 0);
                     if (bytesSent == -1) {
                         std::streampos filePos = fileToSend.tellg();
@@ -67,6 +68,7 @@ void ClientState::handleWritable(void) {
             Logger::getLogStream() << "Sedning: " << toSend.stringToSend << std::endl;
             size_t totalSent = 0;
             while(totalSent < toSend.stringToSend.size()) {
+                this->isResponding = true;
                 ssize_t bytesSent = send(this->eventFd, toSend.stringToSend.data() + totalSent, toSend.stringToSend.size() - totalSent, 0);
                 if (bytesSent == -1) {
                     it->changeSend(toSend.stringToSend.substr(totalSent));
@@ -283,8 +285,16 @@ const HttpRequest &ClientState::getHttpRequest(void) const {
     return this->request;
 }
 
+void ClientState::setAsDone(void) {
+    this->isDone = true;
+}
+
 bool ClientState::getIsDone(void) const {
     return this->isDone;
+}
+
+bool ClientState::getIsResponding(void) const {
+    return this->isResponding;
 }
 
 ClientState::~ClientState() {
