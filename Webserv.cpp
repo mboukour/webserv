@@ -38,16 +38,16 @@ int main(int ac, char **av)
     }
 
 
-    // try
-    // {
+    try
+    {
         printServers(servers);
         ServerManager::initialize(servers);
         ServerManager::start();
-    // }
-    // catch(const std::exception& e)
-    // {
-    //     ServerManager::cleanUp();
-    //     std::cerr << "Fatal Runtime error: " << e.what() << '\n';
-    //     return (1);
-    // }
+    }
+    catch(const std::exception& e)
+    {
+        ServerManager::cleanUp();
+        std::cerr << "Fatal Runtime error: " << e.what() << '\n';
+        return (1);
+    }
 }
