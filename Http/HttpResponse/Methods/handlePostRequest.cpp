@@ -156,19 +156,18 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 	if (this->postState == INIT_POST){
 		this->postState = NEW_REQ_ENTRY;
 		if (!request.isCgiRequest()) {
-			std::string folder = request.getRequestBlock()->getUploadPath();
+			std::string folder = request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath();
 			std::string file = randomizeFileName() + getConTypeExten(request.getHeader("Content-Type"));
-			if (folder.empty()){
-				std::cerr << YELLOW << "[ALERT!]: " << RESET << "The upload path was not set in the config file. Uploading the file to the root directory..." << std::endl;
-				folder = request.getRequestBlock()->getRoot();
-			}
+			// path sanitize here
 			if (!isDir(folder.c_str())){
 				std::cerr << YELLOW << "[ALERT!]: " << RESET;
 				std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
 				folder = "";
 			}
 			this->fileName = folder + file;
+			std::cout << YELLOW << "File to create: " << this->fileName << RESET << std::endl;
 			this->fd = open(this->fileName.c_str(), O_CREAT | O_WRONLY, 0644); // check for failure
+			std::cout << YELLOW << "File des: " << this->fd << RESET << std::endl;
 			if (this->fd == -1)
 				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Internal server error");
 		}
@@ -353,7 +352,7 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 }
 
 std::string HttpResponse::generateFileName(const HttpRequest &request, std::string &file){
-	std::string folder = request.getRequestBlock()->getUploadPath();
+	std::string folder = request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath();
 	size_t pos = file.rfind(".");
 	std::string fileExten = "";
 	if (pos == std::string::npos && pos != 0){ // what if content-type header doesn't exist ?
@@ -363,10 +362,7 @@ std::string HttpResponse::generateFileName(const HttpRequest &request, std::stri
 		s >> contentType;
 		fileExten = getConTypeExten(contentType);
 	}
-	if (folder.empty()){
-		std::cerr << YELLOW << "[ALERT!]: " << RESET << "The upload path was not set in the config file. Uploading the file to the root directory..." << std::endl;
-		folder = request.getRequestBlock()->getRoot();
-	}
+	// path sanitize here
 	if (!isDir(folder.c_str())){
 		std::cerr << YELLOW << "[ALERT!]: " << RESET;
 		std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
@@ -443,6 +439,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					continue;
 				}
 				this->fileName = generateFileName(request, file);
+				// path sanitize here
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
@@ -549,6 +546,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					continue;
 				}
 				this->fileName = generateFileName(request, file);
+				// path sanitize here
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
