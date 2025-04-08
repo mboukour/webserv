@@ -258,24 +258,31 @@ void ServerManager::start(void) {
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
+    bool atLeastOne = false;
     for (std::vector<Server>::iterator it = servers.begin();
         it != servers.end(); it++)
     {
         struct epoll_event ev;
-
-        it->startServer();
-        int fdSocket = it->getFdSocket();
-        ev.events =  EPOLLIN | EPOLLET;
-        // ev.data.ptr = new ClientState(fdSocket, epollFd);
-        EpollEvent *serverEvent = new EpollEvent(fdSocket, epollFd, EpollEvent::SERVER_SOCKET);
-        eventStates[fdSocket] = serverEvent;
-        ev.data.ptr = serverEvent;
-        if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
-        {
-            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
-            close(fdSocket);
+        try { 
+            it->startServer();
+            atLeastOne = true;
+            int fdSocket = it->getFdSocket();
+            ev.events =  EPOLLIN | EPOLLET;
+            // ev.data.ptr = new ClientState(fdSocket, epollFd);
+            EpollEvent *serverEvent = new EpollEvent(fdSocket, epollFd, EpollEvent::SERVER_SOCKET);
+            eventStates[fdSocket] = serverEvent;
+            ev.data.ptr = serverEvent;
+            if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
+            {
+                std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+                close(fdSocket);
+            }
+        } catch (const std::runtime_error &ex) {
+            std::cerr << ex.what() << std::endl;
         }
     }
+    if (!atLeastOne)
+        return;
     handleConnections();
 }
 

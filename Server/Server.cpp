@@ -72,8 +72,6 @@ void Server::startServer(void) {
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
-    if (this->port < 1024)
-        throw std::runtime_error("Ports below 1024 require root privileges");
     this->fdSocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol); // listen to incoming clients
     if (this->fdSocket == -1)
     {
