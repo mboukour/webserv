@@ -29,6 +29,7 @@ class HttpResponse: public AHttp {
         std::string chunkBody;
         size_t left;
         std::string success_create;
+        std::string success_delete;
         std::string reasonPhrase;
         std::vector<std::string> cookies;
         std::string packet;
@@ -67,7 +68,8 @@ class HttpResponse: public AHttp {
         void multiChunked(const HttpRequest &request);
         void multiForm_chunked(const HttpRequest &request);
         std::string generateFileName(const HttpRequest &request, std::string &file);
-        
+        std::string getFileLastModifiedTime(const std::string &filePath);
+
     public:
         HttpResponse();
         ~HttpResponse();

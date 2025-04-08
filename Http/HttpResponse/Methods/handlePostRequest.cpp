@@ -36,7 +36,7 @@
 #include <sstream>
 #include <sys/stat.h>
 
-std::string getFileLastModifiedTime(const std::string &filePath) {
+std::string HttpResponse::getFileLastModifiedTime(const std::string &filePath) {
   struct stat fileStat;
   if (stat(filePath.c_str(), &fileStat) != 0)
     return "";
