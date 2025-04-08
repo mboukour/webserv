@@ -439,7 +439,6 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					continue;
 				}
 				this->fileName = generateFileName(request, file);
-				// path sanitize here
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
@@ -546,7 +545,6 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					continue;
 				}
 				this->fileName = generateFileName(request, file);
-				// path sanitize here
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
