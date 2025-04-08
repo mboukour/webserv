@@ -101,7 +101,7 @@ std::string HttpResponse::extToNature(const std::string &extension) {
   return "";
 }
 
-bool isDir(const char *path) {
+bool HttpResponse::isDir(const char *path) {
 	struct stat info;
 	if (stat(path, &info) != 0)
 		return false;
@@ -158,13 +158,14 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 		if (!request.isCgiRequest()) {
 			std::string folder = request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath();
 			std::string file = randomizeFileName() + getConTypeExten(request.getHeader("Content-Type"));
-			// path sanitize here
+			folder = sanitizePath(folder);
 			if (!isDir(folder.c_str())){
 				std::cerr << YELLOW << "[ALERT!]: " << RESET;
 				std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
 				folder = "";
 			}
 			this->fileName = folder + file;
+			this->fileName = sanitizePath(this->fileName);
 			std::cout << YELLOW << "File to create: " << this->fileName << RESET << std::endl;
 			this->fd = open(this->fileName.c_str(), O_CREAT | O_WRONLY, 0644); // check for failure
 			std::cout << YELLOW << "File des: " << this->fd << RESET << std::endl;
@@ -362,7 +363,7 @@ std::string HttpResponse::generateFileName(const HttpRequest &request, std::stri
 		s >> contentType;
 		fileExten = getConTypeExten(contentType);
 	}
-	// path sanitize here
+	folder = sanitizePath(folder);
 	if (!isDir(folder.c_str())){
 		std::cerr << YELLOW << "[ALERT!]: " << RESET;
 		std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
@@ -439,6 +440,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					continue;
 				}
 				this->fileName = generateFileName(request, file);
+				this->fileName = sanitizePath(this->fileName);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
@@ -545,6 +547,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					continue;
 				}
 				this->fileName = generateFileName(request, file);
+				this->fileName = sanitizePath(this->fileName);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");

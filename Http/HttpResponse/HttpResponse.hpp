@@ -69,6 +69,9 @@ class HttpResponse: public AHttp {
         void multiForm_chunked(const HttpRequest &request);
         std::string generateFileName(const HttpRequest &request, std::string &file);
         std::string getFileLastModifiedTime(const std::string &filePath);
+        void deleteResponse(const HttpRequest &request);
+        bool isDir(const char *path);
+        std::string sanitizePath(std::string path);
 
     public:
         HttpResponse();

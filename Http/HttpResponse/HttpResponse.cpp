@@ -298,3 +298,40 @@ HttpResponse::~HttpResponse(){
             unlink(this->fileName.c_str());
     }
 }
+
+std::string HttpResponse::sanitizePath(std::string path) {
+	int start;
+	for (size_t i = 0; i < path.length(); )
+	{
+		if (path[i] == '.' && i > 0 && path[i - 1] == '/')
+		{
+			if (i + 1 < path.length() && path[i + 1] == '.')
+			{
+				start = i - 1;
+				while (start > 0 && path[start - 1] != '/')
+					start--;
+				path.erase(start, i + 2 - start);
+				i = start;
+			}
+			else if (i + 1 >= path.length() || path[i + 1] == '/')
+				path.erase(i, 1);
+			else
+				i++;
+		}
+		else if (path[i] == '/' && i + 1 < path.length() && path[i + 1] == '/')
+			path.erase(i + 1, 1);
+		else
+			i++;
+	}
+	for (size_t i = 0; i < path.length(); )
+	{
+		if (path[i] == '/' && i + 1 < path.length() && path[i + 1] == '/')
+			path.erase(i + 1, 1);
+		else
+			i++;
+	}
+	if (path.empty())
+		return "/";
+	else
+		return path;
+}
