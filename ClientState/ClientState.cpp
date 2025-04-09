@@ -172,6 +172,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                         this->response = new HttpResponse(this->request, this->eventFd, this->epollFd);
                     } catch (const HttpErrorException& exec) {
                         std::string respStr = exec.getResponseString();
+                        DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
                         resetReadState();
                         ServerManager::sendString(respStr, this->eventFd);
                         updateLastActivity();

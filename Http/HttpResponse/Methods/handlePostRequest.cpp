@@ -274,7 +274,7 @@ std::pair<std::string, std::string> HttpResponse::newMapNode(const HttpRequest &
 		return std::pair<std::string, std::string>("", "");;
 	size_t pos = str.find(":");
 	if (pos == std::string::npos)
-		throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Invalid form header![1]");
+		throw HttpErrorException(BAD_REQUEST, request, "Invalid form header![1]");
 	std::string key = str.substr(0, pos);
 	std::string value = str.substr(pos);
 	return 	std::pair<std::string, std::string>(key, value);
@@ -288,7 +288,7 @@ std::map<std::string, std::string> HttpResponse::strToHeaderMap(const HttpReques
 		curr = 0;
 		pos = str.find("\r\n");
 		if (pos == std::string::npos)
-			throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Invalid form header![2]");
+			throw HttpErrorException(BAD_REQUEST, request, "Invalid form header![2]");
 		std::pair<std::string, std::string> newNode = newMapNode(request, str.substr(curr, pos));
 		if (newNode.first == "" && newNode.second == "")
 			return headers;
@@ -405,7 +405,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				this->currBound = 0;
 				tmp = this->packet.substr(0, boundLen);
 				if (tmp != bound){
-					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
+					throw HttpErrorException(BAD_REQUEST, request, "Boundary not found");
 				}
 				if (this->packet == bound + "--\r\n"){
 					this->isLastEntry = true;
@@ -514,7 +514,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				this->currBound = 0;
 				tmp = this->packet.substr(0, boundLen);
 				if (tmp != bound){
-					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Boundary not found");
+					throw HttpErrorException(BAD_REQUEST, request, "Boundary not found");
 				}
 				if (this->packet == bound + "--\r\n")
 					return;
@@ -623,7 +623,7 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 				}
 				this->prev_chunk_size += this->packet.substr(curr_pos, end - curr_pos);
 				if (this->prev_chunk_size.size() > 20)
-					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Size bigger than 20");
+					throw HttpErrorException(BAD_REQUEST, request, "Size bigger than 20");
 				curr_pos = end;
 				if (this->chunkState == CH_DATA){
 					std::stringstream ss(this->prev_chunk_size);

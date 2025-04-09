@@ -1,4 +1,5 @@
 #include "CgiState.hpp"
+#include <cctype>
 #include <csignal>
 #include <cstddef>
 #include <cstdlib>
@@ -46,15 +47,16 @@ void CgiState::parseCgiHeaders(void) {
         std::string key = line.substr(0, pos);
         std::string value = line.substr(pos + 1);
         AllUtils::removeLeadingSpaces(value);
-
-        if (key == "Content-Length") {
+        for (std::string::iterator it = key.begin(); it != key.end(); it++)
+            *it = std::tolower(*it);
+        if (key == "content-length") {
             this->readMode = CONTENT_LENGTH;
             std::stringstream clSs(value);
             clSs >> this->contentLength;
             if (clSs.fail())
                 throw HttpErrorException(INTERNAL_SERVER_ERROR, "Invalid content length header in CGI");
             this->readMode = CONTENT_LENGTH;
-        } else if (key == "Transfer-Encoding") {
+        } else if (key == "transfer-encoding") {
             if (value == "chunked")
                 this->readMode = READY_CHUNKED;
             else
