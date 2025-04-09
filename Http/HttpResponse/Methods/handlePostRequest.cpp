@@ -130,7 +130,7 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode, std:
 	std::string find = "FILE_LOCATION";
 	size_t pos = body.rfind(find);
 	if (pos != std::string::npos)
-		body.replace(pos, find.length(), location);
+		body.replace(pos, find.length(), sanitizePath(location));
 	find = "SC_RP";
 	pos = body.rfind(find);
 	if (pos != std::string::npos)
@@ -144,7 +144,7 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode, std:
 	sS.str("");
 	sS.clear();
 	this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);
-	this->headers["Location"] = location;
+	this->headers["Location"] = sanitizePath(location);
 	this->headers["Connection"] = connectState;
 	if (state->getIsKeepAlive())
 		this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
@@ -166,9 +166,7 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 			}
 			this->fileName = folder + file;
 			this->fileName = sanitizePath(this->fileName);
-			std::cout << YELLOW << "File to create: " << this->fileName << RESET << std::endl;
 			this->fd = open(this->fileName.c_str(), O_CREAT | O_WRONLY, 0644); // check for failure
-			std::cout << YELLOW << "File des: " << this->fd << RESET << std::endl;
 			if (this->fd == -1)
 				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Internal server error");
 		}
@@ -439,7 +437,6 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				}
 				this->fileName = generateFileName(request, file);
 				this->fileName = sanitizePath(this->fileName);
-				std::cout << MAGENTA << "this file[" << this->fileName + "]" << RESET << std::endl;
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");

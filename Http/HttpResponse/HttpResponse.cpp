@@ -334,7 +334,7 @@ std::string HttpResponse::sanitizePath(std::string path) {
 			i++;
 	}
     std::string newPath;
-    for (size_t i = 0; i < path.size();){
+    for (size_t i = 0; i < path.length();){
         if (HttpRequest::uriAllowedChars.find(path[i]) == std::string::npos)
             i++;
         else
