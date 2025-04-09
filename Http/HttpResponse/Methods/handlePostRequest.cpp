@@ -282,8 +282,6 @@ std::pair<std::string, std::string> HttpResponse::newMapNode(const HttpRequest &
 	return 	std::pair<std::string, std::string>(key, value);
 }
 
-
-
 std::map<std::string, std::string> HttpResponse::strToHeaderMap(const HttpRequest &request, std::string &str){
 	std::map<std::string, std::string> headers;
 	size_t pos = 0;
@@ -441,6 +439,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				}
 				this->fileName = generateFileName(request, file);
 				this->fileName = sanitizePath(this->fileName);
+				std::cout << MAGENTA << "this file[" << this->fileName + "]" << RESET << std::endl;
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");

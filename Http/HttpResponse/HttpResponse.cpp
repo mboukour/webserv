@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <sstream>
 #include <fstream>
+#include <string>
 #include <sys/epoll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -299,6 +300,8 @@ HttpResponse::~HttpResponse(){
     }
 }
 
+// std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
+
 std::string HttpResponse::sanitizePath(std::string path) {
 	int start;
 	for (size_t i = 0; i < path.length(); )
@@ -330,8 +333,15 @@ std::string HttpResponse::sanitizePath(std::string path) {
 		else
 			i++;
 	}
-	if (path.empty())
+    std::string newPath;
+    for (size_t i = 0; i < path.size();){
+        if (HttpRequest::uriAllowedChars.find(path[i]) == std::string::npos)
+            i++;
+        else
+            newPath += path[i++];
+    }
+	if (newPath.empty())
 		return "/";
 	else
-		return path;
+		return newPath;
 }
