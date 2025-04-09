@@ -298,6 +298,8 @@ std::map<std::string, std::string> HttpResponse::strToHeaderMap(const HttpReques
 			break;
 		str = str.substr(curr);
 	}
+	if (headers.find("Content-Type") == headers.end())
+		throw HttpErrorException(BAD_REQUEST, request, "Invalid Content-Length header!");
 	return headers;
 }
 
@@ -348,7 +350,7 @@ std::map<std::string, std::string> HttpResponse::extractFileInfo(const HttpReque
 	return info;
 }
 
-std::string HttpResponse::generateFileName(const HttpRequest &request, std::string &file){
+std::string HttpResponse::generateFileName(const HttpRequest &request, std::string &file, std::map<std::string, std::string> &headers){
 	std::string folder = request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath();
 	size_t pos = file.rfind(".");
 	std::string fileExten = "";
@@ -435,7 +437,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					this->multiState = M_BODY;
 					continue;
 				}
-				this->fileName = generateFileName(request, file);
+				this->fileName = generateFileName(request, file, headers);
 				this->fileName = sanitizePath(this->fileName);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
@@ -542,7 +544,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					this->multiState = M_BODY;
 					continue;
 				}
-				this->fileName = generateFileName(request, file);
+				this->fileName = generateFileName(request, file, headers);
 				this->fileName = sanitizePath(this->fileName);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
