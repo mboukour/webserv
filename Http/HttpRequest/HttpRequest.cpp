@@ -46,7 +46,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     if (this->requestBlock->getIsLimited()
         && ((!this->isChunked && this->contentLength > this->requestBlock->getMaxBodySize())
         || this->bodySize > this->requestBlock->getMaxBodySize()))
-            throw HttpErrorException(PAYLOAD_TOO_LARGE, "Payload too large");
+            throw HttpErrorException(PAYLOAD_TOO_LARGE, *this, "Payload too large");
     this->path = sanitizePath(this->path);
     setIsCgi();
     parseCookies();
@@ -61,7 +61,7 @@ void HttpRequest::validateRequestLine(void) const {
             throw HttpErrorException(BAD_REQUEST, "Invalid uri");
     }
     if (this->path.size() > URI_MAX_SIZE)
-        throw HttpErrorException(URI_TOO_LONG, "Uri too long");
+        throw HttpErrorException(URI_TOO_LONG, *this , "Uri too long");
 }
 
 void HttpRequest::setReqEntry(const std::string &reqEntry) {
@@ -121,12 +121,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 
         size_t pos =  line.find(":");
         if (pos == std::string::npos)
-        {
-            if (hostFound)
-                throw HttpErrorException(BAD_REQUEST, *this, ": not found in header");
-            else
-                throw HttpErrorException(BAD_REQUEST, ": not found in header");
-        }
+            throw HttpErrorException(BAD_REQUEST, *this, ": not found in header");
 
         key = line.substr(0, pos);
         value = line.substr(pos + 1);
@@ -136,16 +131,14 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             std::stringstream l(value);
             ssize_t check;
             l >> check;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this,  "invalid content length header");
             if (check < 0)
-                throw HttpErrorException(BAD_REQUEST, "Negative CL"); 
+                throw HttpErrorException(BAD_REQUEST, *this ,"Negative CL"); 
             l >> this->contentLength;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
             std::string dummy;
             l >> dummy;
-            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, "invalid content length header");
-            // if (this->requestBlock->getIsLimited() && this->contentLength > this->requestBlock->getMaxBodySize())
-            //     throw HttpErrorException(PAYLOAD_TOO_LARGE, "payload too large");
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
             contentLengthFound = true;
             this->headers[key] = value;
             continue;
@@ -154,7 +147,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             if (value == "chunked")
                 this->isChunked = true;
             else if (this->method == "POST")
-                throw HttpErrorException(NOT_IMPLEMENTED, "Transfer-Encoding must be \"chunked\"");
+                throw HttpErrorException(NOT_IMPLEMENTED, *this, "Transfer-Encoding must be \"chunked\"");
             this->headers[key] = value;
             continue;
         }
@@ -224,7 +217,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
     }
 
     if (!hostFound)
-        throw HttpErrorException(BAD_REQUEST,  "Host header not found");
+        throw HttpErrorException(BAD_REQUEST, "Host header not found");
 
     if (!this->requestBlock->isMethodAllowed(this->method))
          throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");

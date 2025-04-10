@@ -144,7 +144,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 socklen_t addrLen = sizeof(addr);
                 if (getsockname(this->eventFd, (struct sockaddr*)&addr, &addrLen) == -1) {
                     std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
-                    throw HttpErrorException(500, "getsockname error");
+                    throw HttpErrorException(INTERNAL_SERVER_ERROR, "getsockname error");
                 }
                 int port = ntohs(addr.sin_port);
                 this->readState = READING_BODY;

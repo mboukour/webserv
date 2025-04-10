@@ -7,11 +7,12 @@ HttpErrorException::HttpErrorException(const std::string &version, int statusCod
         closeConnection = true;
 }
 
-HttpErrorException::HttpErrorException(int statusCode, const HttpRequest &request, const std::string &message) : message(message), version(request.getVersion()), statusCode(statusCode), reasonPhrase(getReasonPhrase(statusCode)), closeConnection(false) , body(request.getRequestBlock()->getErrorPageHtml(statusCode)) {
+HttpErrorException::HttpErrorException(int statusCode, const HttpRequest &request, const std::string &message) : message(message), version(request.getVersion()), statusCode(statusCode), reasonPhrase(getReasonPhrase(statusCode)), closeConnection(false) , body("") {
+    if (request.getRequestBlock())
+        body = request.getRequestBlock()->getErrorPageHtml(this->statusCode);
     if (statusCode == METHOD_NOT_ALLOWED)
         setAllowedHeader(request);
     else if (statusCode == PAYLOAD_TOO_LARGE) {
-        std::cout << "TOO LARGE" << std::endl;
         closeConnection = true;
     }
 }

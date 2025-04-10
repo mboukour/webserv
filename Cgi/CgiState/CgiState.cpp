@@ -14,7 +14,7 @@
 #include <sys/wait.h>
 #include "../../Utils/AllUtils/AllUtils.hpp"
 #include "../../Utils/Logger/Logger.hpp"
-
+#include "../../Debug/Debug.hpp"
 #include "../../Server/ServerManager/ServerManager.hpp"
 
 const int CgiState::cgiTimeout(5);
@@ -24,8 +24,7 @@ CgiState::CgiState(int cgiFd, pid_t cgiPid, int epollFd,  ClientState *client):
     client(client), lastActivityTime(time(NULL)),
     readMode(RAW_CHUNKED), readState(READING_HEADERS), contentSent(0), contentLength(0),
     writeState(NOT_REGISTERED), writeQueue(),
-    isResponding(false), isClean(false),isDone(false), cgiChunkState(CH_START), cgiOffset(0),
-    cgi_chunk_size(""), cgi_remaining_chunk_size(0) {} // we assume we have to make our own chunked unless headers specify not to :)
+    isResponding(false), isClean(false),isDone(false) {}
 
 
 void CgiState::parseCgiHeaders(void) {
@@ -41,7 +40,7 @@ void CgiState::parseCgiHeaders(void) {
         size_t pos = line.find(":");
         if (pos == std::string::npos) {
             std::cerr << "Invalid header line: " << line << std::endl;
-            throw HttpErrorException(INTERNAL_SERVER_ERROR, "Invalid header found in CGI");
+            throw HttpErrorException(INTERNAL_SERVER_ERROR, this->client->getHttpRequest() , "Invalid header found in CGI");
         }
 
         std::string key = line.substr(0, pos);
@@ -54,13 +53,13 @@ void CgiState::parseCgiHeaders(void) {
             std::stringstream clSs(value);
             clSs >> this->contentLength;
             if (clSs.fail())
-                throw HttpErrorException(INTERNAL_SERVER_ERROR, "Invalid content length header in CGI");
+                throw HttpErrorException(INTERNAL_SERVER_ERROR,this->client->getHttpRequest(), "Invalid content length header in CGI");
             this->readMode = CONTENT_LENGTH;
         } else if (key == "transfer-encoding") {
             if (value == "chunked")
                 this->readMode = READY_CHUNKED;
-            else
-                throw HttpErrorException(INTERNAL_SERVER_ERROR, "Unsupported Transfer-Encoding: " + value);
+            else 
+                throw HttpErrorException(INTERNAL_SERVER_ERROR, this->client->getHttpRequest() ,"Unsupported Transfer-Encoding: " + value);
         }
     }
 }
@@ -72,7 +71,7 @@ void CgiState::setupReadMode(size_t headersPos) {
             if (this->contentSent > this->contentLength) {
                 std::stringstream ss;
                 ss  << "Content size: " << this->contentSent << " bigger than Content length: " << this->contentLength;
-                throw HttpErrorException(INTERNAL_SERVER_ERROR, ss.str());
+                throw HttpErrorException(INTERNAL_SERVER_ERROR, this->client->getHttpRequest(), ss.str());
             }
             else if (this->contentSent == this->contentLength) {
                 cleanUpCgi();
@@ -87,101 +86,18 @@ void CgiState::setupReadMode(size_t headersPos) {
             break;
         }
         case READY_CHUNKED: {
-            if (hasChunkEnded(this->initBuffer)) {
-                cleanUpCgi();
-                this->isDone = true;
-            }
             break;
         }
     }
 }
 
-bool CgiState::hasChunkEnded(const std::string &toCheck) {
-	bool processing = true;
-	size_t curr_pos = 0;
-	this->cgiOffset = toCheck.length();
-	while (processing)
-	{
-		switch (this->cgiChunkState){
-			case CH_START:
-				this->cgiChunkState = CH_SIZE;
-				break ;
-			case CH_SIZE:{
-				size_t end;
-				if (this->cgiPendingCRLF) {
-					this->cgiPendingCRLF = false;
-					curr_pos++;
-				}
-				for (end = curr_pos; end < this->cgiOffset; end++){
-					if ((toCheck[end] == '\r' && toCheck[end + 1] == '\n') || toCheck[end] == '\n') {
-						this->cgiChunkState = CH_DATA;
-						break;
-					}
-				}
-				this->cgi_chunk_size += toCheck.substr(curr_pos, end - curr_pos);
-				if (this->cgi_chunk_size.size() > 20)
-                    throw HttpErrorException(INTERNAL_SERVER_ERROR, "Size bigger than 20");
-				curr_pos = end;
-				if (this->cgiChunkState == CH_DATA){
-					std::stringstream ss(this->cgi_chunk_size);
-					this->cgi_chunk_size = "";
-					if ((toCheck[curr_pos] == '\r' && toCheck[curr_pos + 1] == '\n'))
-						curr_pos += 2;
-					else if (toCheck[curr_pos] == '\n')
-						curr_pos++;
-					ss >> std::setbase(16) >> this->cgi_remaining_chunk_size;
-					if (this->cgi_remaining_chunk_size == 0)
-						this->cgiChunkState = CH_COMPLETE;
-				}
-				if (curr_pos >= this->cgiOffset)
-					processing = false;
-				break;
-			}
-			case CH_DATA:
-			{
-				size_t ch_size = this->cgiOffset - curr_pos;
-				processing = false;
-				if (this->cgi_remaining_chunk_size <= ch_size) {
-					ch_size = this->cgi_remaining_chunk_size;
-					processing = true;
-					this->cgiChunkState = CH_TRAILER;
-				}
-				this->cgi_remaining_chunk_size -= ch_size;
-				if (!this->cgi_remaining_chunk_size)
-					this->cgiChunkState = CH_TRAILER;
-				curr_pos += ch_size;
-				if (curr_pos >= this->cgiOffset)
-					processing = false;
-				break;
-			}
-			case CH_TRAILER:
-				if ((toCheck[curr_pos] == '\r' && toCheck[curr_pos + 1] == '\n')) {
-					if (curr_pos + 2 > this->cgiOffset)
-						return false;
-					curr_pos += 2;
-				}
-				else if (toCheck[this->cgiOffset - 1] == '\r') {
-					this->cgiPendingCRLF = true;
-					this->cgiChunkState = CH_SIZE;
-					return false;
-				}
-				this->cgiChunkState = CH_SIZE;
-				break;
-			case CH_COMPLETE:
-				return true;
-			default:
-				break;
-		}
-	}
-    return false;
-}
 
 void CgiState::setupReadMode(const std::string &bufferStr) {
     switch (this->readMode) {
         case CONTENT_LENGTH: {
             this->contentSent += bufferStr.size();
             if (this->contentSent > this->contentLength)
-                throw HttpErrorException(INTERNAL_SERVER_ERROR, "Content size bigger than content length in CGI");
+                throw HttpErrorException(INTERNAL_SERVER_ERROR, this->client->getHttpRequest() ,  "Content size bigger than content length in CGI");
             else if (this->contentSent == this->contentLength) {
                 cleanUpCgi();
                 this->isDone = true;
@@ -194,10 +110,6 @@ void CgiState::setupReadMode(const std::string &bufferStr) {
             break;
         }
         case READY_CHUNKED: {
-        if (hasChunkEnded(bufferStr)) {
-            cleanUpCgi();
-            this->isDone = true;
-        }
             break;
         }
     }
@@ -278,7 +190,13 @@ void CgiState::handlecgiReadable(void) {
             cleanUpCgi();
             return;
         } else if (bytesRead > 0)
-            readCgi(std::string(buffer.data(), bytesRead));
+            try {
+                readCgi(std::string(buffer.data(), bytesRead));
+            } catch (const HttpErrorException &exec) {
+                notifyCgiClient(exec.getStatusCode());
+                this->isDone = true;
+                cleanUpCgi();
+            }
         else {
             if (this->readMode == RAW_CHUNKED && this->isResponding)
                 sendCurrentChunk();

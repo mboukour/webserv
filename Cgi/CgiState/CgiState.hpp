@@ -32,14 +32,8 @@ class CgiState {
         bool isClean;
         bool isDone;
         CgiState();
-        enum ChunkState {CH_START, CH_SIZE, CH_ERROR, CH_DATA, CH_COMPLETE, CH_TRAILER};
-        ChunkState cgiChunkState;
-        size_t cgiOffset;
-        bool cgiPendingCRLF;
-        std::string cgi_chunk_size;
-        size_t cgi_remaining_chunk_size;
 
-        bool hasChunkEnded(const std::string &toCheck);
+
         void updateLastActivity(void);
         void setupReadMode(size_t headersPos);
         void setupReadMode(const std::string &bufferStr);
