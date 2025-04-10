@@ -303,80 +303,28 @@ HttpResponse::~HttpResponse(){
 
 // std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
 
-void encoding(std::string& newPath) {
-    for (size_t i = 0; i < newPath.length() - 2; ) {
-        if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '0')
-            newPath.replace(i, 3, " ");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '1')
-            newPath.replace(i, 3, "!");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '2') {
-            newPath[i] = '"';
-            newPath.erase(i + 1, 2);
+int HexToChar(char c) {
+    if (isdigit(c))
+        return c - '0';
+    return tolower(c) - 'a' + 10;
+}
+
+void encoding(std::string& str)
+{
+    for (size_t i = 0; i < str.length(); )
+    {
+        if (str[i] == '%' && i + 2 < str.length())
+        {
+            char c1 = tolower(str[i+1]);
+            char c2 = tolower(str[i+2]);
+            if (isxdigit(c1) && isxdigit(c2))
+            {
+                int value = HexToChar(c1) * 16 + HexToChar(c2);   
+                str.replace(i, 3, 1, static_cast<char>(value));
+                continue;
+            }
         }
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '3')
-            newPath.replace(i, 3, "#");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '4')
-            newPath.replace(i, 3, "$");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '5')
-            newPath.replace(i, 3, "%");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '6')
-            newPath.replace(i, 3, "&");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '7')
-            newPath.replace(i, 3, "'");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '8')
-            newPath.replace(i, 3, "(");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == '9')
-            newPath.replace(i, 3, ")");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == 'A')
-            newPath.replace(i, 3, "*");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == 'B')
-            newPath.replace(i, 3, "+");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == 'C')
-            newPath.replace(i, 3, ",");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == 'D')
-            newPath.replace(i, 3, "-");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == 'E')
-            newPath.replace(i, 3, ".");
-        else if (newPath[i] == '%' && newPath[i + 1] == '2' && newPath[i + 2] == 'F')
-            newPath.replace(i, 3, "/");
-        else if (newPath[i] == '%' && newPath[i + 1] == '3' && newPath[i + 2] == 'A')
-            newPath.replace(i, 3, ":");
-        else if (newPath[i] == '%' && newPath[i + 1] == '3' && newPath[i + 2] == 'B')
-            newPath.replace(i, 3, ";");
-        else if (newPath[i] == '%' && newPath[i + 1] == '3' && newPath[i + 2] == 'C')
-            newPath.replace(i, 3, "<");
-        else if (newPath[i] == '%' && newPath[i + 1] == '3' && newPath[i + 2] == 'D')
-            newPath.replace(i, 3, "=");
-        else if (newPath[i] == '%' && newPath[i + 1] == '3' && newPath[i + 2] == 'E')
-            newPath.replace(i, 3, ">");
-        else if (newPath[i] == '%' && newPath[i + 1] == '3' && newPath[i + 2] == 'F')
-            newPath.replace(i, 3, "?");
-        else if (newPath[i] == '%' && newPath[i + 1] == '4' && newPath[i + 2] == '0')
-            newPath.replace(i, 3, "@");
-        else if (newPath[i] == '%' && newPath[i + 1] == '5' && newPath[i + 2] == 'B')
-            newPath.replace(i, 3, "[");
-        else if (newPath[i] == '%' && newPath[i + 1] == '5' && newPath[i + 2] == 'C') {
-            newPath[i] = '\\';
-            newPath.erase(i + 1, 2);
-        }
-        else if (newPath[i] == '%' && newPath[i + 1] == '5' && newPath[i + 2] == 'D')
-            newPath.replace(i, 3, "]");
-        else if (newPath[i] == '%' && newPath[i + 1] == '5' && newPath[i + 2] == 'E')
-            newPath.replace(i, 3, "^");
-        else if (newPath[i] == '%' && newPath[i + 1] == '5' && newPath[i + 2] == 'F')
-            newPath.replace(i, 3, "");
-        else if (newPath[i] == '%' && newPath[i + 1] == '6' && newPath[i + 2] == '0')
-            newPath.replace(i, 3, "`");
-        else if (newPath[i] == '%' && newPath[i + 1] == '7' && newPath[i + 2] == 'B')
-            newPath.replace(i, 3, "{");
-        else if (newPath[i] == '%' && newPath[i + 1] == '7' && newPath[i + 2] == 'C')
-            newPath.replace(i, 3, "|");
-        else if (newPath[i] == '%' && newPath[i + 1] == '7' && newPath[i + 2] == 'D')
-            newPath.replace(i, 3, "}");
-        else if (newPath[i] == '%' && newPath[i + 1] == '7' && newPath[i + 2] == 'E')
-            newPath.replace(i, 3, "~");
-        else
-            i++;
+        i++;
     }
 }
 
