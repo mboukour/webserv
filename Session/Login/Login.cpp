@@ -36,7 +36,7 @@ std::string Login::getLogin(const HttpRequest &request) {
     std::string sessionId;
     try {
         sessionId = request.getCookie("sessionId");
-    } catch(std::out_of_range &) {} // keep it empty
+    } catch(std::out_of_range &) {}
     std::stringstream html;
 
     html << "<!DOCTYPE html>\n"
@@ -128,7 +128,7 @@ std::string Login::postLogin(const HttpRequest &request, HttpResponse &response)
     size_t pos = body.find("=");
     std::string userName = body.substr(pos + 1);
     if (userName.size() > NAME_MAX_LENGTH)
-        throw HttpErrorException(BAD_REQUEST, request, "Name exceeded max length"); // we can change this by showing custom error for login??
+        throw HttpErrorException(BAD_REQUEST, request, "Name exceeded max length");
 
     std::string sessionId = generateUniqueSessionID();
     userCreds[sessionId] = userName;

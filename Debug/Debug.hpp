@@ -15,12 +15,9 @@ const std::string MAGENTA = "\033[35m";
 const std::string CYAN = "\033[36m";
 const std::string WHITE = "\033[37m";
 
-// Cout operator overloads
 std::ostream& operator<<(std::ostream& outputStream, const Server& other);
 std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 
-
-// Vector class printers
-void printServers(std::vector<Server> servers); // Server.hpp
+void printServers(std::vector<Server> servers);
 
 #endif

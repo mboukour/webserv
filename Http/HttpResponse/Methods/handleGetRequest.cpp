@@ -13,7 +13,6 @@
 #include <sys/types.h>
  #include <sys/stat.h>
 #include <vector>
-// #include "../ResponseState/ResponseState.hpp"
 #include "../../../ClientState/ClientState.hpp"
 #include <string>
 #include <dirent.h>
@@ -132,7 +131,6 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         }
         if (foundIndex) {
             if (isCgiFile(indexFilePath, request)) {
-                // ServerManager::sendString(makeCgiResponse(request), this->clientFd);
                 throw std::logic_error("Fix autoindex cgi");
                 return ;
             }
@@ -145,7 +143,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             this->headers["Content-Length"] = cl.str();
         	ClientState *state = ServerManager::getClientState(this->clientFd);
             if (state->getIsKeepAlive()) {
-                this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
+                this->headers["Keep-Alive"] = "timeout=10, max 1000";
             }
             this->body.clear();
             ServerManager::sendString(toString(), this->clientFd);

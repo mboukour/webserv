@@ -3,7 +3,7 @@
 
 AHttp::AHttp(): version(""), bodySize(0) , body("") {}
 
-std::string AHttp::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-"; // lo?l -> lol
+std::string AHttp::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
 
 
 std::string AHttp::getVersion() const {
@@ -95,7 +95,7 @@ std::string AHttp::getHeader(const std::string &headerName) const {
     if (it != this->headers.end()) {
         return it->second;
     }
-    return ""; // throw MissingHeader(headerName);
+    return "";
 }
 
 void AHttp::setHeader(const std::string &headerName, const std::string &headerValue) {

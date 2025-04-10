@@ -8,7 +8,7 @@
 
 
 
-class AHttp { // This is an abstract class for stuff that both request and reposnse need
+class AHttp {
     protected:
         std::string version;
         size_t bodySize;

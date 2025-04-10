@@ -218,7 +218,7 @@ bool HttpResponse::getIsLastEntry(void) const {
 }
 
 HttpResponse::HttpResponse(const std::string &version, int statusCode,
-    const std::string &reasonPhrase, const std::string &body): clientFd(-1), epollFd(-1), fd(-1) { // no client fd needed in case of error
+    const std::string &reasonPhrase, const std::string &body): clientFd(-1), epollFd(-1), fd(-1) {
     this->version = version;
     this->statusCode = statusCode;
     this->reasonPhrase = reasonPhrase;

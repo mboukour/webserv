@@ -27,6 +27,7 @@ CgiState::CgiState(int cgiFd, pid_t cgiPid, int epollFd,  ClientState *client):
     isResponding(false), isClean(false),isDone(false) {}
 
 
+
 void CgiState::parseCgiHeaders(void) {
     std::stringstream ss(this->initBuffer);
     std::string line;
@@ -139,7 +140,7 @@ void CgiState::readCgi(std::string bufferStr) {
             this->readState = READING_BODY;
             this->initBuffer.insert(0, "HTTP/1.1 200 OK\r\n");
             this->client->activateWriteState(this->initBuffer);
-            this->isResponding = true; // init buffer will always be sent first
+            this->isResponding = true;
             break;
         }
         case READING_BODY: {
@@ -235,7 +236,7 @@ void CgiState::handleCgiWritable(void) {
     for (std::vector<std::string>::iterator it = this->writeQueue.begin();
         it != this->writeQueue.end(); ) {
 
-            if (!isCgiAlive()) { // avoinding SIGPIPE
+            if (!isCgiAlive()) {
                 if (!this->isResponding)
                     notifyCgiClient(INTERNAL_SERVER_ERROR);
                 cleanUpCgi();
@@ -253,7 +254,6 @@ void CgiState::handleCgiWritable(void) {
             }
             it = this->writeQueue.erase(it);
         }
-    // loop reached end, we just emptied the whole writeQueue
     updateLastActivity();
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
@@ -268,7 +268,7 @@ bool CgiState::getIsDone(void) const {
 
 void CgiState::cleanUpCgi(void) {
     pid_t res = waitpid(cgiPid, NULL, WNOHANG);
-    if (res == 0) // still running
+    if (res == 0)
         kill(cgiPid, SIGKILL);
     this->isClean = true;
     this->isDone = true;

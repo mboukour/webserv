@@ -37,14 +37,13 @@ class HttpRequest: public AHttp {
 
     public:
         HttpRequest();
-        HttpRequest(const std::string &request, const std::vector<Server>& servers, int serverPort); // throws exceptions that should never terminate execution of the program
+        HttpRequest(const std::string &request, const std::vector<Server>& servers, int serverPort);
         std::string getMethod() const;
         std::string getPath() const;
         std::string getQueryString() const;
         std::string toString() const;
         std::string getCookie(const std::string &cookie) const;
         size_t getContentLength(void) const;
-        // void appendToBody(const std::string &toAppend);
         void setReqEntry(const std::string &newEntry);
         std::string getReqEntry(void) const;
         const std::string *getReqEntryPtr(void) const;

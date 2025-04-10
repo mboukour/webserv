@@ -1,6 +1,6 @@
 #include "Server.hpp"
 #include <cstddef>
-#include <iostream> // to remove later
+#include <iostream>
 #include <cstdlib>
 #include <stdexcept>
 #include <sys/types.h>
@@ -17,7 +17,7 @@ Server::Server(const Server &other): ABlock(other), port(other.port), host(other
 
 void Server::setPort(int port) {this->port = port;}
 
-void Server::parseMimeTypeFile(const std::string &path) { // might add comment handling later
+void Server::parseMimeTypeFile(const std::string &path) {
     size_t dotPos = path.find_last_of('.');
     if (dotPos == std::string::npos || path.substr(dotPos) != ".types")
         throw std::logic_error("Invalid mime_types file");
@@ -35,7 +35,6 @@ void Server::parseMimeTypeFile(const std::string &path) { // might add comment h
         this->mimeTypes[extension] = type;
     }
 }
-// will return the actual type if it exists, if not it returns the default option: application/octet-stream
 std::string Server::getMimeType(const std::string &extension) const {
     std::map<std::string, std::string> ::const_iterator it = this->mimeTypes.find(extension);
     if (it == this->mimeTypes.end())
@@ -63,7 +62,7 @@ void Server::startServer(void) {
     hints.ai_socktype = SOCK_STREAM;
     std::stringstream ss;
     ss << this->port;
-    const char *hostCString = "0.0.0.0"; // any address
+    const char *hostCString = "0.0.0.0";
     if (this->host != "")
         hostCString = (char *)this->host.c_str();
     if (getaddrinfo(hostCString, ss.str().c_str(), &hints, &res) != 0)
@@ -72,7 +71,7 @@ void Server::startServer(void) {
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
-    this->fdSocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol); // listen to incoming clients
+    this->fdSocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (this->fdSocket == -1)
     {
         errorStr = "Error: socket failed. Errno: ";

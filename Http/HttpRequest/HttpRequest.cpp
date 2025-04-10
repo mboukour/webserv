@@ -7,7 +7,7 @@
 #include <exception>
 #include <iterator>
 #include <sstream>
-#include <iostream> // to remove later
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
     std::string line;
 
     if (!std::getline(ss, line))
-        throw HttpErrorException("HTTP/1.1", BAD_REQUEST, "Bad Request", "empty request", ""); // we assume the version?
+        throw HttpErrorException("HTTP/1.1", BAD_REQUEST, "Bad Request", "empty request", "");
     std::stringstream requestLine(line);
     if (!(requestLine >> this->method >> this->path >> this->version))
         throw HttpErrorException("HTTP/1.1" ,BAD_REQUEST, "Bad Request", line, "");
@@ -112,10 +112,9 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
     bool hostFound = false;
     bool isOk = true;
     bool contentLengthFound = false;
-    while(getline(ss, line) && line != "\r") { // looping through headers
+    while(getline(ss, line) && line != "\r") {
         if (line[line.size() - 1] == '\r')
             line = line.substr(0, line.size() - 1);
-        // std::stringstream lineSs(line);
         std::string key;
         std::string value;
 
@@ -131,14 +130,13 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             std::stringstream l(value);
             ssize_t check;
             l >> check;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this,  "invalid content length header");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header 1");
             if (check < 0)
-                throw HttpErrorException(BAD_REQUEST, *this ,"Negative CL"); 
-            l >> this->contentLength;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
+                throw HttpErrorException(BAD_REQUEST, "Negative CL");
+            this->contentLength = check;
             std::string dummy;
             l >> dummy;
-            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, *this, "invalid content length header");
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, "invalid content length header");
             contentLengthFound = true;
             this->headers[key] = value;
             continue;
@@ -160,7 +158,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 					std::string boundary = value.substr(bIndx);
                     std::cout << "Here: [" << boundary << "]" << std::endl;
 					bIndx = boundary.find("=");
-					if (bIndx == std::string::npos || bIndx + 1 >=  boundary.length()) // = is the last element in the boundry which means there is no key
+					if (bIndx == std::string::npos || bIndx + 1 >=  boundary.length())
 						isOk = false;
 					else{
 						this->boundary = boundary.substr(bIndx + 1);
@@ -168,7 +166,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 					}
 				}
 			}
-			else isOk = false; // check on later
+			else isOk = false;
 		}
         this->headers[key] = value;
         if (key == "Host" || key == "host")
@@ -176,7 +174,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             hostFound = true;
             const Server &server = getServer(value, servers, serverPort);
             this->server = &server;
-            this->requestBlock = &server; // absolute fallback
+            this->requestBlock = &server;
             std::string toMatch = this->path;
             bool exactMatchFound = false;
             bool prefixMatchFound = false;
@@ -225,7 +223,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 	if (this->isMultiForm && this->method == "POST" && isOk == false)
 		throw HttpErrorException(BAD_REQUEST, *this, "Content-Type: multipart/form-data: malformed header");
 
-    if (this->method == "POST" && (!contentLengthFound && this->isChunked == false)) // w7da mn joj, ya ima ykon content-lenght kayn ya ima ykon transfer-encoding chunked kayn
+    if (this->method == "POST" && (!contentLengthFound && this->isChunked == false))
         throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found and request is not chunked");
 }
 
@@ -237,7 +235,6 @@ void HttpRequest::parseCookies(void) {
     std::string singleCookie;
     while(getline(ss, singleCookie, ';')) {
         AllUtils::removeLeadingSpaces(singleCookie);
-        // std::cout << singleCookie << '\n';
         std::stringstream sc(singleCookie);
         std::string key;
         std::string value;
@@ -294,7 +291,6 @@ const Server &HttpRequest::getServer(const std::string &host, const std::vector<
             std::cout << "Found exact match for host: " << actualHost << " and port: " << serverPort << '\n';
             return *it;
         } else {
-            // std::cout << "No exact match for host: [" << actualHost << "] and port: " << serverPort << '\n';
             std::cout << actualHost << " does not match " << it->getServerName() << ":" << it->getPort() << std::endl;
         }
         if (!firstServerPort && serverPort == it->getPort())
