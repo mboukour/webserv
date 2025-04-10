@@ -143,7 +143,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             this->headers["Content-Length"] = cl.str();
         	ClientState *state = ServerManager::getClientState(this->clientFd);
             if (state->getIsKeepAlive()) {
-                this->headers["Keep-Alive"] = "timeout=10, max 1000";
+                this->headers["Keep-Alive"] = "timeout=10";
             }
             this->body.clear();
             ServerManager::sendString(toString(), this->clientFd);

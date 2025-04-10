@@ -497,9 +497,6 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				curr_pos = 0;
 				this->multiState = M_BOUND;
 				close(this->fd);
-				std::vector<std::string>::iterator it = std::find(this->multiFiles.begin(), this->multiFiles.end(), this->fileName);
-				if (it != this->multiFiles.end())
-					this->multiFiles.erase(it);
 				this->skip = false;
 				break;
 			}
@@ -608,9 +605,6 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				curr_pos = 0;
 				this->multiState = M_BOUND;
 				close(this->fd);
-				std::vector<std::string>::iterator it = std::find(this->multiFiles.begin(), this->multiFiles.end(), this->fileName);
-				if (it != this->multiFiles.end())
-					this->multiFiles.erase(it);
 				this->skip = false;
 				break;
 			}
