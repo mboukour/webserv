@@ -55,7 +55,6 @@ class HttpResponse: public AHttp {
         static std::map<std::string, std::string> strToHeaderMap(const HttpRequest &request, std::string &str);
         static std::map<std::string, std::string> extractFileInfo(const HttpRequest &request, std::string const &str);
         void handleAutoIndex(const HttpRequest& request);
-        // std::string makeCgiResponse(const HttpRequest &request);
         bool handleReturnDirective(const HttpRequest &request) const;
         bool handleSessionTest(const HttpRequest &request) const;
         void sendResponse(void) const;

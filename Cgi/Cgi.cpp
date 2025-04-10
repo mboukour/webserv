@@ -18,7 +18,7 @@
 
 
 CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
-    std::pair<std::string, std::string> namePair = getNamePair(request); // first = scriptName // second = pathInfo
+    std::pair<std::string, std::string> namePair = getNamePair(request);
     std::string extension = namePair.first.substr(namePair.first.find_last_of('.') + 1);
     std::string interpreterPath = getInterpreterPath(extension, request);
     std::string toExecute = request.getRequestBlock()->getRoot() + namePair.first;
@@ -53,14 +53,14 @@ CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
         cleanupEnv(envp);
         std::cerr << "CGI execution failed\n";
         std::exit(1);
-    } // check if script exits directly and just throw internal server error??
+    }
 
 
     cleanupEnv(envp);
     close(socket[1]);
-    fcntl(socket[0], F_SETFL, O_NONBLOCK); // is this allowed?
+    fcntl(socket[0], F_SETFL, O_NONBLOCK);
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET; // cgi socket readable
+    ev.events = EPOLLIN | EPOLLET;
     EpollEvent *event = new EpollEvent(socket[0], pid , epollFd, ServerManager::getClientState(clientFd));
     ev.data.ptr = event;
     epoll_ctl(epollFd, EPOLL_CTL_ADD, socket[0], &ev);
@@ -73,13 +73,13 @@ bool Cgi::isValidCgiExtension(const std::string &extension, const HttpRequest &r
         request.getRequestBlock()->getCgiPath(extension);
         return true;
     } catch (const std::out_of_range &) {
-        if (extension == "py" || extension == "pl" || extension == "js" || extension == "sh" || extension == "rb" || 
-            extension == "java" || extension == "go" || extension == "bash" || 
+        if (extension == "py" || extension == "pl" || extension == "js" || extension == "sh" || extension == "rb" ||
+            extension == "java" || extension == "go" || extension == "bash" ||
             extension == "lua" || extension == "php" || extension == "php7" || extension == "php8") {
                 std::string interpreterPath = getInterpreterPath(extension, request);
                 if (access(interpreterPath.c_str(), X_OK) == 0)
                     return true;
-                else 
+                else
                     return false;
             }
         return false;
@@ -89,7 +89,7 @@ bool Cgi::isValidCgiExtension(const std::string &extension, const HttpRequest &r
 
 
 std::string Cgi::getInterpreterPath(std::string extension, const HttpRequest &request) {
-    if (extension[extension.size() - 1] == '/') 
+    if (extension[extension.size() - 1] == '/')
         extension = extension.substr(0, extension.size() - 1);
     try {
         return request.getRequestBlock()->getCgiPath(extension);
@@ -104,7 +104,7 @@ std::string Cgi::getInterpreterPath(std::string extension, const HttpRequest &re
         else if (extension == "bash") lookFor = "/bin/bash";
         else if (extension == "sh") lookFor = "/bin/sh";
         else if (extension == "lua") lookFor = "/usr/bin/lua";
-        else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php-cgi"; 
+        else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php-cgi";
         else throw HttpErrorException(NOT_IMPLEMENTED, request , "The requested CGI extension is not supported: " + extension);
         return lookFor;
     }
