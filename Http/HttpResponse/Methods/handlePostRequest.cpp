@@ -87,22 +87,6 @@ std::string HttpResponse::getConTypeExten(const std::string &contentType) {
   return ""; // Return an empty string if no match is found
 }
 
-std::string HttpResponse::extToNature(const std::string &extension) {
-  if (extension == ".html" || extension == ".txt")
-    return "text/";
-  else if (extension == ".jpg" || extension == ".png" || extension == ".gif")
-    return "image/";
-  else if (extension == ".json" || extension == ".xml" || extension == ".pdf")
-    return "document/";
-  else if (extension == ".zip")
-    return "application/";
-  else if (extension == ".mp3")
-    return "audio/";
-  else if (extension == ".mp4")
-    return "video/";
-  return "";
-}
-
 bool HttpResponse::isDir(const char *path) {
 	struct stat info;
 	if (stat(path, &info) != 0)

@@ -48,7 +48,6 @@ class HttpResponse: public AHttp {
         std::vector<std::string> multiFiles;
 
         static std::string getConTypeExten(const std::string &contentType);
-        static std::string extToNature(const std::string &extension);
         static std::pair<std::string, std::string> newMapNode(const HttpRequest &request, std::string const &str);
         static bool isCgiFile(const std::string &filePath, const HttpRequest &request);
         static bool isReturnRequest(const HttpRequest &request);
