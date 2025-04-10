@@ -130,13 +130,13 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             std::stringstream l(value);
             ssize_t check;
             l >> check;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header 1");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST, *this,  "invalid content length header 1");
             if (check < 0)
-                throw HttpErrorException(BAD_REQUEST, "Negative CL");
+                throw HttpErrorException(BAD_REQUEST, *this, "Negative CL");
             this->contentLength = check;
             std::string dummy;
             l >> dummy;
-            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, "invalid content length header");
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST,*this, "invalid content length header");
             contentLengthFound = true;
             this->headers[key] = value;
             continue;
