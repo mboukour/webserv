@@ -136,14 +136,13 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             std::stringstream l(value);
             ssize_t check;
             l >> check;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header 1");
             if (check < 0)
-                throw HttpErrorException(BAD_REQUEST, "Negative CL"); 
-            l >> this->contentLength;
-            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
+                throw HttpErrorException(BAD_REQUEST, "Negative CL");
+            this->contentLength = check;
             std::string dummy;
             l >> dummy;
-            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, "invalid content length header");
+            if (!l.eof())  throw HttpErrorException(BAD_REQUEST, "invalid content length header 3");
             // if (this->requestBlock->getIsLimited() && this->contentLength > this->requestBlock->getMaxBodySize())
             //     throw HttpErrorException(PAYLOAD_TOO_LARGE, "payload too large");
             contentLengthFound = true;

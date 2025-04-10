@@ -9,9 +9,6 @@
 #include "../../../Server/ServerManager/ServerManager.hpp"
 
 void	HttpResponse::deleteResponse(const HttpRequest &request){
-	int statusCode = 200;
-	if (request.isCgiRequest())
-			return;
 		std::cout << "Sending response" << std::endl;
 		std::string connectState;
 		ClientState *state = ServerManager::getClientState(this->clientFd);
@@ -20,7 +17,7 @@ void	HttpResponse::deleteResponse(const HttpRequest &request){
 		else
 			connectState = "close";
 		this->version = request.getVersion();
-		this->statusCode = statusCode;
+		this->statusCode = 200;
 		this->reasonPhrase = HttpErrorException::getReasonPhrase(statusCode);
 		this->body = this->success_delete;
 		std::stringstream sS;
