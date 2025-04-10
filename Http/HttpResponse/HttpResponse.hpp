@@ -8,6 +8,7 @@
 #include "../../Cgi/Cgi.hpp"
 #include <cstddef>
 #include <string>
+#include <vector>
 
 class HttpRequest;
 class CgiState;
@@ -44,6 +45,7 @@ class HttpResponse: public AHttp {
         bool hasWritten;
         CgiState *cgiState;
         bool isChunked;
+        std::vector<std::string> multiFiles;
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);

@@ -35,6 +35,8 @@
 #include <iostream>
 #include <sstream>
 #include <sys/stat.h>
+#include <vector>
+#include <algorithm>
 
 std::string HttpResponse::getFileLastModifiedTime(const std::string &filePath) {
   struct stat fileStat;
@@ -442,6 +444,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
+				this->multiFiles.push_back(this->fileName);
 				this->multiState = M_BODY;
 				break;
 			}
@@ -476,6 +479,9 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				curr_pos = 0; // the packet will now start from the next
 				this->multiState = M_BOUND;
 				close(this->fd);
+				std::vector<std::string>::iterator it = std::find(this->multiFiles.begin(), this->multiFiles.end(), this->fileName);
+				if (it != this->multiFiles.end())
+					this->multiFiles.erase(it);
 				this->skip = false;
 				break;
 			}
@@ -549,6 +555,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 				if (this->fd == -1)
 					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
+				this->multiFiles.push_back(this->fileName);
 				this->multiState = M_BODY;
 				break;
 			}
@@ -583,6 +590,9 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				curr_pos = 0; // the packet will now start from the next
 				this->multiState = M_BOUND;
 				close(this->fd);
+				std::vector<std::string>::iterator it = std::find(this->multiFiles.begin(), this->multiFiles.end(), this->fileName);
+				if (it != this->multiFiles.end())
+					this->multiFiles.erase(it);
 				this->skip = false;
 				break;
 			}

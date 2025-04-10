@@ -21,7 +21,7 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd):
     clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1), fileName(),
     chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""), pendingCRLF(false),
-    isLastEntry(false), multiState(M_BOUND), currBound(0), hasWritten(false), isChunked(false) {
+    isLastEntry(false), multiState(M_BOUND), currBound(0), hasWritten(false), isChunked(false),multiFiles() {
     if (handleSessionTest(request) || handleReturnDirective(request))
         return;
     this->version = request.getVersion();
@@ -319,7 +319,7 @@ void encoding(std::string& str)
             char c2 = tolower(str[i+2]);
             if (isxdigit(c1) && isxdigit(c2))
             {
-                int value = HexToChar(c1) * 16 + HexToChar(c2);   
+                int value = HexToChar(c1) * 16 + HexToChar(c2);
                 str.replace(i, 3, 1, static_cast<char>(value));
                 continue;
             }
