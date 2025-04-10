@@ -60,32 +60,66 @@ std::string randomizeFileName() {
 }
 
 std::string HttpResponse::getConTypeExten(const std::string &contentType) {
-  if (contentType == "text/html")
-    return ".html";
-  else if (contentType == "text/plain")
-    return ".txt";
-  else if (contentType == "image/jpeg")
-    return ".jpg";
-  else if (contentType == "image/png")
-    return ".png";
-  else if (contentType == "image/gif")
-    return ".gif";
-  else if (contentType == "application/json")
-    return ".json";
-  else if (contentType == "application/xml")
-    return ".xml";
-  else if (contentType == "application/pdf")
-    return ".pdf";
-  else if (contentType == "application/zip")
-    return ".zip";
-  else if (contentType == "audio/mpeg")
-    return ".mp3";
-  else if (contentType == "audio/mp3")
-    return ".mp3";
-  else if (contentType == "video/mp4")
-    return ".mp4";
-  return ""; // Return an empty string if no match is found
-}
+	if (contentType == "text/html")
+	  return ".html";
+	else if (contentType == "text/plain")
+	  return ".txt";
+	else if (contentType == "text/css")
+	  return ".css";
+	else if (contentType == "text/javascript" || contentType == "application/javascript")
+	  return ".js";
+	else if (contentType == "image/jpeg")
+	  return ".jpg";
+	else if (contentType == "image/png")
+	  return ".png";
+	else if (contentType == "image/gif")
+	  return ".gif";
+	else if (contentType == "image/webp")
+	  return ".webp";
+	else if (contentType == "image/svg+xml")
+	  return ".svg";
+	else if (contentType == "application/json")
+	  return ".json";
+	else if (contentType == "application/xml" || contentType == "text/xml")
+	  return ".xml";
+	else if (contentType == "application/pdf")
+	  return ".pdf";
+	else if (contentType == "application/zip")
+	  return ".zip";
+	else if (contentType == "application/x-tar")
+	  return ".tar";
+	else if (contentType == "application/x-7z-compressed")
+	  return ".7z";
+	else if (contentType == "application/x-rar-compressed")
+	  return ".rar";
+	else if (contentType == "application/msword")
+	  return ".doc";
+	else if (contentType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	  return ".docx";
+	else if (contentType == "application/vnd.ms-excel")
+	  return ".xls";
+	else if (contentType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	  return ".xlsx";
+	else if (contentType == "application/vnd.ms-powerpoint")
+	  return ".ppt";
+	else if (contentType == "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+	  return ".pptx";
+	else if (contentType == "audio/mpeg" || contentType == "audio/mp3")
+	  return ".mp3";
+	else if (contentType == "audio/ogg")
+	  return ".ogg";
+	else if (contentType == "audio/wav")
+	  return ".wav";
+	else if (contentType == "video/mp4")
+	  return ".mp4";
+	else if (contentType == "video/x-msvideo")
+	  return ".avi";
+	else if (contentType == "video/x-matroska")
+	  return ".mkv";
+	else if (contentType == "video/webm")
+	  return ".webm";
+	return "";
+  }
 
 bool HttpResponse::isDir(const char *path) {
 	struct stat info;
