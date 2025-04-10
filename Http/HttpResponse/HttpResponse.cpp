@@ -21,7 +21,7 @@ HttpResponse::HttpResponse(): clientFd(-1), epollFd(-1), fd(-1){}
 HttpResponse::HttpResponse(const HttpRequest& request, int clientFd, int epollFd):
     clientFd(clientFd), epollFd(epollFd), postState(INIT_POST), fd(-1), fileName(),
     chunkState(CH_START), remaining_chunk_size(0), offset(0), chunkBody(""), left(0), packet(""), prev_chunk_size(""), pendingCRLF(false),
-    isLastEntry(false), multiState(M_BOUND), currBound(0), hasWritten(false), isChunked(false) {
+    isLastEntry(false), multiState(M_BOUND), currBound(0), hasWritten(false), isChunked(false),multiFiles() {
     if (handleSessionTest(request) || handleReturnDirective(request))
         return;
     this->version = request.getVersion();
@@ -299,76 +299,4 @@ HttpResponse::~HttpResponse(){
         if (this->isChunked && !this->isLastEntry)
             unlink(this->fileName.c_str());
     }
-}
-
-// std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-";
-
-int HexToChar(char c) {
-    if (isdigit(c))
-        return c - '0';
-    return tolower(c) - 'a' + 10;
-}
-
-void encoding(std::string& str)
-{
-    for (size_t i = 0; i < str.length(); )
-    {
-        if (str[i] == '%' && i + 2 < str.length())
-        {
-            char c1 = tolower(str[i+1]);
-            char c2 = tolower(str[i+2]);
-            if (isxdigit(c1) && isxdigit(c2))
-            {
-                int value = HexToChar(c1) * 16 + HexToChar(c2);   
-                str.replace(i, 3, 1, static_cast<char>(value));
-                continue;
-            }
-        }
-        i++;
-    }
-}
-
-std::string HttpResponse::sanitizePath(std::string path) {
-	int start;
-	for (size_t i = 0; i < path.length(); )
-	{
-		if (path[i] == '.' && i > 0 && path[i - 1] == '/')
-		{
-			if (i + 1 < path.length() && path[i + 1] == '.')
-			{
-				start = i - 1;
-				while (start > 0 && path[start - 1] != '/')
-					start--;
-				path.erase(start, i + 2 - start);
-				i = start;
-			}
-			else if (i + 1 >= path.length() || path[i + 1] == '/')
-				path.erase(i, 1);
-			else
-				i++;
-		}
-		else if (path[i] == '/' && i + 1 < path.length() && path[i + 1] == '/')
-			path.erase(i + 1, 1);
-		else
-			i++;
-	}
-	for (size_t i = 0; i < path.length(); )
-	{
-		if (path[i] == '/' && i + 1 < path.length() && path[i + 1] == '/')
-			path.erase(i + 1, 1);
-		else
-			i++;
-	}
-    std::string newPath;
-    for (size_t i = 0; i < path.length();){
-        if (HttpRequest::uriAllowedChars.find(path[i]) == std::string::npos)
-            i++;
-        else
-            newPath += path[i++];
-    }
-    encoding(newPath);
-	if (newPath.empty())
-		return "/";
-	else
-		return newPath;
 }

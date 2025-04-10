@@ -44,6 +44,8 @@ class HttpResponse: public AHttp {
         bool hasWritten;
         CgiState *cgiState;
         bool isChunked;
+        std::vector<std::string> multiFiles;
+
 
         static std::string getConTypeExten(const std::string &contentType);
         static std::string extToNature(const std::string &extension);
@@ -71,8 +73,6 @@ class HttpResponse: public AHttp {
         std::string getFileLastModifiedTime(const std::string &filePath);
         void deleteResponse(const HttpRequest &request);
         bool isDir(const char *path);
-        std::string sanitizePath(std::string path);
-
     public:
         HttpResponse();
         ~HttpResponse();
