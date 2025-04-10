@@ -45,7 +45,7 @@ class CgiState {
         void setupReadMode(const std::string &bufferStr);
         void readCgi(std::string bufferStr);
         void parseCgiHeaders(void);
-        void sendCurrentChunk(void); // Dont forget to call this at the end marking the end chunk (if script exits??)
+        void sendCurrentChunk(void);
     public:
         CgiState(int cgiFd, int cgiPid, int epollFd, ClientState *clientToSend);
         void handlecgiReadable(void);

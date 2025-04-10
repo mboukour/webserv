@@ -30,13 +30,11 @@ class ServerManager {
         static void cgiEpoll(EpollEvent *epollEvent, struct epoll_event &event);
         static void removeCgiAfterClient(ClientState *client);
     public:
-        // static void sendResponse(HttpRequest &request, int clientFd);
         static void registerEpollEvent(int fd, EpollEvent *event);
         static void sendString(const std::string &str, int clientFd);
         static void sendFile(const std::string &filePath, int clientFd);
         static ClientState *getClientState(int clientFd);
         static EpollEvent *getEpollEvent(int clientFd);
-        // void registerEvent(void);
 
         static void initialize(std::vector<Server> &serversList);
         static void start(void);

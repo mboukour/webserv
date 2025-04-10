@@ -33,7 +33,6 @@ void ServerManager::initialize(std::vector<Server> &serversList) {
 }
 
 void ServerManager::sendString(const std::string &str, int clientFd) {
-    // EpollEvent *
     ClientState *state = getClientState(clientFd);
     state->activateWriteState(str);
 }
@@ -58,7 +57,7 @@ const Server &ServerManager::getServer(int port) {
             if (it->getPort() == port)
                 return (*it);
         }
-    throw std::logic_error("Server not found"); // throw ServerNotFound(serverFd);
+    throw std::logic_error("Server not found");
 }
 
 
@@ -107,12 +106,8 @@ ClientState *ServerManager::getClientState(int clientFd) {
 }
 
 EpollEvent *ServerManager::getEpollEvent(int clientFd) {
-    // try {
         return eventStates.at(clientFd);
-    // } catch (const std::out_of_range &ex) {
-    //     std::cout << "Epoll event out of range: " << clientFd << std::endl;
-    //     return NULL;
-    // }
+
 }
 
 void ServerManager::registerEpollEvent(int fd, EpollEvent *event) {
@@ -121,7 +116,7 @@ void ServerManager::registerEpollEvent(int fd, EpollEvent *event) {
 
 void ServerManager::cgiEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
     CgiState *state = epollEvent->getCgiState();
-    if (event.events & EPOLLIN) // we only register cgi for readable, we will never write to it
+    if (event.events & EPOLLIN) 
         state->handlecgiReadable();
     if (event.events & EPOLLOUT) {
         state->handleCgiWritable();
@@ -162,7 +157,7 @@ void ServerManager::removeCgiAfterClient(ClientState *client) {
 bool ServerManager::checkIfDone(EpollEvent *event) {
     const int eventType = event->getEventType();
     switch (eventType) {
-        case EpollEvent::SERVER_SOCKET: { // we skip it, therefore not posi
+        case EpollEvent::SERVER_SOCKET: {
             throw std::logic_error("Can't check if server socket has timedout");
         }
         case EpollEvent::CGI_READ: {
@@ -178,31 +173,17 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
             if ((event->getIsDone() || event->hasTimedOut()) && clientState->isSendingDone()) {
                 if (!clientState->getIsResponding()) {
                     clientState->setAsDone();
-                    HttpErrorException ex(GATEWAY_TIMEOUT, "TIMEOUT"); // make it work w request
+                    HttpErrorException ex(GATEWAY_TIMEOUT, "TIMEOUT");
                     clientState->activateWriteState(ex.getResponseString());
                     return false;
                 }
                 removeCgiAfterClient(clientState);
                 return true;
             }
-            // if (clientState->isSendingDone()) {
-            //     removeCgiAfterClient(clientState);
-            //     return true;
-            // }
-            return false; // sending needs to be set as done
+            return false;
         }
     }
     return false;
-    // if (!event->getIsDone())
-    //     return false;
-    // if (event->getEventType() == EpollEvent::CGI_READ) // done cgi read
-    //     return true;
-    // if (event->getEventType() == EpollEvent::CLIENT_CONNECTION) {
-    //     ClientState *state = event->getClientState();
-    //     if (state->isSendingDone())
-    //         return true;
-    // }
-    // return false;
 }
 
 void ServerManager::handleConnections(void) {
@@ -221,12 +202,11 @@ void ServerManager::handleConnections(void) {
         }
         for (int i = 0; i < event_count; i++)
         {
-            // ClientState *state = static_cast<ClientState *>(events[i].data.ptr);
             EpollEvent *epollEvent = static_cast<EpollEvent *>(events[i].data.ptr);
             const int eventType = epollEvent->getEventType();
             if (eventType == EpollEvent::SERVER_SOCKET || eventType == EpollEvent::CLIENT_CONNECTION)
                 clientServerEpoll(epollEvent, events[i]);
-            else // CGI_READ
+            else 
                 cgiEpoll(epollEvent, events[i]);
         }
 
@@ -268,7 +248,6 @@ void ServerManager::start(void) {
             atLeastOne = true;
             int fdSocket = it->getFdSocket();
             ev.events =  EPOLLIN | EPOLLET;
-            // ev.data.ptr = new ClientState(fdSocket, epollFd);
             EpollEvent *serverEvent = new EpollEvent(fdSocket, epollFd, EpollEvent::SERVER_SOCKET);
             eventStates[fdSocket] = serverEvent;
             ev.data.ptr = serverEvent;

@@ -12,7 +12,6 @@
 
 class HttpRequest;
 class CgiState;
-// HttpResponse will check everything
 class HttpResponse: public AHttp {
     private:
         const int clientFd;
@@ -85,7 +84,6 @@ class HttpResponse: public AHttp {
         std::string toString(void) const;
         int getFd(void) const;
         bool hasPostTimedOut(void) const;
-        // void multiForm(const HttpRequest &request);
 };
 
 #endif

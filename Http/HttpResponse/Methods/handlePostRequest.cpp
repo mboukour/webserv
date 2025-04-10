@@ -42,7 +42,7 @@ std::string HttpResponse::getFileLastModifiedTime(const std::string &filePath) {
   struct stat fileStat;
   if (stat(filePath.c_str(), &fileStat) != 0)
     return "";
-  struct tm *tm_info = gmtime(&fileStat.st_mtime); // Convert to GMT time
+  struct tm *tm_info = gmtime(&fileStat.st_mtime);
   char buffer[100];
   strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", tm_info);
   return std::string(buffer);
@@ -167,7 +167,7 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode, std:
 	this->headers["Location"] = sanitizePath(location);
 	this->headers["Connection"] = connectState;
 	if (state->getIsKeepAlive())
-		this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
+		this->headers["Keep-Alive"] = "timeout=10, max 1000";
 	std::string toStr = this->toString();
 	ServerManager::sendString(toStr, this->clientFd);
 }
@@ -186,7 +186,7 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 			}
 			this->fileName = folder + file;
 			this->fileName = sanitizePath(this->fileName);
-			this->fd = open(this->fileName.c_str(), O_CREAT | O_WRONLY, 0644); // check for failure
+			this->fd = open(this->fileName.c_str(), O_CREAT | O_WRONLY, 0644);
 			if (this->fd == -1)
 				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Internal server error");
 		}
@@ -241,7 +241,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 			{
 				size_t ch_size = this->offset - curr_pos;
 				processing = false;
-				if (this->remaining_chunk_size <= ch_size) { // chunk will end in this packet
+				if (this->remaining_chunk_size <= ch_size) {
 					ch_size = this->remaining_chunk_size;
 					processing = true;
 					this->chunkState = CH_TRAILER;
@@ -374,10 +374,10 @@ std::string HttpResponse::generateFileName(const HttpRequest &request, std::stri
 	std::string folder = request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath();
 	size_t pos = file.rfind(".");
 	std::string fileExten = "";
-	if (pos == std::string::npos && pos != 0){ // what if content-type header doesn't exist ?
+	if (pos == std::string::npos && pos != 0){
 		std::string contentType = headers["Content-Type"];
 		std::stringstream s(contentType);
-		s >> contentType; // to skip ": "
+		s >> contentType;
 		s >> contentType;
 		fileExten = getConTypeExten(contentType);
 	}
@@ -402,7 +402,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 	else
 		this->packet = request.getReqEntry();
 	while (true){
-		switch (this->multiState){ // what if this is the last boundary ?
+		switch (this->multiState){
 			case M_BOUND:
 			{
 				tmp = "";
@@ -417,7 +417,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					this->multiState = M_BODY;
 					continue;
 				}
-				curr_pos += boundLen - this->currBound + 2; // skip the bound len or what is left from bound len as i can be split + \r\n
+				curr_pos += boundLen - this->currBound + 2;
 				if (curr_pos > this->packet.length()){
 					this->currBound = 1;
 					break;
@@ -486,7 +486,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 					return;
 				}
 				this->packet = this->multiBody.substr(bound_pos);
-				this->multiBody = this->multiBody.substr(0, bound_pos - 2); // \r\n -> as long a you found the boundary, \r\n is 100% guaranteed to be there
+				this->multiBody = this->multiBody.substr(0, bound_pos - 2);
 				if (this->skip == false){
 					this->hasWritten = true;
 					ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
@@ -494,7 +494,7 @@ void HttpResponse::multiForm(const HttpRequest &request){
 						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
 				}
 				this->multiBody.clear();
-				curr_pos = 0; // the packet will now start from the next
+				curr_pos = 0;
 				this->multiState = M_BOUND;
 				close(this->fd);
 				std::vector<std::string>::iterator it = std::find(this->multiFiles.begin(), this->multiFiles.end(), this->fileName);
@@ -515,7 +515,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 	size_t curr_pos = 0;
 	std::string tmp;
 	while (true){
-		switch (this->multiState){ // what if this is the last boundary ?
+		switch (this->multiState){
 			case M_BOUND:
 			{
 				tmp = "";
@@ -530,7 +530,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					this->multiState = M_BODY;
 					continue;
 				}
-				curr_pos += boundLen - this->currBound + 2; // skip the bound len or what is left from bound len as i can be split + \r\n
+				curr_pos += boundLen - this->currBound + 2;
 				if (curr_pos > this->packet.length()){
 					this->currBound = 1;
 					break;
@@ -597,7 +597,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 					return;
 				}
 				this->packet = this->multiBody.substr(bound_pos);
-				this->multiBody = this->multiBody.substr(0, bound_pos - 2); // \r\n -> as long a you found the boundary, \r\n is 100% guaranteed to be there
+				this->multiBody = this->multiBody.substr(0, bound_pos - 2);
 				if (this->skip == false){
 					this->hasWritten = true;
 					ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
@@ -605,7 +605,7 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
 				}
 				this->multiBody.clear();
-				curr_pos = 0; // the packet will now start from the next
+				curr_pos = 0;
 				this->multiState = M_BOUND;
 				close(this->fd);
 				std::vector<std::string>::iterator it = std::find(this->multiFiles.begin(), this->multiFiles.end(), this->fileName);
@@ -672,7 +672,7 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 			{
 				size_t ch_size = this->offset - curr_pos;
 				processing = false;
-				if (this->remaining_chunk_size <= ch_size) { // chunk will end in this packet
+				if (this->remaining_chunk_size <= ch_size) {
 					ch_size = this->remaining_chunk_size;
 					processing = true;
 					this->chunkState = CH_TRAILER;
@@ -717,7 +717,7 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 
 
 void HttpResponse::handlePostRequest(const HttpRequest &request) {
-	std::string path = request.getRequestBlock()->getRoot(); // what to use it for ?
+	std::string path = request.getRequestBlock()->getRoot();
 	if (request.isChunkedRequest() == false) {
 		if (request.isMultiRequest() && !request.isCgiRequest()){
 			this->isLastEntry = request.getBodySize() == request.getContentLength();

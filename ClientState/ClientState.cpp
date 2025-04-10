@@ -16,7 +16,7 @@
 #include "../Utils/Logger/Logger.hpp"
 #include "../Cgi/CgiState/CgiState.hpp"
 
-const int ClientState::keepAliveTimeout = 10; // in seconds
+const int ClientState::keepAliveTimeout = 10;
 
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), requestCount(0),
@@ -26,14 +26,11 @@ ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(e
 
 void ClientState::handleWritable(void) {
     if (this->sendQueue.empty()) {
-        // Logger::getLogStream() << "Nope, nothing to send for " << this->eventFd << std::endl;
         return;
     }
-    // Logger::getLogStream() << "Handling writable for " << this->eventFd << std::endl;
     updateLastActivity();
     for (std::vector<SendMe>::iterator it = this->sendQueue.begin(); it != this->sendQueue.end();)
     {
-        // Logger::getLogStream() << "Iterating" << std::endl;
         SendMe &toSend = *it;
         if (toSend.sendMode == FILE) {
             std::fstream fileToSend(toSend.filePath.c_str());
@@ -41,8 +38,6 @@ void ClientState::handleWritable(void) {
                 throw std::runtime_error("Could'nt open file");
 
         fileToSend.seekg(toSend.currentPos);
-
-        // Read one chunk
             std::vector<char> buffer(READ_SIZE);
             while(true) {
                 fileToSend.read(buffer.data(), buffer.size());
@@ -80,7 +75,6 @@ void ClientState::handleWritable(void) {
         it = this->sendQueue.erase(it);
     }
     if (this->sendQueue.empty()) {
-        // Logger::getLogStream() << "Send queue is empty for " << this->eventFd << std::endl;
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLET;
         ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
@@ -151,7 +145,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 std::cout << MAGENTA << "Changed state\n" << RESET;
                 try {
                     this->requestCount++;
-                    this->request = HttpRequest(this->requestBuffer, servers, port); // dont forget that this will throw exceptions in case of wrong http requests
+                    this->request = HttpRequest(this->requestBuffer, servers, port);
                     std::cout << "New Req: " << this->request;
                 } catch (const HttpErrorException &exec) {
                     if (exec.getStatusCode() == PAYLOAD_TOO_LARGE) {

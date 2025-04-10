@@ -43,9 +43,6 @@ class ClientState {
                 void changeSend(const std::string &stringToSend);
         };
         std::vector<SendMe> sendQueue;
-        // std::string filePath;
-        // std::streampos currentPos;
-        // std::string stringToSend;
         HttpResponse *response;
         CgiState *cgiState;
         time_t lastActivityTime;
@@ -59,7 +56,6 @@ class ClientState {
         void updateLastActivity(void);
     public:
         ClientState(int clientFd, int epollFd);
-        // HttpRequest *getHttpRequest(void) const;
         HttpResponse *getHttpResponse(void) const;
         const HttpRequest &getHttpRequest(void) const;
         int getEventFd(void) const;

@@ -110,7 +110,6 @@ Block Parser::parseConfigFile()
     return globalBlock;
 }
 
-// Need to figure out a way to inherit error pages.
 void Parser::setLocationsDirectives(std::vector<Block> &servers) {
     for (std::vector<Block>::iterator serverIt = servers.begin(); serverIt != servers.end(); ++serverIt) {
         const std::vector<stringVec> &serverDirectives = serverIt->directives;
@@ -144,26 +143,25 @@ Block Parser::parseBlock(tokenVec::iterator &it, const tokenVec &tokens, bool ge
     {
         for(; it->type != OPEN_BRACE; it++)
             result.blockName.push_back(it->word);
-        it++; // Skip open brace
+        it++;
     }
 
     for (; it != tokens.end() && it->type != CLOSE_BRACE; )
     {
         stringVec vec;
         for(; it->type == WORD; it++) vec.push_back(it->word);
-        if (it->type == SEMICOLON) {it++; result.directives.push_back(vec) ; continue;} // skip semicolon for next directive
+        if (it->type == SEMICOLON) {it++; result.directives.push_back(vec) ; continue;}
         if (it->type == OPEN_BRACE) {
-            it++; // skip open brace
+            it++;
             Block subBlock = parseBlock(it, tokens, false);
             subBlock.blockName = vec;
             result.subBlocks.push_back(subBlock);
         }
     }
-    it++; // skip this block's close brace
+    it++;
     return result;
 }
 
-// DEBUG
 void Parser::printTokens(void)
 {
     std::string type;
