@@ -110,7 +110,6 @@ std::string Cgi::getInterpreterPath(std::string extension, const HttpRequest &re
     }
 }
 
-// fix this shit later
 std::pair<std::string, std::string> Cgi::getNamePair(const HttpRequest &request) {
     std::stringstream ss(request.getPath());
     std::string scriptName;
@@ -160,7 +159,7 @@ std::map<std::string, std::string> Cgi::createCgiEnv(const HttpRequest &request,
     std::string rootSlash = request.getRequestBlock()->getRoot();
     if (rootSlash[rootSlash.size() - 1] == '/')
         rootSlash = rootSlash.substr(0, rootSlash.size() - 2);
-    env["PATH_TRANSLATED"] =  rootSlash + scriptName; // realpath
+    env["PATH_TRANSLATED"] =  rootSlash + scriptName;
     env["SCRIPT_NAME"] = scriptName;
 
     env["QUERY_STRING"] = request.getQueryString();

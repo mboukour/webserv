@@ -3,7 +3,7 @@
 #include <iostream>
 #include <exception>
 std::ostream& operator<<(std::ostream& outputStream, const Location& location) {
-    std::string indent = "    ";  // 4 spaces for indentation
+    std::string indent = "    ";
 
     outputStream << indent << "- Location: " << location.getLocationName() << "\n";
     outputStream << indent << "    Root Directory: " << location.getRoot() << "\n";
@@ -70,17 +70,10 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other) {
         outputStream << "  " << ite->first << ": " << ite->second << "\n";
     }
     outputStream << "Upload Path: " << other.getUploadPath() << '\n';
-    // outputStream << "Redirect:\n";
-    // outputStream << other.get
     outputStream << "Locations:\n";
     std::vector<Location>::const_iterator it;
-    // for (it = other.locationsBegin(); it != other.locationsEnd(); ++it) {
-    //     outputStream << *it;  // Calls the overloaded << for Location
-    // }
-    // if (other.locations.begin() == other.locations.end())
-    //     throw std::logic_error("Hi");
     for (it = other.locationsCbegin(); it != other.locationsCend(); ++it) {
-        outputStream << *it;  // Calls the overloaded << for Location
+        outputStream << *it;
     }
     return outputStream;
 }
@@ -90,21 +83,7 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     outputStream << "Path: " << request.getPath() << " ";
     outputStream << "Query string: " << request.getQueryString() << "\n";
     outputStream << "Headers:\n";
-
-
-    // change this by funcs that returns const iterators
-    // std::map<std::string, std::string>::const_iterator it;
-    // for (it = request.headers.begin(); it != request.headers.end(); ++it) {
-    //     outputStream << "  " << it->first << ": " << it->second << "\n";
-    // }
     request.printHeaders();
-    // outputStream << "Body Size: " << request.getBodySize() << "\n";
-    // outputStream << "Body: " << request.getBody() << "\n";
-    // std::cout << "Cookies: \n";
-    // std::map<std::string, std::string> cookies = request.getCookie();
-    // for (std::map<std::string, std::string>::const_iterator it = cookies.begin(); it != cookies.end(); it++) {
-    //     std::cout << it->first << ": " << it->second << '\n';
-    // }
     return outputStream;
 }
 

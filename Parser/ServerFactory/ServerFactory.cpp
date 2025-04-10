@@ -58,7 +58,7 @@ bool ServerFactory::isValidErrorCode(const std::string &code) {
             code == "504" || // Gateway Timeout
             code == "505");  // HTTP Version Not Supported
 }
-bool ServerFactory::isValidDirective(const std::string &directive) // TO IMPROVE
+bool ServerFactory::isValidDirective(const std::string &directive)
 {
     return (directive == "listen" || directive == "server_name" || directive == "error_page"
             || directive == "client_max_body_size" || directive == "root" || directive == "methods"
@@ -128,7 +128,6 @@ void ServerFactory::parseClientMaxBodySize(ABlock &result, const stringVec &dire
         std::cout << "REM: " << remaining << std::endl;
         if (integerPart < 0)
             throw std::logic_error("Can't have negative max body size");
-        // OVERFLOW RISK: BE CAREFUL!!
         if (unit == 'k' || unit == 'K')
             integerPart *= KB;
         else if (unit == 'm' || unit == 'M')
@@ -277,10 +276,6 @@ Location ServerFactory::createLocation(const Block& locationBlock, std::vector<s
     for (std::vector<stringVec>::const_iterator ite = locationBlock.directives.begin();
         ite != locationBlock.directives.end(); ite++) {
         std::string currentDirective = ite->begin()[0];
-        // if (currentDirective == "return") {
-        //     parseReturnDirective(newLocation, *ite);
-        // }
-        // else
             setBlockDirectives(newLocation, *ite);
     }
     return newLocation;
@@ -293,8 +288,6 @@ void ServerFactory::parseReturnDirective(Location& location, const stringVec& di
         throw std::logic_error("Invalid return directive");
     if (!isValidSucccessCode(code) && !isValidErrorCode(code))
         throw std::logic_error("Invalid status code in return directive");
-    
-    // location.setReturnDirective(code, directive.size() == 2 ? "" : directive[2]);
 }
 
 void ServerFactory::inheritErrorPages(Server& server) {
@@ -385,8 +378,6 @@ Server ServerFactory::createServer(const Block &serverBlock) {
         }
         result.addLocation(newLocation);
     }
-
-    // Inheriting error codes
     for (std::vector<Location>::iterator it = result.locationsBegin(); it != result.locationsEnd(); it++) {
         for (std::map<std::string, std::string>::const_iterator ite = result.errorPagesCbegin(); ite != result.errorPagesCend(); ite++) {
             const std::string &errorCode = ite->first;

@@ -11,8 +11,7 @@
 
 class Login {
     private:
-        static std::map<std::string, std::string> userCreds; // maybe implemenet timeout mechanism // also maybe true login mechanism
-         // key: session-id  // first: username //
+        static std::map<std::string, std::string> userCreds;
         static std::string getLogin(const HttpRequest &request);
         static std::string postLogin(const HttpRequest& request, HttpResponse &response);
         static std::string deleteLogin(const HttpRequest &request);

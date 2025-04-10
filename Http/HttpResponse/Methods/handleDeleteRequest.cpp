@@ -27,7 +27,7 @@ void	HttpResponse::deleteResponse(const HttpRequest &request){
 		this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);
 		this->headers["Connection"] = connectState;
 		if (state->getIsKeepAlive())
-			this->headers["Keep-Alive"] = "timeout=10, max 1000"; // might make this dynamic later
+			this->headers["Keep-Alive"] = "timeout=10, max 1000";
 		std::string toStr = this->toString();
 		ServerManager::sendString(toStr, this->clientFd);
 }

@@ -2,7 +2,7 @@
 #define ABLOCK_HPP
 
 #include <string>
-// #include <unordered_map>
+
 #include <utility>
 #include <vector>
 #include <iostream>
@@ -14,7 +14,6 @@ enum HttpMethod {
     DELETE
 };
 
-// This is an abstract class that defines functionality different blocks might have
 class ABlock {
     protected:
 
@@ -59,13 +58,11 @@ class ABlock {
 
         void setErrorPagePath(const std::string &errorCode, const std::string &errorPage);
         std::string getErrorPageHtml(int errorCode) const;
-        // to iterate over the error pages map, use these the const iterators 
         std::map<std::string, std::string>::const_iterator errorPagesCbegin(void) const;
         std::map<std::string, std::string>::const_iterator errorPagesCend(void) const;
 
         void addIndex(const std::string &index);
         std::vector<std::string> getIndexes(void) const;
-        // to iterate over the index vector, use these the const iterators
         std::vector<std::string>::const_iterator indexCbegin(void) const;
         std::vector<std::string>::const_iterator indexCend(void) const;
 

@@ -51,8 +51,6 @@ size_t ABlock::getMaxBodySize(void) const {
     return maxBodySize;
 }
 
-
-// Getter methods
 bool ABlock::getMethod(int method) const {
     switch (method) {
         case GET:
@@ -70,7 +68,6 @@ bool ABlock::getIsAutoIndexOn(void) const {
     return this->isAutoIndexOn;
 }
 
-// Setter methods
 void ABlock::setRoot(const std::string &root) {
     this->root = root;
 }
@@ -175,12 +172,12 @@ void ABlock::setCgiInfo(const std::string &language, const std::string &path) {
 
 
 const std::string &ABlock::getCgiPath(const std::string &language) const {
-    std::map<std::string, std::string>::const_iterator it = this->cgis.find(language);  // Use find() instead of at()
+    std::map<std::string, std::string>::const_iterator it = this->cgis.find(language);
     if (it != this->cgis.end()) {
         std::cout << "SEC: " << it->second << '\n';
-        return it->second;  // Return the value associated with the key
+        return it->second;
     }
-    throw std::out_of_range("Key not found in cgis map");  // Or handle it differently
+    throw std::out_of_range("Key not found in cgis map");
 }
 
 std::map<std::string, std::string>::const_iterator ABlock::cgisCbegin(void) const {
