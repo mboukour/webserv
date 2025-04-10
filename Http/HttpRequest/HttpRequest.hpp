@@ -55,7 +55,6 @@ class HttpRequest: public AHttp {
         bool isMultiRequest(void) const;
         const std::string & getBoundary(void) const;
         void printHeaders(void) const;
-        static std::string uriAllowedChars;
 };
 
 

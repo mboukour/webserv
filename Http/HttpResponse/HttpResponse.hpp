@@ -73,8 +73,6 @@ class HttpResponse: public AHttp {
         std::string getFileLastModifiedTime(const std::string &filePath);
         void deleteResponse(const HttpRequest &request);
         bool isDir(const char *path);
-        std::string sanitizePath(std::string path);
-
     public:
         HttpResponse();
         ~HttpResponse();

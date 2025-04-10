@@ -14,10 +14,12 @@ class AHttp { // This is an abstract class for stuff that both request and repos
         size_t bodySize;
         std::string body;
         std::map<std::string, std::string> headers;
-        
+        static std::string uriAllowedChars;
+        static void encoding(std::string &replace);
 
     public:
         AHttp();
+        static std::string sanitizePath(std::string path);
         std::string getVersion() const;
         size_t getBodySize() const;
         std::string getBody() const;

@@ -15,7 +15,6 @@
 #include "../../Utils/Logger/Logger.hpp"
 #include "../../Utils/AllUtils/AllUtils.hpp"
 
-std::string HttpRequest::uriAllowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._~:/?#[]@!$&'()*+,;=%-"; // lo?l -> lol
 
 HttpRequest::HttpRequest(): AHttp(), contentLength(0), reqEntry(NULL) ,isChunked(false) {}
 
@@ -48,6 +47,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         && ((!this->isChunked && this->contentLength > this->requestBlock->getMaxBodySize())
         || this->bodySize > this->requestBlock->getMaxBodySize()))
             throw HttpErrorException(PAYLOAD_TOO_LARGE, "Payload too large");
+    this->path = sanitizePath(this->path);
     setIsCgi();
     parseCookies();
 }
@@ -134,6 +134,11 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
         if (key == "Content-Length")
         {
             std::stringstream l(value);
+            ssize_t check;
+            l >> check;
+            if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
+            if (check < 0)
+                throw HttpErrorException(BAD_REQUEST, "Negative CL"); 
             l >> this->contentLength;
             if (l.fail()) throw HttpErrorException(BAD_REQUEST,  "invalid content length header");
             std::string dummy;
@@ -288,15 +293,16 @@ const Server &HttpRequest::getServer(const std::string &host, const std::vector<
     size_t pos = actualHost.find(":");
     if (pos != std::string::npos)
         actualHost = actualHost.substr(0, pos);
-    // std::cout << "server port: " << serverPort << '\n';
+    std::cout << "server port: " << serverPort << '\n';
     const Server *firstServerPort = NULL;
     for (std::vector<Server>::const_iterator it = servers.begin(); it != servers.end(); it++) {
+        std::cout << "Current server being checked - Host: [" << it->getServerName() << "], Port: " << it->getPort() << '\n';
         if (actualHost == it->getServerName() && serverPort == it->getPort()) {
-            // std::cout << "Found exact match for host: " << actualHost << " and port: " << serverPort << '\n';
+            std::cout << "Found exact match for host: " << actualHost << " and port: " << serverPort << '\n';
             return *it;
         } else {
             // std::cout << "No exact match for host: [" << actualHost << "] and port: " << serverPort << '\n';
-            // std::cout << "Current server being checked - Host: [" << it->getServerName() << "], Port: " << it->getPort() << '\n';
+            std::cout << actualHost << " does not match " << it->getServerName() << ":" << it->getPort() << std::endl;
         }
         if (!firstServerPort && serverPort == it->getPort())
             firstServerPort = &(*it);
