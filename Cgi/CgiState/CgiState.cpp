@@ -1,5 +1,6 @@
 #include "CgiState.hpp"
 #include <cctype>
+#include <cfloat>
 #include <csignal>
 #include <cstddef>
 #include <cstdlib>
@@ -182,8 +183,10 @@ void CgiState::handlecgiReadable(void) {
     while (true) {
         ssize_t bytesRead = recv(cgiFd, buffer.data(), buffer.size(), 0);
         if (bytesRead == 0) {
-            if (!this->isResponding)
+            if (!this->isResponding) {
+                DEBUG && Logger::getLogStream() << "[ERROR] -> Connection terminated without a valid response from CGI" << std::endl;
                 notifyCgiClient(INTERNAL_SERVER_ERROR);
+            }
             else if (this->readMode == RAW_CHUNKED)
                 sendCurrentChunk();
             cleanUpCgi();
@@ -192,6 +195,7 @@ void CgiState::handlecgiReadable(void) {
             try {
                 readCgi(std::string(buffer.data(), bytesRead));
             } catch (const HttpErrorException &exec) {
+                DEBUG && Logger::getLogStream() << "[ERROR] -> problem while reading cgi output. Reason: " << exec.what() << std::endl;
                 notifyCgiClient(exec.getStatusCode());
                 this->isDone = true;
                 cleanUpCgi();
@@ -235,8 +239,10 @@ void CgiState::handleCgiWritable(void) {
         it != this->writeQueue.end(); ) {
 
             if (!isCgiAlive()) {
-                if (!this->isResponding)
+                if (!this->isResponding) {
+                    DEBUG && Logger::getLogStream() << "[ERROR] -> Cgi exited without interpreting the full request and without providing a valid response" << std::endl;
                     notifyCgiClient(INTERNAL_SERVER_ERROR);
+                }
                 cleanUpCgi();
                 return;
             }

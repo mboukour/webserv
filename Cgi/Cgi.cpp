@@ -104,7 +104,7 @@ std::string Cgi::getInterpreterPath(std::string extension, const HttpRequest &re
         else if (extension == "bash") lookFor = "/bin/bash";
         else if (extension == "sh") lookFor = "/bin/sh";
         else if (extension == "lua") lookFor = "/usr/bin/lua";
-        else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php-cgi";
+        else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php";
         else throw HttpErrorException(NOT_IMPLEMENTED, request , "The requested CGI extension is not supported: " + extension);
         return lookFor;
     }
