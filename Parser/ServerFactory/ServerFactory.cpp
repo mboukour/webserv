@@ -372,7 +372,6 @@ Server ServerFactory::createServer(const Block &serverBlock) {
                     }
                     else
                         path = ite->begin()[2];
-                    // std::cout << "PATH: " << path << std::endl;
                     newLocation.setReturnDirective(code, path, skipLength ? RETURN_BODY : RETURN_URL);
                 }
             }

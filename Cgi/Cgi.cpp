@@ -39,7 +39,6 @@ CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
         close(socket[1]);
         throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "fork failed during cgi initialization");
     }
-
     if (pid == 0) {
         close(socket[0]);
         dup2(socket[1], STDOUT_FILENO);
@@ -104,7 +103,7 @@ std::string Cgi::getInterpreterPath(std::string extension, const HttpRequest &re
         else if (extension == "bash") lookFor = "/bin/bash";
         else if (extension == "sh") lookFor = "/bin/sh";
         else if (extension == "lua") lookFor = "/usr/bin/lua";
-        else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php";
+        else if (extension == "php" || extension == "php7" || extension == "php8") lookFor = "/usr/bin/php-cgi";
         else throw HttpErrorException(NOT_IMPLEMENTED, request , "The requested CGI extension is not supported: " + extension);
         return lookFor;
     }
@@ -158,10 +157,9 @@ std::map<std::string, std::string> Cgi::createCgiEnv(const HttpRequest &request,
 
     std::string rootSlash = request.getRequestBlock()->getRoot();
     if (rootSlash[rootSlash.size() - 1] == '/')
-        rootSlash = rootSlash.substr(0, rootSlash.size() - 2);
+        rootSlash = rootSlash.substr(0, rootSlash.size() - 1);
     env["PATH_TRANSLATED"] =  rootSlash + scriptName;
     env["SCRIPT_NAME"] = scriptName;
-
     env["QUERY_STRING"] = request.getQueryString();
     const std::string &contentType = request.getHeader("Content-Type");
     if (!contentType.empty())
@@ -170,6 +168,7 @@ std::map<std::string, std::string> Cgi::createCgiEnv(const HttpRequest &request,
     ss << request.getContentLength();
     env["CONTENT_LENGTH"] = ss.str();
 
+    env["REDIRECT_STATUS"] = "200";
     env["HTTP_HOST"] = request.getHeader("Host");
     env["HTTP_USER_AGENT"] = request.getHeader("User-Agent");
     env["HTTP_ACCEPT"] = request.getHeader("Accept");
