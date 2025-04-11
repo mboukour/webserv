@@ -296,8 +296,8 @@ HttpResponse::~HttpResponse(){
         if (this->isChunked && !this->isLastEntry)
             unlink(this->fileName.c_str());
     }
-    for (std::vector<std::string>::const_iterator it = this->multiFiles.begin();
-        it != this->multiFiles.end(); it++) {
-            unlink(it->c_str());
-        }
+    // for (std::vector<std::string>::const_iterator it = this->multiFiles.begin(); --> on error only!!!
+    //     it != this->multiFiles.end(); it++) {
+    //         unlink(it->c_str());
+    //     }
 }
