@@ -22,6 +22,8 @@ bool ServerFactory::isValidSucccessCode(const std::string &code) {
             code == "204" || // No Content
             code == "205" || // Reset Content
             code == "206" || // Partial Content
+            code == "208" || // Already Reported
+            code == "226" || // IM Used
             code == "300" || // Multiple Choices
             code == "301" || // Moved Permanently
             code == "302" || // Found
@@ -50,13 +52,19 @@ bool ServerFactory::isValidErrorCode(const std::string &code) {
             code == "415" || // Unsupported Media Type
             code == "416" || // Requested Range Not Satisfiable
             code == "417" || // Expectation Failed
+            code == "426" || // Upgrade Required
+            code == "429" || // Too Many Requests
+            code == "431" || // Request Header Fields Too Large
+            code == "451" || // Unavailable For Legal Reasons
             code == "500" || // Internal Server Error
             code == "501" || // Not Implemented
             code == "502" || // Bad Gateway
             code == "503" || // Service Unavailable
             code == "504" || // Gateway Timeout
-            code == "505");  // HTTP Version Not Supported
+            code == "505" || // HTTP Version Not Supported
+            code == "444");  // No Response (Nginx-specific)
 }
+
 bool ServerFactory::isValidDirective(const std::string &directive)
 {
     return (directive == "listen" || directive == "server_name" || directive == "error_page"
@@ -186,8 +194,6 @@ void ServerFactory::setBlockDirectives(ABlock &result, const stringVec &directiv
     }
 }
 
-std::ostream& operator<<(std::ostream& outputStream, const Location& location);
-std::ostream& operator<<(std::ostream& outputStream, const Server& other);
 
 void ServerFactory::validateServerBlock(const Block& serverBlock) {
     if (serverBlock.blockName.size() != 1 || serverBlock.blockName[0] != "server")

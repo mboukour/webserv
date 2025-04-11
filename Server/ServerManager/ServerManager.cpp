@@ -13,7 +13,6 @@
 #include <vector>
 #include "../../Debug/Debug.hpp"
 #include "ServerManager.hpp"
-#include "../../Http/HttpRequest/HttpRequest.hpp"
 #include "../../Http/HttpResponse/HttpResponse.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../ClientState/ClientState.hpp"
@@ -96,7 +95,6 @@ ClientState *ServerManager::getClientState(int clientFd) {
     try {
         return eventStates.at(clientFd)->getClientState();
     } catch (const std::out_of_range &ex) {
-        std::cout << "Client state out of range" << std::endl;
         return NULL;
     }
 }

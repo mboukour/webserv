@@ -80,6 +80,7 @@ std::string HttpErrorException::getResponseString() const {
         errorPage = getErrorPageHtml();
     else
         errorPage = body;
+
     HttpResponse resp(this->version, this->statusCode, this->reasonPhrase, errorPage);
     std::stringstream ss;
     ss << errorPage.size();
@@ -89,6 +90,7 @@ std::string HttpErrorException::getResponseString() const {
         resp.setHeader("Allowed", this->allowedHeader);
     if (this->closeConnection)
         resp.setHeader("Connection", "close");
+    // std::cout << resp.toString() << std::endl;
     return resp.toString();
 }
 

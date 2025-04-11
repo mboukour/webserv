@@ -136,6 +136,7 @@ std::string ABlock::getErrorPageHtml(int errorCode) const {
         return "";
     }
     ss.clear();
+    ss.str("");
     ss << file.rdbuf();
     return ss.str();
 

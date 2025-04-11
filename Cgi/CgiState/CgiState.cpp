@@ -38,10 +38,8 @@ void CgiState::parseCgiHeaders(void) {
             break;
 
         size_t pos = line.find(":");
-        if (pos == std::string::npos) {
-            std::cerr << "Invalid header line: " << line << std::endl;
+        if (pos == std::string::npos)
             throw HttpErrorException(INTERNAL_SERVER_ERROR, this->client->getHttpRequest() , "Invalid header found in CGI");
-        }
 
         std::string key = line.substr(0, pos);
         std::string value = line.substr(pos + 1);
