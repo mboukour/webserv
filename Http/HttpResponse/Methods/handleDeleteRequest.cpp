@@ -35,7 +35,7 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request)
 {
 	std::string path = sanitizePath(request.getRequestBlock()->getRoot() + request.getPath());
 	if (isDir(path.c_str()))
-		throw HttpErrorException(BAD_REQUEST, request, "Directory upload is not supported");
+		throw HttpErrorException(BAD_REQUEST, request, "Directory deletion is not supported");
 	if (!std::remove(path.c_str()))
 		deleteResponse(request);
 	else{
