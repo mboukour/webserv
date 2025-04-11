@@ -1,11 +1,9 @@
 #include "ClientState.hpp"
-
 #include <cerrno>
 #include <cstddef>
 #include <cstring>
 #include <ios>
 #include <iosfwd>
-#include <sstream>
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/epoll.h>
@@ -60,7 +58,6 @@ void ClientState::handleWritable(void) {
                 }
             }
         } else if (toSend.sendMode == STRING) {
-            Logger::getLogStream() << "Sedning: " << toSend.stringToSend << std::endl;
             size_t totalSent = 0;
             while(totalSent < toSend.stringToSend.size()) {
                 this->isResponding = true;
@@ -121,7 +118,6 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
     while (true) {
         ssize_t bytesReceived = recv(this->eventFd, buffer.data(), buffer.size()- 1, 0);
         if (bytesReceived == 0) {
-            std::cout << "RECV ZERO" << std::endl;
             this->readState = NO_REQUEST;
             delete this->response;
             this->request = HttpRequest();
@@ -142,16 +138,14 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 }
                 int port = ntohs(addr.sin_port);
                 this->readState = READING_BODY;
-                std::cout << MAGENTA << "Changed state\n" << RESET;
                 try {
                     this->requestCount++;
                     this->request = HttpRequest(this->requestBuffer, servers, port);
-                    std::cout << "New Req: " << this->request;
+                    DEBUG && Logger::getLogStream() << "----------New Request----------\n" << request << "----------End Request----------" << std::endl;
                 } catch (const HttpErrorException &exec) {
-                    if (exec.getStatusCode() == PAYLOAD_TOO_LARGE) {
+                    if (exec.getStatusCode() == PAYLOAD_TOO_LARGE)
                         this->isDone = true;
-                    }
-                    DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+                    DEBUG && Logger::getLogStream() << "[ERROR] -> response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << std::endl;
                     std::string respStr = exec.getResponseString();
                     ServerManager::sendString(respStr, this->eventFd);
                     resetReadState();
@@ -166,7 +160,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                         this->response = new HttpResponse(this->request, this->eventFd, this->epollFd);
                     } catch (const HttpErrorException& exec) {
                         std::string respStr = exec.getResponseString();
-                        DEBUG && std::cerr << "Response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
+                        DEBUG && Logger::getLogStream() << "[ERROR] -> response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << std::endl;
                         resetReadState();
                         ServerManager::sendString(respStr, this->eventFd);
                         updateLastActivity();
@@ -183,6 +177,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 this->request.setReqEntry(bufferStr);
                 if (request.getRequestBlock()->getIsLimited() && request.getBodySize() > request.getRequestBlock()->getMaxBodySize()) {
                     HttpErrorException exc(PAYLOAD_TOO_LARGE, request, "Payload too large");
+                    DEBUG && Logger::getLogStream() << "[ERROR] -> response sent with code " << exc.getStatusCode() << " Reason: " << exc.what() << std::endl;
                     resetReadState();
                     ServerManager::sendString(exc.getResponseString(), this->eventFd);
                     return;
@@ -236,7 +231,6 @@ bool ClientState::isSendingDone(void) const {
 }
 
 void ClientState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
-    Logger::getLogStream() << "Activating write state for " << this->eventFd << std::endl;
     this->sendQueue.push_back(SendMe(filePath, currentPos));
     if (this->writeState == NOT_REGISTERED) {
         struct epoll_event ev;
@@ -251,11 +245,8 @@ void ClientState::activateWriteState(const std::string &filePath, const std::str
 }
 
 void ClientState::activateWriteState(const std::string &stringToSend) {
-    Logger::getLogStream() << "Activating write state for " << this->eventFd << std::endl;
-
     this->sendQueue.push_back(SendMe(stringToSend));
     if (this->writeState == NOT_REGISTERED) {
-        Logger::getLogStream() << "REGISTERNING " << this->eventFd << std::endl;
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
         ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
@@ -295,5 +286,4 @@ bool ClientState::getIsResponding(void) const {
 ClientState::~ClientState() {
     if (this->response)
         delete this->response;
-    std::cout << "Closing client state" << std::endl;
 }

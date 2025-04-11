@@ -21,7 +21,7 @@ CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
     std::pair<std::string, std::string> namePair = getNamePair(request);
     std::string extension = namePair.first.substr(namePair.first.find_last_of('.') + 1);
     std::string interpreterPath = getInterpreterPath(extension, request);
-    std::string toExecute = request.getRequestBlock()->getRoot() + namePair.first;
+    std::string toExecute = AHttp::sanitizePath(request.getRequestBlock()->getRoot() + namePair.first);
     std::map<std::string, std::string> env = createCgiEnv(request, namePair.first, namePair.second);
     char **envp = convertEnvToDoublePointer(env);
 

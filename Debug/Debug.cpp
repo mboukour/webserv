@@ -1,7 +1,6 @@
 #include "Debug.hpp"
-#include <fstream>
 #include <iostream>
-#include <exception>
+
 std::ostream& operator<<(std::ostream& outputStream, const Location& location) {
     std::string indent = "    ";
 
@@ -83,7 +82,7 @@ std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request)
     outputStream << "Path: " << request.getPath() << " ";
     outputStream << "Query string: " << request.getQueryString() << "\n";
     outputStream << "Headers:\n";
-    request.printHeaders();
+    request.printHeaders(outputStream);
     return outputStream;
 }
 

@@ -1,5 +1,4 @@
 #include "ServerFactory.hpp"
-#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <climits>
@@ -125,7 +124,6 @@ void ServerFactory::parseClientMaxBodySize(ABlock &result, const stringVec &dire
         else {
             unit = -1;
         }
-        std::cout << "REM: " << remaining << std::endl;
         if (integerPart < 0)
             throw std::logic_error("Can't have negative max body size");
         if (unit == 'k' || unit == 'K')
@@ -369,7 +367,7 @@ Server ServerFactory::createServer(const Block &serverBlock) {
                     }
                     else
                         path = ite->begin()[2];
-                    std::cout << "PATH: " << path << std::endl;
+                    // std::cout << "PATH: " << path << std::endl;
                     newLocation.setReturnDirective(code, path, skipLength ? RETURN_BODY : RETURN_URL);
                 }
             }

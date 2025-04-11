@@ -25,6 +25,8 @@ HttpErrorException::HttpErrorException(int statusCode, const std::string &messag
 const std::string HttpErrorException::defaultErrorHtml = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>{CODE} {PHRASE}</title><style>body {font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: #555;} .container {text-align: center;} h1 {font-size: 50px; margin-bottom: 20px;} p {font-size: 18px; margin: 0;} .error-code {font-weight: bold; color: #d9534f;} hr {margin: 20px auto; border: none; border-top: 1px solid #ddd; width: 80%;}</style></head><body><div class=\"container\"><h1><span class=\"error-code\">{CODE}</span> {PHRASE}</h1><hr><p>The server encountered a temporary error and could not complete your request.</p><p>Please try again later.</p></div></body></html>";
 
 void HttpErrorException::setAllowedHeader(const HttpRequest &request) {
+    if (!request.getRequestBlock())
+        return;
     if (request.getRequestBlock()->isMethodAllowed("GET")) {
         this->allowedHeader = "GET";
     }

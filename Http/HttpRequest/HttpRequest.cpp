@@ -1,22 +1,19 @@
 #include "HttpRequest.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
-
-
 #include <cstddef>
 #include <cstdio>
-#include <exception>
-#include <iterator>
 #include <sstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include "../../Cgi/Cgi.hpp"
-#include "../../Utils/Logger/Logger.hpp"
 #include "../../Utils/AllUtils/AllUtils.hpp"
 
 
-HttpRequest::HttpRequest(): AHttp(), contentLength(0), reqEntry(NULL) ,isChunked(false) {}
+HttpRequest::HttpRequest(): AHttp(), method(), path(), queryString(), primalRequest(), isCgi(false),
+        server(NULL), requestBlock(NULL), cookies(), contentLength(0), reqEntry(NULL),
+        isChunked(false), isMultiForm(false), boundary("") {}
 
 HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &servers, int serverPort): requestBlock(NULL),
 	contentLength(0), reqEntry(NULL) ,isChunked(false), isMultiForm(false), boundary("") {
@@ -156,7 +153,6 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
 					isOk = false;
 				else{
 					std::string boundary = value.substr(bIndx);
-                    std::cout << "Here: [" << boundary << "]" << std::endl;
 					bIndx = boundary.find("=");
 					if (bIndx == std::string::npos || bIndx + 1 >=  boundary.length())
 						isOk = false;
@@ -283,26 +279,19 @@ const Server &HttpRequest::getServer(const std::string &host, const std::vector<
     size_t pos = actualHost.find(":");
     if (pos != std::string::npos)
         actualHost = actualHost.substr(0, pos);
-    std::cout << "server port: " << serverPort << '\n';
     const Server *firstServerPort = NULL;
     for (std::vector<Server>::const_iterator it = servers.begin(); it != servers.end(); it++) {
-        std::cout << "Current server being checked - Host: [" << it->getServerName() << "], Port: " << it->getPort() << '\n';
-        if (actualHost == it->getServerName() && serverPort == it->getPort()) {
-            std::cout << "Found exact match for host: " << actualHost << " and port: " << serverPort << '\n';
+        if (actualHost == it->getServerName() && serverPort == it->getPort())
             return *it;
-        } else {
-            std::cout << actualHost << " does not match " << it->getServerName() << ":" << it->getPort() << std::endl;
-        }
         if (!firstServerPort && serverPort == it->getPort())
             firstServerPort = &(*it);
     }
-    std::cout << "Accepted default server for port: " << firstServerPort->getPort() << '\n';
     return *firstServerPort;
 }
 
-void HttpRequest::printHeaders(void) const {
+void HttpRequest::printHeaders(std::ostream &printHere) const {
     for (std::map<std::string, std::string>::const_iterator it = this->headers.begin(); it != this->headers.end(); it++) {
-        std::cout << it->first << ": " << it->second << '\n';
+        printHere << "       " << it->first << ": " << it->second << '\n';
     }
 }
 

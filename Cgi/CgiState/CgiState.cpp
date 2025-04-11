@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <ctime>
-#include <iomanip>
 #include <sched.h>
 #include <sstream>
 #include <string>
@@ -59,7 +58,7 @@ void CgiState::parseCgiHeaders(void) {
         } else if (key == "transfer-encoding") {
             if (value == "chunked")
                 this->readMode = READY_CHUNKED;
-            else 
+            else
                 throw HttpErrorException(INTERNAL_SERVER_ERROR, this->client->getHttpRequest() ,"Unsupported Transfer-Encoding: " + value);
         }
     }
@@ -160,9 +159,10 @@ bool CgiState::hasTimedOut(void) const {
 
 void CgiState::notifyCgiClient(int statusCode) {
     if (!this->isResponding) {
-        HttpErrorException timeout(statusCode, "Cgi script has timedout or did exit");
-        std::cout << timeout.what() << std::endl;
-        this->client->activateWriteState(timeout.getResponseString());
+        HttpErrorException toSend(statusCode, "Cgi script has timedout or did exit");
+        DEBUG && Logger::getLogStream() << "[ERROR] -> " << toSend.what() << std::endl;
+        this->client->activateWriteState(toSend.getResponseString());
+        this->isResponding = true;
     }
 }
 
@@ -277,6 +277,4 @@ void CgiState::cleanUpCgi(void) {
 CgiState::~CgiState() {
     if (!this->isClean)
         cleanUpCgi();
-    std::cout << "Closing cgi state" << std::endl;
-
 }

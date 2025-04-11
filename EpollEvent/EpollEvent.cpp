@@ -63,7 +63,6 @@ bool EpollEvent::hasTimedOut(void) const {
 }
 
 EpollEvent::~EpollEvent() {
-    std::cout << "Closing event " << eventFd << std::endl;
     if (this->eventType == CLIENT_CONNECTION)
         delete this->eventData.clientState;
     else if (this->eventType == CGI_READ)

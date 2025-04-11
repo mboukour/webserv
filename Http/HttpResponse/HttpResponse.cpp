@@ -3,13 +3,11 @@
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include <cstddef>
 #include <sstream>
-#include <fstream>
 #include <string>
 #include <sys/epoll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstdio>
-#include "../../Debug/Debug.hpp"
 #include <dirent.h>
 #include <unistd.h>
 #include <vector>
@@ -204,7 +202,6 @@ bool HttpResponse::handleReturnDirective(const HttpRequest &request) const {
             break;
     }
     ServerManager::sendString(resp.toString(), this->clientFd);
-    std::cout << resp.toString() << std::endl;
     return true;
 }
 

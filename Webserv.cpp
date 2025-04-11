@@ -2,13 +2,11 @@
 #include "Parser/Parser.hpp"
 #include "Parser/ServerFactory/ServerFactory.hpp"
 #include "Server/ServerManager/ServerManager.hpp"
-#include "Debug/Debug.hpp"
 #include <csignal>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
 #include <stdexcept>
-#include <algorithm>
 #include "Utils/Logger/Logger.hpp"
 
 int main(int ac, char **av)
@@ -34,13 +32,13 @@ int main(int ac, char **av)
 
     } catch (std::exception &exc) {
         std::cerr << "Fatal parsing error: " << exc.what() << '\n';
+        Logger::getLogStream() << "Fatal parsing error: " << exc.what() << '\n';
         return (1);
     }
 
 
     try
     {
-        printServers(servers);
         ServerManager::initialize(servers);
         ServerManager::start();
     }
@@ -48,6 +46,9 @@ int main(int ac, char **av)
     {
         ServerManager::cleanUp();
         std::cerr << "Fatal Runtime error: " << e.what() << '\n';
+        Logger::getLogStream() << "Fatal parsing error: " << e.what() << '\n';
         return (1);
     }
+    ServerManager::cleanUp();
+    return (1);
 }

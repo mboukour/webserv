@@ -3,12 +3,10 @@
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include <cerrno>
 #include <fstream>
-#include <ios>
 #include <netinet/in.h>
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
-#include <stdexcept>
 #include <sys/epoll.h>
 #include <sys/types.h>
  #include <sys/stat.h>
@@ -21,15 +19,12 @@
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../../Server/ServerManager/ServerManager.hpp"
 
-const std::string YELLOW = "\033[33m";
-const std::string RESET = "\033[0m";
 
 
 void HttpResponse::handleAutoIndex(const HttpRequest& request) {
 
     const std::string &path = request.getPath();
     const std::string &fullPath = request.getRequestBlock()->getRoot() + request.getPath();
-    std::cout << YELLOW << fullPath << RESET << '\n';
     DIR *dir = opendir(fullPath.c_str());
     if (!dir) 
         throw HttpErrorException(NOT_FOUND, request, "Can't open directory");
@@ -130,10 +125,6 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
             }
         }
         if (foundIndex) {
-            if (isCgiFile(indexFilePath, request)) {
-                throw std::logic_error("Fix autoindex cgi");
-                return ;
-            }
             std::stringstream cl;
             cl << indexstat.st_size;
             this->version = request.getVersion();

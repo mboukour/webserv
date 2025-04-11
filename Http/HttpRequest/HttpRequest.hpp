@@ -5,7 +5,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
 #include "../AHttp/AHttp.hpp"
 #include "../../Server/Server.hpp"
 
@@ -53,7 +52,7 @@ class HttpRequest: public AHttp {
         bool isChunkedRequest(void) const;
         bool isMultiRequest(void) const;
         const std::string & getBoundary(void) const;
-        void printHeaders(void) const;
+        void printHeaders(std::ostream &printHere) const;
 };
 
 

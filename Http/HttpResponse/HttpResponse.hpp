@@ -2,8 +2,6 @@
 #define HTTPRESPONSE_HPP
 
 #include "../AHttp/AHttp.hpp"
-
-#include "../../Server/Server.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../Cgi/Cgi.hpp"
 #include <cstddef>

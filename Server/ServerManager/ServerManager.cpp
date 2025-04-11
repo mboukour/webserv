@@ -4,7 +4,6 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <typeinfo>
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
@@ -12,15 +11,14 @@
 #include <fcntl.h>
 #include <string>
 #include <vector>
-
 #include "../../Debug/Debug.hpp"
 #include "ServerManager.hpp"
 #include "../../Http/HttpRequest/HttpRequest.hpp"
 #include "../../Http/HttpResponse/HttpResponse.hpp"
-#include "../../Session/Login/Login.hpp"
 #include "../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../ClientState/ClientState.hpp"
 #include "../../Utils/Logger/Logger.hpp"
+
 int ServerManager::epollFd = -1;
 std::vector<Server> ServerManager::servers;
 std::map<int, EpollEvent*> ServerManager::eventStates;
@@ -74,15 +72,13 @@ void ServerManager::acceptConnections(int fdSocket) {
         {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return ;
-            errorStr = "Error: accept failed. Errno: " ;
+            errorStr = "[ERROR] -> accept failed. Errno: " ;
             errorStr += strerror(errno);
-            std::cout << errorStr << std::endl;
+            DEBUG && Logger::getLogStream() << errorStr << std::endl;
             throw std::runtime_error(errorStr);
         }
         fcntl(clientFd, F_SETFL, O_NONBLOCK);
-    
-        
-        DEBUG && std::cout << "New connection accepted: " << clientFd << std::endl;
+        DEBUG && Logger::getLogStream() << "[INFO] -> New connection accepted: " << clientFd << std::endl;
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLET;
         EpollEvent* clientEvent = new EpollEvent(clientFd, epollFd, EpollEvent::CLIENT_CONNECTION);
@@ -90,7 +86,7 @@ void ServerManager::acceptConnections(int fdSocket) {
         eventStates[clientFd] = clientEvent;
         if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientFd, &ev) == -1)
         {
-            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            Logger::getLogStream() << "[ERROR] -> epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(clientFd);
         }
     }
@@ -163,6 +159,8 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
         case EpollEvent::CGI_READ: {
             CgiState *cgiState = event->getCgiState();
             if ((event->getIsDone() || event->hasTimedOut()) && cgiState->isWritingDone()) {
+                if (event->hasTimedOut() && !event->getIsDone())
+                    DEBUG && Logger::getLogStream() << "[INFO] -> Cgi script " << event->getEventFd() << " has timed out" << std::endl;
                 cgiState->notifyCgiClient(GATEWAY_TIMEOUT);
                 return true;
             }
@@ -177,6 +175,8 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
                     clientState->activateWriteState(ex.getResponseString());
                     return false;
                 }
+                if (event->hasTimedOut() && !event->getIsDone())
+                    DEBUG && Logger::getLogStream() << "[INFO] -> Client " << event->getEventFd() << " has timed out" << std::endl;
                 removeCgiAfterClient(clientState);
                 return true;
             }
@@ -190,13 +190,12 @@ void ServerManager::handleConnections(void) {
     struct epoll_event events[MAX_EVENTS];
     std::string errorStr;
 
-    const int EPOLL_TIMEOUT_MS = 1000;
     while (true)
     {
-        int event_count = epoll_wait(epollFd, events, MAX_EVENTS, EPOLL_TIMEOUT_MS);
+        int event_count = epoll_wait(epollFd, events, MAX_EVENTS, 1000);
         if (event_count == -1)
         {
-            errorStr = "epoll_wait() failed. Errno: ";
+            errorStr = "[ERROR] -> epoll_wait() failed. Errno: ";
             errorStr += strerror(errno);
             Logger::getLogStream() << errorStr << std::endl;
         }
@@ -217,8 +216,6 @@ void ServerManager::handleConnections(void) {
                 continue;
             }
             if (checkIfDone(it->second)) {
-                
-                Logger::getLogStream() << it->second->getEventFd() << " has timedout or is done" << std::endl;
                 std::map<int, EpollEvent*>::iterator toErase = it;
                 ++it;
                 delete toErase->second;
@@ -253,24 +250,27 @@ void ServerManager::start(void) {
             ev.data.ptr = serverEvent;
             if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fdSocket, &ev) == -1)
             {
-                std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+                DEBUG && Logger::getLogStream() << "[ERROR] -> epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
                 close(fdSocket);
             }
         } catch (const std::runtime_error &ex) {
-            std::cerr << ex.what() << std::endl;
+            DEBUG && Logger::getLogStream() << "[ERROR] -> Server initalization failed for " << it->getServerName()
+                                            << ":" << it->getPort() << " Reason: " << ex.what() << std::endl;
         }
     }
-    if (!atLeastOne)
+    if (!atLeastOne) {
+        std::cerr << "All server initializations failed, exiting..." << std::endl;
         return;
+    }
+    std::cout << "Webserv running..." << std::endl;
     handleConnections();
 }
 
 void ServerManager::cleanUp() {
-    // for (std::map<int, EpollEvent *>::iterator ite = eventStates.begin();
-    // ite != eventStates.end(); ite++) {
-    //     delete ite->second;
-    // }
-    
-    // if (epollFd != -1)
-    //     close(epollFd);
+    for (std::map<int, EpollEvent *>::iterator ite = eventStates.begin();
+    ite != eventStates.end(); ite++) {
+        delete ite->second;
+    }
+    if (epollFd != -1)
+        close(epollFd);
 }

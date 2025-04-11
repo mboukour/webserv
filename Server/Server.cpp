@@ -6,8 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include "../Debug/Debug.hpp"
-#include "ServerManager/ServerManager.hpp"
+#include "../Utils/Logger/Logger.hpp"
 #include <sstream>
 #include <fstream>
 
@@ -67,14 +66,16 @@ void Server::startServer(void) {
         hostCString = (char *)this->host.c_str();
     if (getaddrinfo(hostCString, ss.str().c_str(), &hints, &res) != 0)
     {
-        errorStr = "Error: getaddrinfo failed. Errno: ";
+        freeaddrinfo(res);
+        errorStr = "getaddrinfo failed. Errno: ";
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
     this->fdSocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (this->fdSocket == -1)
     {
-        errorStr = "Error: socket failed. Errno: ";
+        freeaddrinfo(res);
+        errorStr = "socket failed. Errno: ";
         errorStr += strerror(errno);
         throw std::runtime_error(errorStr);
     }
@@ -83,14 +84,16 @@ void Server::startServer(void) {
     int opt = 1;
     if (setsockopt(this->fdSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
     {
-        errorStr = "Error: setsockopt failed. Errno: ";
+        freeaddrinfo(res);
+        errorStr = "setsockopt failed. Errno: ";
         errorStr += strerror(errno);
         close(this->fdSocket);
         throw std::runtime_error(errorStr);
     }
     if (bind(this->fdSocket, res->ai_addr, res->ai_addrlen) == -1)
     {
-        errorStr = "Error: bind failed. Errno: ";
+        freeaddrinfo(res);
+        errorStr = "bind failed. Errno: ";
         errorStr += strerror(errno);
         close(this->fdSocket);
         throw std::runtime_error(errorStr);
@@ -98,12 +101,12 @@ void Server::startServer(void) {
     freeaddrinfo(res);
     if (listen(this->fdSocket, 128) == -1)
     {
-        errorStr = "Error: listen failed. Errno: ";
+        errorStr = "listen failed. Errno: ";
         errorStr += strerror(errno);
         close(this->fdSocket);
         throw std::runtime_error(errorStr);
     }
-    DEBUG && std::cout << "Server listening on port " << this->port << std::endl;
+    Logger::getLogStream() << "[INFO] -> Started server: " << this->serverName << ":" << this->port << std::endl;
 }
 
 

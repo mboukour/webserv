@@ -2,7 +2,6 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
-#include <iomanip>
 
 std::ofstream Logger::logFile;
 bool Logger::initialized = false;
@@ -30,6 +29,9 @@ void Logger::log(const std::string& message) {
 }
 
 std::ofstream &Logger::getLogStream(void) {
+    if (!initialized) {
+        init("webserv.log");
+    }
     return logFile;
 }
 

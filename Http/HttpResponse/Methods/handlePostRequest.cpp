@@ -1,9 +1,7 @@
 #include "../../../Debug/Debug.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
-#include "../../../Utils/Logger/Logger.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../HttpResponse.hpp"
-
 #include "../../../ClientState/ClientState.hpp"
 #include "../../../Debug/Debug.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
@@ -18,25 +16,21 @@
 #include <iostream>
 #include <ostream>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
-
 #include <ctime>
 #include <iostream>
 #include <sstream>
 #include <sys/time.h>
-
 #include <ctime>
 #include <iostream>
 #include <sstream>
 #include <sys/stat.h>
 #include <vector>
-#include <algorithm>
 
 std::string HttpResponse::getFileLastModifiedTime(const std::string &filePath) {
   struct stat fileStat;
@@ -131,7 +125,6 @@ bool HttpResponse::isDir(const char *path) {
 void HttpResponse::postResponse(const HttpRequest &request, int statusCode, std::string body, std::string const fileName) {
 	if (request.isCgiRequest())
 		return;
-	std::cout << "Sending response" << std::endl;
 	std::string connectState;
 	ClientState *state = ServerManager::getClientState(this->clientFd);
 	if (state->getIsKeepAlive())

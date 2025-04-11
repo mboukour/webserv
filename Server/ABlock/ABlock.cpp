@@ -1,5 +1,4 @@
 #include "ABlock.hpp"
-#include <exception>
 #include <map>
 #include <stdexcept>
 #include <sstream>
@@ -173,10 +172,8 @@ void ABlock::setCgiInfo(const std::string &language, const std::string &path) {
 
 const std::string &ABlock::getCgiPath(const std::string &language) const {
     std::map<std::string, std::string>::const_iterator it = this->cgis.find(language);
-    if (it != this->cgis.end()) {
-        std::cout << "SEC: " << it->second << '\n';
+    if (it != this->cgis.end())
         return it->second;
-    }
     throw std::out_of_range("Key not found in cgis map");
 }
 

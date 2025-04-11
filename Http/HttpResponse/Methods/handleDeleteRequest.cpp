@@ -1,7 +1,6 @@
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
-#include "../../../Debug/Debug.hpp"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstdio>
@@ -9,7 +8,6 @@
 #include "../../../Server/ServerManager/ServerManager.hpp"
 
 void	HttpResponse::deleteResponse(const HttpRequest &request){
-		std::cout << "Sending response" << std::endl;
 		std::string connectState;
 		ClientState *state = ServerManager::getClientState(this->clientFd);
 		if (state->getIsKeepAlive())
@@ -35,7 +33,7 @@ void	HttpResponse::deleteResponse(const HttpRequest &request){
 void HttpResponse::handleDeleteRequest(const HttpRequest &request)
 {
 	std::string path = sanitizePath(request.getRequestBlock()->getRoot() + request.getPath());
-	std::cout << RED << path << RESET << std::endl;
+	// std::cout << RED << path << RESET << std::endl;
 	if (isDir(path.c_str()))
 		throw HttpErrorException(BAD_REQUEST, request, "Directory upload is not supported");
 	if (!std::remove(path.c_str()))
