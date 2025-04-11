@@ -76,7 +76,7 @@ int HttpErrorException::getStatusCode(void) const {
 
 std::string HttpErrorException::getResponseString() const {
     std::string errorPage;
-    if (body == "")
+    if (this->body == "")
         errorPage = getErrorPageHtml();
     else
         errorPage = body;

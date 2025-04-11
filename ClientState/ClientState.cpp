@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <cstddef>
 #include <cstring>
+#include <ctime>
 #include <ios>
 #include <iosfwd>
 #include <stdexcept>
@@ -15,11 +16,13 @@
 #include "../Cgi/CgiState/CgiState.hpp"
 
 const int ClientState::keepAliveTimeout = 10;
+const int ClientState::sendTimeout = 1;
+
 
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), requestCount(0),
   writeState(NOT_REGISTERED), sendQueue(), response(NULL), cgiState(NULL),
-  lastActivityTime(time(NULL)), isKeepAlive(true),isResponding(false), isDone(false), isClean(false) {}
+  lastActivityTime(time(NULL)), lastSend(time(NULL)), isKeepAlive(true),isResponding(false), isDone(false), isClean(false) {}
 
 
 void ClientState::handleWritable(void) {
@@ -58,6 +61,7 @@ void ClientState::handleWritable(void) {
                 }
             }
         } else if (toSend.sendMode == STRING) {
+
             size_t totalSent = 0;
             while(totalSent < toSend.stringToSend.size()) {
                 this->isResponding = true;
@@ -88,6 +92,10 @@ void ClientState::updateLastActivity(void) {
     this->lastActivityTime = time(NULL);
 }
 
+void ClientState::updateLastSend(void) {
+    this->lastSend = time(NULL);
+}
+
 bool ClientState::hasTimedOut(void) const {
     if (request.isCgiRequest() && cgiState && cgiState->isCgiAlive())
         return false;
@@ -107,6 +115,13 @@ void ClientState::resetReadState(void) {
     this->isKeepAlive = true;
 }
 
+
+void ClientState::sendHttpError(const HttpErrorException &exec) {
+    DEBUG && Logger::getLogStream() << "[ERROR] -> response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << std::endl;
+    ServerManager::sendString(exec.getResponseString(), this->eventFd);
+    resetReadState();
+    this->isDone = true;
+}
 
 void ClientState::handleReadable(std::vector<Server> &servers) {
     if (this->isDone)
@@ -145,11 +160,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 } catch (const HttpErrorException &exec) {
                     if (exec.getStatusCode() == PAYLOAD_TOO_LARGE)
                         this->isDone = true;
-                    DEBUG && Logger::getLogStream() << "[ERROR] -> response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << std::endl;
-                    std::string respStr = exec.getResponseString();
-                    ServerManager::sendString(respStr, this->eventFd);
-                    resetReadState();
-                    updateLastActivity();
+                    sendHttpError(exec);
                     return ;
                 }
                 if (this->request.getHeader("Connection") == "close") {
@@ -159,11 +170,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                     try {
                         this->response = new HttpResponse(this->request, this->eventFd, this->epollFd);
                     } catch (const HttpErrorException& exec) {
-                        std::string respStr = exec.getResponseString();
-                        DEBUG && Logger::getLogStream() << "[ERROR] -> response sent with code " << exec.getStatusCode() << " Reason: " << exec.what() << std::endl;
-                        resetReadState();
-                        ServerManager::sendString(respStr, this->eventFd);
-                        updateLastActivity();
+                        sendHttpError(exec);
                         return;
                     }
                 }
@@ -176,20 +183,15 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
             } else if (this->readState == READING_BODY) {
                 this->request.setReqEntry(bufferStr);
                 if (request.getRequestBlock()->getIsLimited() && request.getBodySize() > request.getRequestBlock()->getMaxBodySize()) {
-                    HttpErrorException exc(PAYLOAD_TOO_LARGE, request, "Payload too large");
-                    DEBUG && Logger::getLogStream() << "[ERROR] -> response sent with code " << exc.getStatusCode() << " Reason: " << exc.what() << std::endl;
-                    resetReadState();
-                    ServerManager::sendString(exc.getResponseString(), this->eventFd);
+                    HttpErrorException exec(PAYLOAD_TOO_LARGE, request, "Payload too large");
+                    sendHttpError(exec);
                     return;
                 }
                 if (this->response) {
                     try {
                         this->response->handleNewReqEntry(this->request);
                     } catch (const HttpErrorException &exec) {
-                        resetReadState();
-                        DEBUG && std::cerr << "Response sent with code" << exec.getStatusCode() << " Reason: " << exec.what() << "\n" << std::endl;
-                        ServerManager::sendString(exec.getResponseString(), this->eventFd);
-                        updateLastActivity();
+                        sendHttpError(exec);
                         return;
                     }
                 }
@@ -227,7 +229,10 @@ void ClientState::SendMe::changeSend(const std::string &stringToSend) {
 }
 
 bool ClientState::isSendingDone(void) const {
-    return this->sendQueue.empty();
+    if (this->sendQueue.empty() && time(NULL) - lastSend > sendTimeout)
+        return true;
+    return false;
+    // return this->sendQueue.empty();
 }
 
 void ClientState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
@@ -245,6 +250,7 @@ void ClientState::activateWriteState(const std::string &filePath, const std::str
 }
 
 void ClientState::activateWriteState(const std::string &stringToSend) {
+    Logger::getLogStream() << "SENDING: " << stringToSend << std::endl;
     this->sendQueue.push_back(SendMe(stringToSend));
     if (this->writeState == NOT_REGISTERED) {
         struct epoll_event ev;

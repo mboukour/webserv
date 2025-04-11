@@ -175,8 +175,12 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
                     clientState->activateWriteState(ex.getResponseString());
                     return false;
                 }
-                if (event->hasTimedOut() && !event->getIsDone())
-                    DEBUG && Logger::getLogStream() << "[INFO] -> Client " << event->getEventFd() << " has timed out" << std::endl;
+                if (DEBUG) {
+                    if (event->hasTimedOut() && !event->getIsDone())
+                        Logger::getLogStream() << "[INFO] -> Client " << event->getEventFd() << " has timed out" << std::endl;
+                    else
+                        Logger::getLogStream() << "[INFO] -> Client " << event->getEventFd() << " connection has been terminated" << std::endl;
+                }
                 removeCgiAfterClient(clientState);
                 return true;
             }
