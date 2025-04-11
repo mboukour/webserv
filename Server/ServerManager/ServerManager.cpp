@@ -60,7 +60,7 @@ const Server &ServerManager::getServer(int port) {
 
 
 
-std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
+// std::ostream& operator<<(std::ostream& outputStream, const HttpRequest& request);
 
 void ServerManager::acceptConnections(int fdSocket) {
     struct sockaddr_in client_addr;
@@ -171,7 +171,7 @@ bool ServerManager::checkIfDone(EpollEvent *event) {
             if ((event->getIsDone() || event->hasTimedOut()) && clientState->isSendingDone()) {
                 if (!clientState->getIsResponding()) {
                     clientState->setAsDone();
-                    HttpErrorException ex(GATEWAY_TIMEOUT, "TIMEOUT");
+                    HttpErrorException ex(INTERNAL_SERVER_ERROR, clientState->getHttpRequest(),  "client didnt respond");
                     clientState->activateWriteState(ex.getResponseString());
                     return false;
                 }

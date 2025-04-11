@@ -8,9 +8,11 @@
 #include "../../../Server/ServerManager/ServerManager.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../HttpResponse.hpp"
+#include <cerrno>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
 #include <iomanip>
 #include <iostream>
@@ -180,8 +182,11 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 			this->fileName = folder + file;
 			this->fileName = sanitizePath(this->fileName);
 			this->fd = open(this->fileName.c_str(), O_CREAT | O_WRONLY, 0644);
-			if (this->fd == -1)
-				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Internal server error");
+			if (this->fd == -1) {
+				std::stringstream errorSS;
+				errorSS << "internal server error: Errno: " << strerror(errno);
+				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, errorSS.str());
+			}
 		}
 		this->packet = request.getBody();
 	}
@@ -453,8 +458,11 @@ void HttpResponse::multiForm(const HttpRequest &request){
 				this->fileName = generateFileName(request, file, headers);
 				this->fileName = sanitizePath(this->fileName);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
-				if (this->fd == -1)
-					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
+				if (this->fd == -1) {
+					std::stringstream errorSs;
+					errorSs << "unable to open file for writing: Errno: " << strerror(errno);
+					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, errorSs.str());
+				}
 				this->multiFiles.push_back(this->fileName);
 				this->multiState = M_BODY;
 				break;
@@ -561,8 +569,11 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				this->fileName = generateFileName(request, file, headers);
 				this->fileName = sanitizePath(this->fileName);
 				this->fd = open(fileName.c_str(), O_CREAT | O_WRONLY, 0644);
-				if (this->fd == -1)
-					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Unable to open file for writing");
+				if (this->fd == -1) {
+					std::stringstream errorSs;
+					errorSs << "unable to open file for writing: Errno: " << strerror(errno);
+					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, errorSs.str());
+				}
 				this->multiFiles.push_back(this->fileName);
 				this->multiState = M_BODY;
 				break;

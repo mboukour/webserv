@@ -80,7 +80,7 @@ void ClientState::handleWritable(void) {
         ev.events = EPOLLIN | EPOLLET;
         ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
         if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
-            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            DEBUG && Logger::getLogStream() << "[ERROR] -> epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(this->eventFd);
         }
         this->writeState = NOT_REGISTERED;
@@ -148,7 +148,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 struct sockaddr_in addr;
                 socklen_t addrLen = sizeof(addr);
                 if (getsockname(this->eventFd, (struct sockaddr*)&addr, &addrLen) == -1) {
-                    std::cerr << "Error: getsockname failed. Errno: " << strerror(errno) << std::endl;
+                    DEBUG && Logger::getLogStream() << "[ERROR] -> getsockname failed. Errno: " << strerror(errno) << std::endl;
                     throw HttpErrorException(INTERNAL_SERVER_ERROR, "getsockname error");
                 }
                 int port = ntohs(addr.sin_port);
@@ -183,6 +183,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
             } else if (this->readState == READING_BODY) {
                 this->request.setReqEntry(bufferStr);
                 if (request.getRequestBlock()->getIsLimited() && request.getBodySize() > request.getRequestBlock()->getMaxBodySize()) {
+                    this->response->removeMultiFiles();
                     HttpErrorException exec(PAYLOAD_TOO_LARGE, request, "Payload too large");
                     sendHttpError(exec);
                     return;
@@ -191,6 +192,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                     try {
                         this->response->handleNewReqEntry(this->request);
                     } catch (const HttpErrorException &exec) {
+                        this->response->removeMultiFiles();
                         sendHttpError(exec);
                         return;
                     }
@@ -232,7 +234,6 @@ bool ClientState::isSendingDone(void) const {
     if (this->sendQueue.empty() && time(NULL) - lastSend > sendTimeout)
         return true;
     return false;
-    // return this->sendQueue.empty();
 }
 
 void ClientState::activateWriteState(const std::string &filePath, const std::streampos &currentPos) {
@@ -242,7 +243,7 @@ void ClientState::activateWriteState(const std::string &filePath, const std::str
         ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
         ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
         if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
-            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            DEBUG && Logger::getLogStream() << "[ERROR] -> epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(this->eventFd);
         }
         this->writeState = REGISTERED;
@@ -250,14 +251,13 @@ void ClientState::activateWriteState(const std::string &filePath, const std::str
 }
 
 void ClientState::activateWriteState(const std::string &stringToSend) {
-    Logger::getLogStream() << "SENDING: " << stringToSend << std::endl;
     this->sendQueue.push_back(SendMe(stringToSend));
     if (this->writeState == NOT_REGISTERED) {
         struct epoll_event ev;
         ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
         ev.data.ptr = ServerManager::getEpollEvent(this->eventFd);
         if (epoll_ctl(this->epollFd, EPOLL_CTL_MOD, this->eventFd, &ev) == -1) {
-            std::cerr << "Error: epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
+            DEBUG && Logger::getLogStream() << "[ERROR] -> epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(this->eventFd);
         }
         this->writeState = REGISTERED;

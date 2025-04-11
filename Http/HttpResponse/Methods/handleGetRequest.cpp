@@ -2,6 +2,7 @@
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include <cerrno>
+#include <cstring>
 #include <fstream>
 #include <netinet/in.h>
 #include <sstream>
@@ -90,11 +91,14 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) {
 }
 
 void HttpResponse::handleGetRequest(const HttpRequest& request) {
-	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
+	std::string path = sanitizePath(request.getRequestBlock()->getRoot() + request.getPath());
 
     struct stat filestat;
-    if (stat(path.c_str(), &filestat) == -1) 
-        throw HttpErrorException(NOT_FOUND, request, "cant find file");
+    if (stat(path.c_str(), &filestat) == -1) {
+        std::stringstream errorSS;
+        errorSS << " stat failed: " << path << " Errno: " << strerror(errno);
+        throw HttpErrorException(NOT_FOUND, request, errorSS.str());
+    }
     if (filestat.st_mode & S_IFREG) {
         std::fstream fileToGet(path.c_str());
         if (fileToGet.fail() == true)

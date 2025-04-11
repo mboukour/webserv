@@ -73,6 +73,7 @@ class HttpResponse: public AHttp {
         ~HttpResponse();
         HttpResponse(const HttpRequest &request, int clientFd, int epollFd);
         HttpResponse(const std::string &version, int statusCode, const std::string &reasonPhrase, const std::string &body);
+        void removeMultiFiles(void) const;
         void addNeededHeaders(void);
         void addCookie(const std::string& name, const std::string& value, const std::string& attributes);
         void setBody(const std::string &body);

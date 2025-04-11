@@ -192,8 +192,7 @@ std::ostream& operator<<(std::ostream& outputStream, const Server& other);
 void ServerFactory::validateServerBlock(const Block& serverBlock) {
     if (serverBlock.blockName.size() != 1 || serverBlock.blockName[0] != "server")
         throw std::logic_error("All server blocks must be under the name: server");
-
-    if (serverBlock.directives.begin()->begin()[0] != "listen")
+    if (serverBlock.directives.empty() || serverBlock.directives.begin()->begin()[0] != "listen")
         throw std::logic_error("Listen directive must be the first directive in each server block");
 }
 
