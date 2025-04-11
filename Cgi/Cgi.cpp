@@ -29,7 +29,7 @@ CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
     int socket[2];
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, socket) == -1) {
         cleanupEnv(envp);
-        throw std::logic_error("Socketpair failed");
+        throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "socketpair failed during cgi initialization");
     }
 
     pid_t pid = fork();
@@ -37,7 +37,7 @@ CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
         cleanupEnv(envp);
         close(socket[0]);
         close(socket[1]);
-        throw std::logic_error("Fork failed");
+        throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "fork failed during cgi initialization");
     }
 
     if (pid == 0) {

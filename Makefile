@@ -15,10 +15,11 @@ SRC += $(EXCEPTIONS) $(HTTP) $(CGI) $(SESSION) $(UTILS) $(STATE)
 OBJ = $(SRC:.cpp=.o)
 FLAGS = -Wall -Wextra -Werror -std=c++98
 HEADERS = Webserv.hpp Parser/Parser.hpp Parser/ServerFactory/ServerFactory.hpp Debug/Debug.hpp \
-		  Server/Server.hpp Server/ABlock/ABlock.hpp Server/Location/Location.hpp Server/ServerManager/ServerManager.hpp \
-		  Http/AHttp/AHttp.hpp Http/HttpRequest/HttpRequest.hpp Http/HttpResponse/HttpResponse.hpp \
-		  Exceptions/HttpErrorException/HttpErrorException.hpp \
-		  Cgi/Cgi.hpp
+          Server/Server.hpp Server/ABlock/ABlock.hpp Server/Location/Location.hpp Server/ServerManager/ServerManager.hpp \
+          Http/AHttp/AHttp.hpp Http/HttpRequest/HttpRequest.hpp Http/HttpResponse/HttpResponse.hpp \
+          Exceptions/HttpErrorException/HttpErrorException.hpp \
+          Cgi/Cgi.hpp EpollEvent/EpollEvent.hpp ClientState/ClientState.hpp  Cgi/CgiState/CgiState.hpp \
+          Session/Login/Login.hpp Utils/Logger/Logger.hpp Utils/AllUtils/AllUtils.hpp
 all: $(NAME)
 
 $(NAME): $(OBJ)

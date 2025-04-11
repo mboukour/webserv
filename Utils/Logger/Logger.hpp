@@ -6,12 +6,12 @@
 
 class Logger {
 private:
+    static std::string fileName;
     static std::ofstream logFile;
     static bool initialized;
 
 public:
     static void init(const std::string& filename);
-    static void log(const std::string& message);
     static std::ofstream &getLogStream(void);
     static void close();
 };
