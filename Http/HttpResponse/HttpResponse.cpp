@@ -195,6 +195,7 @@ bool HttpResponse::handleReturnDirective(const HttpRequest &request) const {
     switch (loc->getReturnType()) {
         case RETURN_URL:
             resp.setHeader("Location", loc->getReturnPath());
+            resp.setHeader("Content-Length", "0");
             break;
         case RETURN_BODY:
             resp.setBody(loc->getReturnPath());
