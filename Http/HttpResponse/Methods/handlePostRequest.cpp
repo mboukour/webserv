@@ -377,6 +377,8 @@ std::string HttpResponse::generateFileName(const HttpRequest &request, std::stri
 		std::stringstream s(contentType);
 		s >> contentType;
 		s >> contentType;
+		if (contentType == ":")
+			throw HttpErrorException(BAD_REQUEST, request, "Invalid Content-Type header!");
 		fileExten = getConTypeExten(contentType);
 	}
 	folder = sanitizePath(folder);
