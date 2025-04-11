@@ -1,6 +1,7 @@
 #include "../HttpResponse.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
+#include <cerrno>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstdio>
@@ -38,7 +39,8 @@ void HttpResponse::handleDeleteRequest(const HttpRequest &request)
 	if (!std::remove(path.c_str()))
 		deleteResponse(request);
 	else{
-		perror(path.c_str());
+		if (errno == ENOENT)
+			throw HttpErrorException(NOT_FOUND, request, "Targeted file do not exist!");
 		throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Failed to delete resource!");
 	}
 }
