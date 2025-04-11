@@ -7,6 +7,7 @@
 #include "../../../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "../../../Server/ServerManager/ServerManager.hpp"
 #include "../../HttpRequest/HttpRequest.hpp"
+#include "../../../Utils/Logger/Logger.hpp"
 #include "../HttpResponse.hpp"
 #include <cerrno>
 #include <cmath>
@@ -175,8 +176,7 @@ void	HttpResponse::setPacket(const HttpRequest &request){
 			std::string file = randomizeFileName() + getConTypeExten(request.getHeader("Content-Type"));
 			folder = sanitizePath(folder);
 			if (!isDir(folder.c_str())){
-				std::cerr << YELLOW << "[ALERT!]: " << RESET;
-				std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
+				Logger::getLogStream() << "[INFO] -> Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
 				folder = "";
 			}
 			this->fileName = folder + file;
@@ -380,9 +380,10 @@ std::string HttpResponse::generateFileName(const HttpRequest &request, std::stri
 		fileExten = getConTypeExten(contentType);
 	}
 	folder = sanitizePath(folder);
+	if (!folder.empty() && folder[folder.length() - 1] != '/')
+		folder += "/";
 	if (!isDir(folder.c_str())){
-		std::cerr << YELLOW << "[ALERT!]: " << RESET;
-		std::cerr << "Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
+		Logger::getLogStream() << "[INFO] -> Folder: " << folder << " ,was not found, uploading file to your workspace root..." << std::endl;
 		folder = "";
 	}
 	return folder + file + fileExten;
@@ -704,7 +705,7 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 					if (!this->hasWritten)
 						throw HttpErrorException(BAD_REQUEST, request, "Empty post body");
 					this->isLastEntry = true;
-					postResponse(request, 201, this->success_create, this->fileName);
+					postResponse(request, 201, this->success_create, sanitizePath(request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath()));
 					return;
 				break;
 			default:
@@ -715,13 +716,12 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 
 
 void HttpResponse::handlePostRequest(const HttpRequest &request) {
-	std::string path = request.getRequestBlock()->getRoot();
 	if (request.isChunkedRequest() == false) {
 		if (request.isMultiRequest() && !request.isCgiRequest()){
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
 			multiForm(request);
 			if (this->isLastEntry){
-				postResponse(request, 201, this->success_create, this->fileName);
+				postResponse(request, 201, this->success_create, sanitizePath(request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath()));
 				close(this->fd);
 			}
 		}
