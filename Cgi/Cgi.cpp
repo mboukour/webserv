@@ -15,7 +15,8 @@
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
 #include "CgiState/CgiState.hpp"
 #include "../Server/ServerManager/ServerManager.hpp"
-
+#include "../Debug/Debug.hpp"
+#include "../Utils/Logger/Logger.hpp"
 
 CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
     std::pair<std::string, std::string> namePair = getNamePair(request);
@@ -50,7 +51,7 @@ CgiState* Cgi::initCgi(const HttpRequest &request, int clientFd, int epollFd) {
         argv[2] = NULL;
         execve(interpreterPath.c_str(), argv, envp);
         cleanupEnv(envp);
-        std::cerr << "CGI execution failed\n";
+        DEBUG && Logger::getLogStream() << "[ERROR] -> Cgi execution failed" << std::endl;
         std::exit(1);
     }
 
