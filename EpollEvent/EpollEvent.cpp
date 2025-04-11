@@ -32,7 +32,7 @@ ClientState *EpollEvent::getClientState(void) const {
 
 CgiState *EpollEvent::getCgiState(void) const {
     if (this->eventType != CGI_READ)
-        throw std::logic_error("Trying to get client state in non client event");
+        throw std::logic_error("Trying to get cgi state in non cgi event");
     return this->eventData.cgiState;
 }
 

@@ -55,19 +55,19 @@ int main(int ac, char **av)
     }
 
 
-    try
-    {
+    // try
+    // {
         ServerManager::initialize(servers);
         ServerManager::start();
-    }
-    catch(const std::exception& e)
-    {
-        ServerManager::cleanUp();
-        Logger::close();
-        std::cerr << "Fatal Runtime error: " << e.what() << '\n';
-        Logger::getLogStream() << "Fatal parsing error: " << e.what() << '\n';
-        return (1);
-    }
+    // }
+    // catch(const std::exception& e)
+    // {
+    //     ServerManager::cleanUp();
+    //     Logger::close();
+    //     std::cerr << "Fatal Runtime error: " << e.what() << '\n';
+    //     Logger::getLogStream() << "Fatal parsing error: " << e.what() << '\n';
+    //     return (1);
+    // }
     Logger::close();
     ServerManager::cleanUp();
     return (1);

@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include "../Debug/Debug.hpp"
 #include "../Exceptions/HttpErrorException/HttpErrorException.hpp"
@@ -15,15 +16,20 @@
 #include "../Utils/Logger/Logger.hpp"
 #include "../Cgi/CgiState/CgiState.hpp"
 
-const int ClientState::keepAliveTimeout = 10;
-const int ClientState::sendTimeout = 1;
+const int ClientState::keepAliveTimeout = 10; // seconds
+const ssize_t ClientState::sendTimeout = 1; // milliseconds
 
 
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
   readState(NO_REQUEST), bytesRead(0), request(), requestCount(0),
   writeState(NOT_REGISTERED), sendQueue(), response(NULL), cgiState(NULL),
-  lastActivityTime(time(NULL)), lastSend(time(NULL)), isKeepAlive(true),isResponding(false), isDone(false), isClean(false) {}
+  lastActivityTime(time(NULL)), lastSend(getCurrentTimeMs()), isKeepAlive(true),isResponding(false), isDone(false), isClean(false) {}
 
+ssize_t ClientState::getCurrentTimeMs(void) {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        return (tv.tv_sec * 1000LL) + (tv.tv_usec / 1000);  // ms
+}
 
 void ClientState::handleWritable(void) {
     if (this->sendQueue.empty()) {
@@ -93,7 +99,7 @@ void ClientState::updateLastActivity(void) {
 }
 
 void ClientState::updateLastSend(void) {
-    this->lastSend = time(NULL);
+    this->lastSend = getCurrentTimeMs();
 }
 
 bool ClientState::hasTimedOut(void) const {
@@ -156,7 +162,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 try {
                     this->requestCount++;
                     this->request = HttpRequest(this->requestBuffer, servers, port);
-                    DEBUG && Logger::getLogStream() << "----------New Request----------\n" << request << "----------End Request----------" << std::endl;
+                    // DEBUG && Logger::getLogStream() << "----------New Request----------\n" << request << "----------End Request----------" << std::endl;
                 } catch (const HttpErrorException &exec) {
                     if (exec.getStatusCode() == PAYLOAD_TOO_LARGE)
                         this->isDone = true;
@@ -197,8 +203,11 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                         return;
                     }
                 }
-                if (this->response->getIsLastEntry())
+                if (this->response->getIsLastEntry()) {
                     resetReadState();
+                    if (!this->isKeepAlive)
+                        this->isDone = true;
+                }
                 updateLastActivity();
             }
         } else {
@@ -231,7 +240,7 @@ void ClientState::SendMe::changeSend(const std::string &stringToSend) {
 }
 
 bool ClientState::isSendingDone(void) const {
-    if (this->sendQueue.empty() && time(NULL) - lastSend > sendTimeout)
+    if (this->sendQueue.empty() && getCurrentTimeMs() - lastSend > sendTimeout)
         return true;
     return false;
 }

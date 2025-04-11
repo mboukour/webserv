@@ -64,8 +64,8 @@ const Server &ServerManager::getServer(int port) {
 void ServerManager::acceptConnections(int fdSocket) {
     struct sockaddr_in client_addr;
     std::string errorStr;
-    socklen_t client_len = sizeof(client_addr);
-    while (true) {
+    // while (true) {
+        socklen_t client_len = sizeof(client_addr);
         int clientFd = accept(fdSocket, (struct sockaddr *)&client_addr, &client_len);
         if (clientFd == -1)
         {
@@ -88,7 +88,7 @@ void ServerManager::acceptConnections(int fdSocket) {
             Logger::getLogStream() << "[ERROR] -> epoll_ctl failed. Errno: " << strerror(errno) << std::endl;
             close(clientFd);
         }
-    }
+    // }
 }
 
 ClientState *ServerManager::getClientState(int clientFd) {
@@ -210,7 +210,6 @@ void ServerManager::handleConnections(void) {
             else 
                 cgiEpoll(epollEvent, events[i]);
         }
-
         for (std::map<int, EpollEvent*>::iterator it = eventStates.begin(); 
             it != eventStates.end(); ) {
             if (it->second->getEventType() == EpollEvent::SERVER_SOCKET) {
@@ -246,7 +245,7 @@ void ServerManager::start(void) {
             it->startServer();
             atLeastOne = true;
             int fdSocket = it->getFdSocket();
-            ev.events =  EPOLLIN | EPOLLET;
+            ev.events =  EPOLLIN;
             EpollEvent *serverEvent = new EpollEvent(fdSocket, epollFd, EpollEvent::SERVER_SOCKET);
             eventStates[fdSocket] = serverEvent;
             ev.data.ptr = serverEvent;

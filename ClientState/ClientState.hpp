@@ -16,7 +16,7 @@ class CgiState;
 class ClientState {
     private:
         static const int keepAliveTimeout;
-        static const int sendTimeout;
+        static const ssize_t sendTimeout;
         const int eventFd;
         const int epollFd;
         enum ReadState {NO_REQUEST, READING_HEADERS, READING_BODY, DONE_READING};
@@ -46,7 +46,7 @@ class ClientState {
         HttpResponse *response;
         CgiState *cgiState;
         time_t lastActivityTime;
-        time_t lastSend;
+        ssize_t lastSend;
         bool isKeepAlive;
         bool isResponding;
         bool isDone;
@@ -57,6 +57,7 @@ class ClientState {
         void updateLastActivity(void);
         void updateLastSend(void);
         void sendHttpError(const HttpErrorException &exec);
+        static ssize_t getCurrentTimeMs(void);
     public:
         ClientState(int clientFd, int epollFd);
         HttpResponse *getHttpResponse(void) const;
