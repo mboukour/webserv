@@ -14,7 +14,7 @@ UTILS = Utils/Logger/Logger.cpp Utils/AllUtils/AllUtils.cpp
 SRC += $(EXCEPTIONS) $(HTTP) $(CGI) $(SESSION) $(UTILS) $(STATE)
 OBJ = $(SRC:.cpp=.o)
 FLAGS = -Wall -Wextra -Werror -std=c++98
-HEADERS = Webserv.hpp Parser/Parser.hpp Parser/ServerFactory/ServerFactory.hpp Debug/Debug.hpp \
+HEADERS = Parser/Parser.hpp Parser/ServerFactory/ServerFactory.hpp Debug/Debug.hpp \
           Server/Server.hpp Server/ABlock/ABlock.hpp Server/Location/Location.hpp Server/ServerManager/ServerManager.hpp \
           Http/AHttp/AHttp.hpp Http/HttpRequest/HttpRequest.hpp Http/HttpResponse/HttpResponse.hpp \
           Exceptions/HttpErrorException/HttpErrorException.hpp \
