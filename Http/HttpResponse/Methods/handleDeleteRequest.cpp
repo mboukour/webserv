@@ -25,7 +25,7 @@ void	HttpResponse::deleteResponse(const HttpRequest &request){
 		this->headers["Last-Modified"] = getFileLastModifiedTime(this->fileName);
 		this->headers["Connection"] = connectState;
 		if (state->getIsKeepAlive())
-			this->headers["Keep-Alive"] = "timeout=10, max 1000";
+			this->headers["Keep-Alive"] = "timeout=10";
 		std::string toStr = this->toString();
 		ServerManager::sendString(toStr, this->clientFd);
 }
@@ -33,11 +33,12 @@ void	HttpResponse::deleteResponse(const HttpRequest &request){
 void HttpResponse::handleDeleteRequest(const HttpRequest &request)
 {
 	std::string path = sanitizePath(request.getRequestBlock()->getRoot() + request.getPath());
-	// std::cout << RED << path << RESET << std::endl;
 	if (isDir(path.c_str()))
 		throw HttpErrorException(BAD_REQUEST, request, "Directory upload is not supported");
 	if (!std::remove(path.c_str()))
 		deleteResponse(request);
-	else
+	else{
+		perror(path.c_str());
 		throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Failed to delete resource!");
+	}
 }

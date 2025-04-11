@@ -162,7 +162,7 @@ void HttpResponse::postResponse(const HttpRequest &request, int statusCode, std:
 	this->headers["Location"] = sanitizePath(location);
 	this->headers["Connection"] = connectState;
 	if (state->getIsKeepAlive())
-		this->headers["Keep-Alive"] = "timeout=10, max 1000";
+		this->headers["Keep-Alive"] = "timeout=10";
 	std::string toStr = this->toString();
 	ServerManager::sendString(toStr, this->clientFd);
 }
