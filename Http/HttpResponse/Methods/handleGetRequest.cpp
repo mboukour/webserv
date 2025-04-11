@@ -26,7 +26,7 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) {
     const std::string &path = request.getPath();
     const std::string &fullPath = request.getRequestBlock()->getRoot() + request.getPath();
     DIR *dir = opendir(fullPath.c_str());
-    if (!dir) 
+    if (!dir)
         throw HttpErrorException(NOT_FOUND, request, "Can't open directory");
     std::string response;
     response += "<!DOCTYPE html>\n<html>\n<title>Index of ";
@@ -80,7 +80,7 @@ void HttpResponse::handleAutoIndex(const HttpRequest& request) {
     ClientState *state = ServerManager::getClientState(this->clientFd);
     if (state->getIsKeepAlive()) {
         this->headers["Connection"] = "keep-alive";
-        this->headers["Keep-Alive"] = "timeout=10, max=1000";
+        this->headers["Keep-Alive"] = "timeout=10";
     } else
         this->headers["Connection"] = "close";
 
@@ -93,7 +93,7 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
 	std::string path = request.getRequestBlock()->getRoot() + request.getPath();
 
     struct stat filestat;
-    if (stat(path.c_str(), &filestat) == -1) 
+    if (stat(path.c_str(), &filestat) == -1)
         throw HttpErrorException(NOT_FOUND, request, "cant find file");
     if (filestat.st_mode & S_IFREG) {
         std::fstream fileToGet(path.c_str());
@@ -144,5 +144,5 @@ void HttpResponse::handleGetRequest(const HttpRequest& request) {
         } else {
             throw HttpErrorException(FORBIDDEN, request, "Indexes not found and autoindex is off");
         }
-    }    
+    }
 }
