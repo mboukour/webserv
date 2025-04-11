@@ -36,6 +36,7 @@ HttpRequest::HttpRequest(const std::string &request, const std::vector<Server> &
         this->path = this->path.substr(0, pos);
     }
     parseHeaders(ss, servers, serverPort);
+
     this->bodySize = 0;
     pos = request.find("\r\n\r\n");
     this->body = request.substr(pos + 4);
@@ -102,6 +103,23 @@ std::string HttpRequest::getQueryString(void) const {
 
 std::string HttpRequest::getCookie(const std::string &cookie) const {
     return this->cookies.at(cookie);
+}
+
+void HttpRequest::checkErrors(bool hostFound, bool contentLengthFound, bool isOk) const {
+    if (!hostFound)
+    throw HttpErrorException(BAD_REQUEST, "Host header not found");
+
+if (this->method != "POST" && this->method != "GET" && this->method != "DELETE")
+    throw HttpErrorException(NOT_IMPLEMENTED, *this, "Method not implemented");
+
+if (!this->requestBlock->isMethodAllowed(this->method))
+     throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
+
+if (this->isMultiForm && this->method == "POST" && isOk == false)
+    throw HttpErrorException(BAD_REQUEST, *this, "Content-Type: multipart/form-data: malformed header");
+
+if (this->method == "POST" && (!contentLengthFound && this->isChunked == false))
+    throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found and request is not chunked");
 }
 
 void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> &servers, int serverPort) {
@@ -209,18 +227,7 @@ void HttpRequest::parseHeaders(std::stringstream &ss, const std::vector<Server> 
             }
         }
     }
-
-    if (!hostFound)
-        throw HttpErrorException(BAD_REQUEST, "Host header not found");
-
-    if (!this->requestBlock->isMethodAllowed(this->method))
-         throw HttpErrorException(METHOD_NOT_ALLOWED, *this, "Method not allowed");
-
-	if (this->isMultiForm && this->method == "POST" && isOk == false)
-		throw HttpErrorException(BAD_REQUEST, *this, "Content-Type: multipart/form-data: malformed header");
-
-    if (this->method == "POST" && (!contentLengthFound && this->isChunked == false))
-        throw HttpErrorException(BAD_REQUEST, *this, "Content-Length header not found and request is not chunked");
+    checkErrors(hostFound, contentLengthFound, isOk);
 }
 
 void HttpRequest::parseCookies(void) {
