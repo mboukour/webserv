@@ -25,7 +25,7 @@ $(NAME): $(OBJ)
 	$(CC) $^ -o $@
 
 %.o: %.cpp $(HEADERS)
-	$(CC) $(FLAGS) -g -c $< -o $@
+	$(CC) $(FLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ)
