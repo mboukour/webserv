@@ -101,7 +101,6 @@ ClientState *ServerManager::getClientState(int clientFd) {
 
 EpollEvent *ServerManager::getEpollEvent(int clientFd) {
         return eventStates.at(clientFd);
-
 }
 
 void ServerManager::registerEpollEvent(int fd, EpollEvent *event) {

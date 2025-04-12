@@ -30,7 +30,7 @@ int main(int ac, char **av)
         if (ac == 3 && !std::string(av[2]).empty())
             Logger::init(av[2]);
         else {
-            std::cout << "Defaulting to webserver.log for logging..." << std::endl;
+            std::cout << "Defaulting to webserv.log for logging..." << std::endl;
             Logger::init("webserv.log");
         }
     } catch (std::exception &exc) {
@@ -55,19 +55,19 @@ int main(int ac, char **av)
     }
 
 
-    // try
-    // {
+    try
+    {
         ServerManager::initialize(servers);
         ServerManager::start();
-    // }
-    // catch(const std::exception& e)
-    // {
-    //     ServerManager::cleanUp();
-    //     Logger::close();
-    //     std::cerr << "Fatal Runtime error: " << e.what() << '\n';
-    //     Logger::getLogStream() << "Fatal parsing error: " << e.what() << '\n';
-    //     return (1);
-    // }
+    }
+    catch(const std::exception& e)
+    {
+        ServerManager::cleanUp();
+        Logger::close();
+        std::cerr << "Fatal Runtime error: " << e.what() << '\n';
+        Logger::getLogStream() << "Fatal parsing error: " << e.what() << '\n';
+        return (1);
+    }
     Logger::close();
     ServerManager::cleanUp();
     return (1);
