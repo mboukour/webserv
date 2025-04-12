@@ -17,7 +17,7 @@
 #include "../Cgi/CgiState/CgiState.hpp"
 
 const int ClientState::keepAliveTimeout = 10; // seconds
-const ssize_t ClientState::sendTimeout = 1; // milliseconds
+const ssize_t ClientState::sendTimeout = 500; // milliseconds
 
 
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),

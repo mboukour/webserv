@@ -478,9 +478,13 @@ void HttpResponse::multiForm(const HttpRequest &request){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
 						if (this->skip == false){
 							this->hasWritten = true;
-							ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
-							if (ret == -1)
-								throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+							if (!request.isCgiRequest()) {
+								ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
+								if (ret == -1)
+									throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+							} else {
+								this->cgiState->activateWriteState(toWrite);
+							}
 						}
 						toWrite.clear();
 						this->multiBody = this->multiBody.substr(this->multiBody.length() - boundLen);
@@ -589,9 +593,13 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 						std::string toWrite = this->multiBody.substr(0, this->multiBody.length() - boundLen);
 						if (this->skip == false){
 							this->hasWritten = true;
-							ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
-							if (ret == -1)
-								throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+							if (!request.isCgiRequest()) {
+								ssize_t ret = write(this->fd, toWrite.c_str(), toWrite.length());
+								if (ret == -1)
+									throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+							} else {
+								this->cgiState->activateWriteState(toWrite);
+							}
 						}
 						toWrite.clear();
 						this->multiBody = this->multiBody.substr(this->multiBody.length() - boundLen);
@@ -602,9 +610,13 @@ void HttpResponse::multiForm_chunked(const HttpRequest &request){
 				this->multiBody = this->multiBody.substr(0, bound_pos - 2);
 				if (this->skip == false){
 					this->hasWritten = true;
-					ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
-					if (ret == -1)
-						throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+					if (!request.isCgiRequest()) {
+						ssize_t ret = write(this->fd, this->multiBody.c_str(), this->multiBody.length());
+						if (ret == -1)
+							throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced internal write error.");
+					} else {
+						this->cgiState->activateWriteState(this->multiBody);
+					}
 				}
 				this->multiBody.clear();
 				curr_pos = 0;
@@ -730,9 +742,13 @@ void HttpResponse::handlePostRequest(const HttpRequest &request) {
 				throw HttpErrorException(BAD_REQUEST, request, "Empty post request");
 			this->isLastEntry = request.getBodySize() == request.getContentLength();
 			setPacket(request);
-			ssize_t w = write(this->fd, this->packet.c_str(), this->packet.length());
-			if (w == -1)
-				throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
+			if (!request.isCgiRequest()) {
+				ssize_t w = write(this->fd, this->packet.c_str(), this->packet.length());
+				if (w == -1)
+					throw HttpErrorException(INTERNAL_SERVER_ERROR, request, "Server faced unexpected write error.");
+			} else {
+				cgiState->activateWriteState(this->packet);
+			}
 			if (this->isLastEntry){
 				postResponse(request, 201, this->success_create, this->fileName);
 				close(this->fd);

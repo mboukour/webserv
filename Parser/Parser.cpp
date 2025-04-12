@@ -141,26 +141,39 @@ Block Parser::parseBlock(tokenVec::iterator &it, const tokenVec &tokens, bool ge
 
     if (getName)
     {
-        for(; it->type != OPEN_BRACE; it++)
+        for(; it != tokens.end() && it->type != OPEN_BRACE; ++it)
             result.blockName.push_back(it->word);
-        it++;
+        if (it == tokens.end()) return result;
+        ++it;
     }
 
-    for (; it != tokens.end() && it->type != CLOSE_BRACE; )
+    while (it != tokens.end() && it->type != CLOSE_BRACE)
     {
         stringVec vec;
-        for(; it->type == WORD; it++) vec.push_back(it->word);
-        if (it->type == SEMICOLON) {it++; result.directives.push_back(vec) ; continue;}
-        if (it->type == OPEN_BRACE) {
-            it++;
+        while (it != tokens.end() && it->type == WORD)
+        {
+            vec.push_back(it->word);
+            ++it;
+        }
+        if (it == tokens.end()) break;
+        if (it->type == SEMICOLON)
+        {
+            ++it;
+            result.directives.push_back(vec);
+            continue;
+        }
+        if (it->type == OPEN_BRACE)
+        {
+            ++it;
             Block subBlock = parseBlock(it, tokens, false);
             subBlock.blockName = vec;
             result.subBlocks.push_back(subBlock);
         }
     }
-    it++;
+    if (it != tokens.end()) ++it;
     return result;
 }
+
 
 void Parser::printTokens(void)
 {
