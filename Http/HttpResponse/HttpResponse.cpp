@@ -306,5 +306,6 @@ HttpResponse::~HttpResponse(){
         if (this->isChunked && !this->isLastEntry)
             std::remove(this->fileName.c_str());
     }
-
+    if (cgiState)
+        delete this->cgiState;
 }

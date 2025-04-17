@@ -24,7 +24,7 @@ CgiState::CgiState(int cgiFd, pid_t cgiPid, int epollFd,  ClientState *client):
     client(client), lastActivityTime(time(NULL)),
     readMode(RAW_CHUNKED), readState(READING_HEADERS), contentSent(0), contentLength(0),
     writeState(NOT_REGISTERED), writeQueue(),
-    isResponding(false), isClean(false),isDone(false) {}
+    isResponding(false), isClean(false),isEof(false),isDone(false) {}
 
 
 
@@ -178,7 +178,7 @@ void CgiState::sendCurrentChunk(void) {
 
 
 
-void CgiState::handlecgiReadable(void) {
+void CgiState::handleCgiReadable(void) {
     std::vector<char> buffer(READ_SIZE);
     while (true) {
         ssize_t bytesRead = recv(cgiFd, buffer.data(), buffer.size(), 0);
@@ -221,6 +221,10 @@ bool CgiState::isWritingDone(void) const {
     return this->writeQueue.empty();
 }
 
+void CgiState::setEof(void) {
+    this->isEof = true;
+}
+
 void CgiState::activateWriteState(const std::string &toWrite) {
     this->writeQueue.push_back(toWrite);
     if (this->writeState == NOT_REGISTERED) {
@@ -258,6 +262,8 @@ void CgiState::handleCgiWritable(void) {
             }
             it = this->writeQueue.erase(it);
         }
+    if (this->isEof)
+        shutdown(this->cgiFd, SHUT_WR);
     updateLastActivity();
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
@@ -276,6 +282,7 @@ void CgiState::cleanUpCgi(void) {
         kill(cgiPid, SIGKILL);
     this->isClean = true;
     this->isDone = true;
+    close(this->cgiFd);
 }
 
 CgiState::~CgiState() {

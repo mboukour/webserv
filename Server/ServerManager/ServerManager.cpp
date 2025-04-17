@@ -110,7 +110,7 @@ void ServerManager::registerEpollEvent(int fd, EpollEvent *event) {
 void ServerManager::cgiEpoll(EpollEvent *epollEvent, struct epoll_event &event) {
     CgiState *state = epollEvent->getCgiState();
     if (event.events & EPOLLIN) 
-        state->handlecgiReadable();
+        state->handleCgiReadable();
     if (event.events & EPOLLOUT) {
         state->handleCgiWritable();
     }

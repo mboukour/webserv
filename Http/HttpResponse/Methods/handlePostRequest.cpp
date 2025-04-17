@@ -243,7 +243,7 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 					this->chunkState = CH_TRAILER;
 				}
 				if (request.isCgiRequest())
-					cgiState->activateWriteState(this->packet.c_str() + curr_pos);
+					cgiState->activateWriteState(this->packet.substr(curr_pos, ch_size));
 				else{
 					this->hasWritten = true;
 					ssize_t w = write(this->fd, this->packet.c_str() + curr_pos, ch_size);
@@ -272,11 +272,13 @@ void	HttpResponse::chunkedTransfer(const HttpRequest &request){
 				this->chunkState = CH_SIZE;
 				break;
 			case CH_COMPLETE:
-					if (!this->hasWritten)
+					if (!request.isCgiRequest() && !this->hasWritten)
 						throw HttpErrorException(BAD_REQUEST, request, "Empty post body");
 					this->isLastEntry = true;
 					if (!request.isCgiRequest())
 						postResponse(request, 201, this->success_create, this->fileName);
+					else 
+						cgiState->setEof();
 					return;
 				break;
 			default:
@@ -315,7 +317,7 @@ std::map<std::string, std::string> HttpResponse::strToHeaderMap(const HttpReques
 		str = str.substr(curr);
 	}
 	if (headers.find("Content-Type") == headers.end())
-		throw HttpErrorException(BAD_REQUEST, request, "Invalid Content-Length header!");
+		throw HttpErrorException(BAD_REQUEST, request, "Invalid Content-Type header!");
 	return headers;
 }
 
@@ -714,10 +716,13 @@ void HttpResponse::multiChunked(const HttpRequest &request){
 				this->chunkState = CH_SIZE;
 				break;
 			case CH_COMPLETE:
-					if (!this->hasWritten)
+					if (!request.isCgiRequest() && !this->hasWritten)
 						throw HttpErrorException(BAD_REQUEST, request, "Empty post body");
 					this->isLastEntry = true;
-					postResponse(request, 201, this->success_create, sanitizePath(request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath()));
+					if (!request.isCgiRequest())
+						postResponse(request, 201, this->success_create, sanitizePath(request.getRequestBlock()->getRoot() + request.getRequestBlock()->getUploadPath()));
+					else
+						cgiState->setEof();
 					return;
 				break;
 			default:

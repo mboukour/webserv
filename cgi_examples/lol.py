@@ -175,70 +175,78 @@ class HTTPTester:
         print("</div>")
         
     def handle_raw_post(self):
-        """Handle raw POST data"""
+        """Handle raw POST data, including chunked encoding."""
         print("<div class='container'>")
         print("<h2>Raw POST Data</h2>")
-        
+
         try:
-            if self.content_length:
+            if self.content_length and self.content_length.isdigit() and int(self.content_length) > 0:
+                # Read data based on Content-Length
                 length = int(self.content_length)
-                data = sys.stdin.buffer.read(length)
-                
+                data = sys.stdin.buffer.read(length)  # Using buffer for binary data
+                print(f"<p>Content-Length: {self.content_length}</p>")
                 print(f"<p>Received {len(data)} bytes of data</p>")
-                
+
                 # Display first 1000 bytes as hex and text
                 print("<h3>Hex View (first 1000 bytes)</h3>")
                 hex_dump = ' '.join(f"{b:02x}" for b in data[:1000])
                 print(f"<pre>{hex_dump}</pre>")
-                
+
                 print("<h3>Text View (first 1000 bytes, if printable)</h3>")
                 text_data = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data[:1000])
                 print(f"<pre>{text_data}</pre>")
-                
-            elif self.transfer_encoding == 'chunked':
-                # Handle chunked encoding
-                print("<p>Chunked encoding detected</p>")
-                chunks = []
-                chunk_sizes = []
-                
-                # Read chunked data
-                while True:
-                    line = sys.stdin.readline().strip()
-                    chunk_size = int(line, 16)
-                    chunk_sizes.append(chunk_size)
-                    
-                    if chunk_size == 0:
-                        break
-                        
-                    chunk = sys.stdin.buffer.read(chunk_size)
-                    chunks.append(chunk)
-                    
-                    # Read CRLF
-                    sys.stdin.readline()
-                
-                total_size = sum(len(chunk) for chunk in chunks)
-                print(f"<p>Received {len(chunks)} chunks, total size: {total_size} bytes</p>")
-                
-                print("<h3>Chunks</h3>")
-                print("<table>")
-                print("<tr><th>Chunk #</th><th>Size</th><th>Preview</th></tr>")
-                
-                for i, (size, chunk) in enumerate(zip(chunk_sizes, chunks)):
-                    preview = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk[:50])
-                    if len(chunk) > 50:
-                        preview += "..."
-                    print(f"<tr><td>{i+1}</td><td>{size}</td><td>{preview}</td></tr>")
-                
-                print("</table>")
-                
+
             else:
-                print("<p>No content length or chunked encoding specified</p>")
-                
+                # Try to read all data (potentially unreliable in CGI environment)
+                print("<p>Content-Length not found, reading until EOF</p>")
+                data = sys.stdin.buffer.read()  # Using buffer for binary data
+
+                # Display received data size
+                print(f"<p>Received {len(data)} bytes of data</p>")
+
+                # Display first 1000 bytes as hex and text
+                print("<h3>Hex View (first 1000 bytes)</h3>")
+                hex_dump = ' '.join(f"{b:02x}" for b in data[:1000])
+                print(f"<pre>{hex_dump}</pre>")
+
+                print("<h3>Text View (first 1000 bytes, if printable)</h3>")
+                text_data = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data[:1000])
+                print(f"<pre>{text_data}</pre>")
+
         except Exception as e:
             print(f"<p>Error processing POST data: {e}</p>")
-            
         print("</div>")
+
+    def read_chunked_data(self):
+        """Read HTTP chunked transfer encoded data."""
+        data = bytearray()
         
+        try:
+            while True:
+                # Read the chunk size line
+                chunk_size_line = sys.stdin.buffer.readline().decode('ascii').strip()
+                
+                # Convert from hex to integer
+                chunk_size = int(chunk_size_line, 16)
+                
+                # Break if this is the last chunk (size 0)
+                if chunk_size == 0:
+                    # Read and discard the trailing CRLF
+                    sys.stdin.buffer.readline()
+                    break
+                
+                # Read the chunk data
+                chunk_data = sys.stdin.buffer.read(chunk_size)
+                data.extend(chunk_data)
+                
+                # Read and discard the trailing CRLF
+                sys.stdin.buffer.readline()
+                
+            return bytes(data)
+        except Exception as e:
+            print(f"<p>Error reading chunked data: {e}</p>")
+            return bytes(data)  # Return what we've got so far
+            
     def generate_download(self, size_param):
         """Generate a file for download testing"""
         try:
@@ -360,7 +368,7 @@ def main():
                 pattern = bytes([i % 256 for i in range(256)])
                 repeats = (chunk + 255) // 256
                 data = pattern * repeats
-                sys.stdout.buffer.write(data[:chunk])
+                sys.stdout.buffer.write(data[:chunk])  # Using buffer for binary output
                 bytes_sent += chunk
                 
             sys.stdout.buffer.flush()

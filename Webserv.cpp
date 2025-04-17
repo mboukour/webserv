@@ -65,7 +65,7 @@ int main(int ac, char **av)
         ServerManager::cleanUp();
         Logger::close();
         std::cerr << "Fatal Runtime error: " << e.what() << '\n';
-        Logger::getLogStream() << "Fatal parsing error: " << e.what() << '\n';
+        Logger::getLogStream() << "Fatal execution error: " << e.what() << '\n';
         return (1);
     }
     Logger::close();

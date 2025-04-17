@@ -65,8 +65,10 @@ void Parser::checkSyntaxError(const tokenVec &tokens)
         }
         else if (it->type == CLOSE_BRACE)
         {
-            if (lastType == OPEN_BRACE)
-                throw std::logic_error("Empty blocks are not allowed.");
+            if (lastType == WORD)
+                throw std::logic_error("All directives must end with a semicolon");
+            else if (lastType == OPEN_BRACE)
+                throw std::logic_error("Empty blocks are not accepted");
             braceCount--;
         }
             

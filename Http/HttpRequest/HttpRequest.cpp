@@ -266,6 +266,7 @@ void HttpRequest::setIsCgi(void) {
         if (pos != std::string::npos)
         {
             std::string extension = word.substr(pos + 1);
+            std::cout << extension << std::endl;
             this->isCgi = Cgi::isValidCgiExtension(extension, *this);
             return;
         }

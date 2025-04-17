@@ -17,7 +17,7 @@
 #include "../Cgi/CgiState/CgiState.hpp"
 
 const int ClientState::keepAliveTimeout = 10; // seconds
-const ssize_t ClientState::sendTimeout = 500; // milliseconds
+const ssize_t ClientState::sendTimeout = 100; // milliseconds
 
 
 ClientState::ClientState(int eventFd, int epollFd) : eventFd(eventFd), epollFd(epollFd),
@@ -162,7 +162,7 @@ void ClientState::handleReadable(std::vector<Server> &servers) {
                 try {
                     this->requestCount++;
                     this->request = HttpRequest(this->requestBuffer, servers, port);
-                    // DEBUG && Logger::getLogStream() << "----------New Request----------\n" << request << "----------End Request----------" << std::endl;
+                    DEBUG && Logger::getLogStream() << "----------New Request----------\n" << request << "----------End Request----------" << std::endl;
                 } catch (const HttpErrorException &exec) {
                     if (exec.getStatusCode() == PAYLOAD_TOO_LARGE)
                         this->isDone = true;
@@ -240,8 +240,9 @@ void ClientState::SendMe::changeSend(const std::string &stringToSend) {
 }
 
 bool ClientState::isSendingDone(void) const {
-    if (this->sendQueue.empty() && getCurrentTimeMs() - lastSend > sendTimeout)
+    if (this->sendQueue.empty() && getCurrentTimeMs() - lastSend > sendTimeout) {
         return true;
+    }
     return false;
 }
 

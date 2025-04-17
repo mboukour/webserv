@@ -30,6 +30,7 @@ class CgiState {
         std::vector<std::string> writeQueue;
         bool isResponding;
         bool isClean;
+        bool isEof;
         bool isDone;
         CgiState();
 
@@ -42,8 +43,9 @@ class CgiState {
         void sendCurrentChunk(void);
     public:
         CgiState(int cgiFd, int cgiPid, int epollFd, ClientState *clientToSend);
-        void handlecgiReadable(void);
+        void handleCgiReadable(void);
         void handleCgiWritable(void);
+        void setEof(void);
         void activateWriteState(const std::string &toWrite);
         void notifyCgiClient(int statusCode);
         bool isWritingDone(void) const;
